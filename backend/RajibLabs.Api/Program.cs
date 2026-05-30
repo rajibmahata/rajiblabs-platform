@@ -1,3 +1,11 @@
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Http;
 // Rajib Labs API — Agent-Managed Portfolio Backend
 // .NET 8 Minimal API + SQLite | Managed by RCore (OpenClaw)
 
@@ -36,6 +44,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 // ── Endpoints ──
 
@@ -83,7 +93,7 @@ app.MapGet("/api/health", () => Results.Ok(new { Status = "healthy", Timestamp =
 
 // ── Run ──
 
-app.Run("http://0.0.0.0:5000");
+app.Run();
 
 // ── Seed Data ──
 
