@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+backend/RajibLabs.Api/bin/
+backend/RajibLabs.Api/obj/
+
+# IDE
+.idea/
+.vs/
+.vscode/
+*.swp
+*.sln.ide/
+
+# Environment
+.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

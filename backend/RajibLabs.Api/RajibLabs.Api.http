@@ -1,0 +1,6 @@
+@RajibLabs.Api_HostAddress = http://localhost:5110
+
+GET {{RajibLabs.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
