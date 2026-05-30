@@ -15,44 +15,48 @@ export default function ProjectGrid() {
   }, []);
 
   return (
-    <section id="projects">
-      <div className="flex items-center gap-3 mb-10">
-        <div className="h-px flex-1 bg-[var(--color-border)]"></div>
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+    <section className="max-w-6xl mx-auto px-6 pb-16">
+      {/* Section header */}
+      <div className="flex items-center gap-4 mb-10">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-[var(--text-muted)]">
           Projects
         </h2>
-        <span className="text-xs text-[var(--color-text-muted)] bg-white/[0.03] px-2 py-0.5 rounded-full border border-[var(--color-border)]">
+        <div className="h-px flex-1 bg-[var(--border)]"></div>
+        <span className="text-xs text-[var(--text-muted)] tabular-nums">
           {loading ? '...' : projects.length}
         </span>
-        <div className="h-px flex-1 bg-[var(--color-border)]"></div>
       </div>
 
       {loading ? (
-        <div className="grid md:grid-cols-2 gap-6">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="glass-card rounded-2xl p-6 animate-pulse">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-white/5"></div>
-                <div className="h-5 w-32 bg-white/5 rounded"></div>
+        <div className="grid md:grid-cols-2 gap-5">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] animate-pulse">
+              <div className="flex justify-between mb-5">
+                <div className="w-12 h-12 rounded-xl bg-[var(--bg-hover)]"></div>
+                <div className="h-5 w-24 rounded-full bg-[var(--bg-hover)]"></div>
               </div>
-              <div className="h-4 w-full bg-white/5 rounded mb-2"></div>
-              <div className="h-4 w-2/3 bg-white/5 rounded mb-4"></div>
-              <div className="flex gap-2 mb-4">
-                <div className="h-6 w-16 bg-white/5 rounded-md"></div>
-                <div className="h-6 w-20 bg-white/5 rounded-md"></div>
-                <div className="h-6 w-14 bg-white/5 rounded-md"></div>
+              <div className="h-5 w-48 bg-[var(--bg-hover)] rounded mb-2"></div>
+              <div className="h-4 w-full bg-[var(--bg-hover)] rounded mb-1"></div>
+              <div className="h-4 w-2/3 bg-[var(--bg-hover)] rounded mb-5"></div>
+              <div className="flex gap-1.5 mb-5">
+                <div className="h-6 w-16 bg-[var(--bg-hover)] rounded-md"></div>
+                <div className="h-6 w-20 bg-[var(--bg-hover)] rounded-md"></div>
+                <div className="h-6 w-14 bg-[var(--bg-hover)] rounded-md"></div>
+              </div>
+              <div className="pt-4 border-t border-[var(--border)]">
+                <div className="h-3 w-24 bg-[var(--bg-hover)] rounded"></div>
               </div>
             </div>
           ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="text-center py-16 glass-card rounded-2xl">
-          <div className="text-4xl mb-4">⚡</div>
-          <p className="text-[var(--color-text-secondary)] text-lg mb-2">No projects yet</p>
-          <p className="text-[var(--color-text-muted)] text-sm">The AI workforce will populate this automatically.</p>
+        <div className="text-center py-20 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)]">
+          <div className="text-4xl mb-4">🚀</div>
+          <h3 className="text-lg font-medium text-white mb-2">No projects yet</h3>
+          <p className="text-sm text-[var(--text-muted)]">Projects will appear here as the AI workforce builds them.</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-5">
           {projects.map((p, i) => (
             <ProjectCard key={p.id} project={p} index={i} />
           ))}
