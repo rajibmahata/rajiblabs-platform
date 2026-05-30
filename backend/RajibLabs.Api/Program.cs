@@ -1,9 +1,15 @@
 // Rajib Labs API — Agent-Managed Portfolio Backend
-// .NET 8 Minimal API | Managed by RCore (OpenClaw)
+// .NET 8 Minimal API + SQLite | Managed by RCore (OpenClaw)
 
+using Microsoft.EntityFrameworkCore;
+using RajibLabs.Api.Data;
 using RajibLabs.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Database ──
+builder.Services.AddDbContext<LabDbContext>(options =>
+    options.UseSqlite("Data Source=rajiblabs.db"));
 
 builder.Services.AddCors(options =>
 {
@@ -16,101 +22,108 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// ── Ensure DB created & seeded ──
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<LabDbContext>();
+    db.Database.EnsureCreated();
+
+    if (!db.Projects.Any())
+    {
+        SeedData(db);
+    }
+}
+
 app.UseCors();
-
-// ── In-Memory Data Store (replace with SQL Server before production) ──
-
-var projects = new List<Project>
-{
-    new()
-    {
-        Id = Guid.NewGuid(),
-        Title = "DocSignerHub",
-        Slug = "docsignerhub",
-        Description = "Digital signature SaaS platform with AI clause analysis, blockchain notarisation, visual workflow builder, and Stripe payment integration. 140+ REST API endpoints.",
-        TechStack = new() { ".NET 8", "React", "SQL Server", "Azure", "Stripe", "OpenAI" },
-        GitHubUrl = "https://github.com/rajibmahata/DocumentSigningPlatform",
-        LiveUrl = "https://docsignerhub.com",
-        Status = "development",
-        CreatedAt = DateTime.UtcNow.AddMonths(-2),
-        LastCommitAt = DateTime.UtcNow.AddHours(-3)
-    },
-    new()
-    {
-        Id = Guid.NewGuid(),
-        Title = "AI Avatar RAG Platform",
-        Slug = "ai-avatar-rag",
-        Description = "Enterprise AI knowledge retrieval platform with avatar-based interaction, semantic search, and RAG pipelines.",
-        TechStack = new() { "Python", "FastAPI", "OpenAI", "RAG", "Vector DB", "React" },
-        GitHubUrl = "https://github.com/rajibmahata/AI-Avatar-RAG-Platform",
-        Status = "development",
-        CreatedAt = DateTime.UtcNow.AddMonths(-3),
-        LastCommitAt = DateTime.UtcNow.AddDays(-2)
-    },
-    new()
-    {
-        Id = Guid.NewGuid(),
-        Title = "Solicitor Case Management",
-        Slug = "solicitor-cms",
-        Description = "Legal enterprise workflow platform for case tracking, document management, and client communication.",
-        TechStack = new() { ".NET 8", "Blazor", "SQL Server", "Azure", "Cosmos DB" },
-        GitHubUrl = "https://github.com/rajibmahata/SolicitorCaseManagementSystem",
-        Status = "planning",
-        CreatedAt = DateTime.UtcNow.AddMonths(-5),
-        LastCommitAt = DateTime.UtcNow.AddDays(-7)
-    }
-};
-
-var activities = new List<Activity>
-{
-    new() { Id = Guid.NewGuid(), ProjectId = projects[0].Id, Type = "commit", Title = "DocSignerHub — 3 new commits", Description = "Auth middleware refactor, API rate limiting, blog publish endpoint", Timestamp = DateTime.UtcNow.AddHours(-2) },
-    new() { Id = Guid.NewGuid(), ProjectId = projects[1].Id, Type = "milestone", Title = "AI Avatar RAG — Embedding pipeline complete", Description = "Vector search with hybrid retrieval now functional", Timestamp = DateTime.UtcNow.AddDays(-1) },
-    new() { Id = Guid.NewGuid(), ProjectId = projects[0].Id, Type = "deploy", Title = "DocSignerHub — Blog system deployed", Description = "Tutorial blog generation pipeline live on docsignerhub.com/blog", Timestamp = DateTime.UtcNow.AddDays(-2) }
-};
-
-var profile = new Profile
-{
-    Id = Guid.NewGuid(),
-    FullName = "Rajib Mahata",
-    Title = "Senior Software Architect | AI & SaaS Platform Builder",
-    Bio = "Independent software architect with 10+ years building production SaaS platforms, AI systems, and cloud-native applications. Specialising in .NET, Azure, and AI/LLM integrations.",
-    Skills = new() { ".NET 8/10", "C#", "ASP.NET Core", "Blazor", "React", "Python FastAPI", "Azure Cloud", "Microservices", "SQL Server", "Cosmos DB", "OpenAI/Gemini APIs", "RAG Systems", "Docker", "GitHub Copilot" },
-    SocialLinks = new()
-    {
-        { "github", "https://github.com/rajibmahata" },
-        { "linkedin", "https://linkedin.com/in/rajib-mahata" }
-    }
-};
 
 // ── Endpoints ──
 
-app.MapGet("/api/projects", () => Results.Ok(projects.OrderByDescending(p => p.UpdatedAt)));
-
-app.MapGet("/api/projects/{id:guid}", (Guid id) =>
+app.MapGet("/api/projects", async (LabDbContext db) =>
 {
-    var project = projects.FirstOrDefault(p => p.Id == id);
-    return project is not null ? Results.Ok(project) : Results.NotFound();
+    var projects = await db.Projects.OrderByDescending(p => p.UpdatedAt).ToListAsync();
+    return Results.Ok(projects.Select(p => new {
+        p.Id, p.Title, p.Slug, p.Description,
+        techStack = p.TechStack,
+        p.GitHubUrl, p.LiveUrl, p.Status,
+        p.CreatedAt, p.UpdatedAt, p.LastCommitAt
+    }));
 });
 
-app.MapPost("/api/projects", (Project project) =>
+app.MapGet("/api/projects/{id:guid}", async (Guid id, LabDbContext db) =>
 {
-    project.Id = Guid.NewGuid();
-    project.CreatedAt = DateTime.UtcNow;
-    project.UpdatedAt = DateTime.UtcNow;
-    projects.Add(project);
-    return Results.Created($"/api/projects/{project.Id}", project);
+    var p = await db.Projects.FindAsync(id);
+    return p is not null ? Results.Ok(new {
+        p.Id, p.Title, p.Slug, p.Description,
+        techStack = p.TechStack,
+        p.GitHubUrl, p.LiveUrl, p.Status,
+        p.CreatedAt, p.UpdatedAt, p.LastCommitAt
+    }) : Results.NotFound();
 });
 
-app.MapGet("/api/activity", (int? limit) =>
+app.MapGet("/api/activity", async (int? limit, LabDbContext db) =>
 {
-    var result = activities.OrderByDescending(a => a.Timestamp);
-    return Results.Ok(limit.HasValue ? result.Take(limit.Value) : result);
+    var query = db.Activities.OrderByDescending(a => a.Timestamp);
+    var result = limit.HasValue ? query.Take(limit.Value) : query;
+    return Results.Ok(await result.ToListAsync());
 });
 
-app.MapGet("/api/profile", () => Results.Ok(profile));
+app.MapGet("/api/profile", async (LabDbContext db) =>
+{
+    var p = await db.Profiles.FirstOrDefaultAsync();
+    return p is not null ? Results.Ok(new {
+        p.Id, p.FullName, p.Title, p.Bio,
+        skills = p.Skills,
+        socialLinks = p.SocialLinks,
+        p.UpdatedAt
+    }) : Results.NotFound();
+});
 
 app.MapGet("/api/health", () => Results.Ok(new { Status = "healthy", Timestamp = DateTime.UtcNow }));
 
 // ── Run ──
 
 app.Run("http://0.0.0.0:5000");
+
+// ── Seed Data ──
+
+static void SeedData(LabDbContext db)
+{
+    var p1 = new Project { Id = Guid.NewGuid(), Title = "DocSignerHub", Slug = "docsignerhub", Description = "Digital signature SaaS platform with AI clause analysis, blockchain notarisation, visual workflow builder, and Stripe payment integration. 140+ REST API endpoints.", GitHubUrl = "https://github.com/rajibmahata/DocumentSigningPlatform", LiveUrl = "https://docsignerhub.com", Status = "development", CreatedAt = DateTime.UtcNow.AddMonths(-2), UpdatedAt = DateTime.UtcNow, LastCommitAt = DateTime.UtcNow.AddHours(-3) };
+    p1.SetTechStack(new() { ".NET 8", "React", "SQL Server", "Azure", "Stripe", "OpenAI" });
+
+    var p2 = new Project { Id = Guid.NewGuid(), Title = "AI Avatar RAG Platform", Slug = "ai-avatar-rag", Description = "Enterprise AI knowledge retrieval platform with avatar-based interaction, semantic search, and RAG pipelines.", GitHubUrl = "https://github.com/rajibmahata/AI-Avatar-RAG-Platform", Status = "development", CreatedAt = DateTime.UtcNow.AddMonths(-3), UpdatedAt = DateTime.UtcNow, LastCommitAt = DateTime.UtcNow.AddDays(-2) };
+    p2.SetTechStack(new() { "Python", "FastAPI", "OpenAI", "RAG", "Vector DB", "React" });
+
+    var p3 = new Project { Id = Guid.NewGuid(), Title = "Solicitor Case Management", Slug = "solicitor-cms", Description = "Legal enterprise workflow platform for case tracking, document management, and client communication.", GitHubUrl = "https://github.com/rajibmahata/SolicitorCaseManagementSystem", Status = "planning", CreatedAt = DateTime.UtcNow.AddMonths(-5), UpdatedAt = DateTime.UtcNow, LastCommitAt = DateTime.UtcNow.AddDays(-7) };
+    p3.SetTechStack(new() { ".NET 8", "Blazor", "SQL Server", "Azure", "Cosmos DB" });
+
+    var p4 = new Project { Id = Guid.NewGuid(), Title = "Rajib Labs Platform", Slug = "rajiblabs", Description = "AI-powered portfolio and software lab. Auto-populated from GitHub, managed by OpenClaw agents. This very platform.", GitHubUrl = "https://github.com/rajibmahata/rajiblabs-platform", Status = "development", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, LastCommitAt = DateTime.UtcNow };
+    p4.SetTechStack(new() { ".NET 8", "React", "TypeScript", "Tailwind CSS", "SQLite", "OpenClaw" });
+
+    db.Projects.AddRange(p1, p2, p3, p4);
+    db.SaveChanges();
+
+    db.Activities.AddRange(
+        new Activity { Id = Guid.NewGuid(), ProjectId = p4.Id, Type = "milestone", Title = "Rajib Labs Platform — Design upgrade", Description = "Modern glass-morphism UI with animations + SQLite backend live", Timestamp = DateTime.UtcNow },
+        new Activity { Id = Guid.NewGuid(), ProjectId = p1.Id, Type = "commit", Title = "DocSignerHub — Auth refactor merged", Description = "Middleware cleanup, API rate limiting, security hardening", Timestamp = DateTime.UtcNow.AddHours(-3) },
+        new Activity { Id = Guid.NewGuid(), ProjectId = p2.Id, Type = "milestone", Title = "RAG Platform — Embedding pipeline live", Description = "Hybrid vector search with semantic ranking operational", Timestamp = DateTime.UtcNow.AddDays(-1) },
+        new Activity { Id = Guid.NewGuid(), ProjectId = p1.Id, Type = "deploy", Title = "DocSignerHub — Blog system shipped", Description = "AI-generated tutorial blogs live on docsignerhub.com/blog", Timestamp = DateTime.UtcNow.AddDays(-2) },
+        new Activity { Id = Guid.NewGuid(), ProjectId = p3.Id, Type = "commit", Title = "Solicitor CMS — Workflow diagram module", Description = "Visual case flow builder prototype in progress", Timestamp = DateTime.UtcNow.AddDays(-5) },
+        new Activity { Id = Guid.NewGuid(), ProjectId = p4.Id, Type = "commit", Title = "Rajib Labs — Initial scaffold", Description = "React + .NET 8 + SQLite backend deployed, 4 projects seeded", Timestamp = DateTime.UtcNow.AddHours(-1) }
+    );
+    db.SaveChanges();
+
+    var profile = new Profile
+    {
+        Id = Guid.NewGuid(),
+        FullName = "Rajib Mahata",
+        Title = "Senior Software Architect | AI & SaaS Platform Builder",
+        Bio = "Independent software architect with 10+ years building production SaaS platforms, AI systems, and cloud-native applications. Specialising in .NET, Azure, and AI/LLM integrations."
+    };
+    profile.SetSkills(new() { ".NET 8/10", "C#", "ASP.NET Core", "Blazor", "React", "Python FastAPI", "Azure Cloud", "Microservices", "SQL Server", "Cosmos DB", "OpenAI/Gemini APIs", "RAG Systems", "Docker", "GitHub Copilot" });
+    profile.SetSocialLinks(new() { { "github", "https://github.com/rajibmahata" }, { "linkedin", "https://linkedin.com/in/rajib-mahata" } });
+
+    db.Profiles.Add(profile);
+    db.SaveChanges();
+}
