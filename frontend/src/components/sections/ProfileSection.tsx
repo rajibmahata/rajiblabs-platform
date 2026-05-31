@@ -8,14 +8,14 @@ const timeline = [
     company: 'TCS',
     role: 'Assistant Consultant',
     period: '2019 – Present',
-    client: 'Meijer Inc. (Healthcare, USA)',
+    client: 'TCS (Healthcare, USA)',
     color: 'var(--c-accent-blue)',
   },
   {
     company: 'Accenture',
     role: 'Software Developer',
     period: '2016 – 2019',
-    client: 'Cincinnati Bell (Telecom, USA)',
+    client: 'Accenture (Telecom, USA)',
     color: 'var(--c-accent-teal)',
   },
   {
@@ -159,7 +159,7 @@ export default function ProfileSection() {
                 marginBottom: 12,
               }}>
                 B.Tech CSE, West Bengal University of Technology, 2012. 12 years of enterprise software delivery.
-                Built systems for Meijer Inc (Fortune 500), Cincinnati Bell, Keshri Software.
+                Built systems for TCS, Accenture, Keshri Software.
               </p>
               <p style={{
                 fontFamily: 'var(--font-body)',

@@ -9,7 +9,7 @@ const careerEntries = [
     company: 'Tata Consultancy Services',
     role: 'Assistant Consultant',
     period: 'Aug 2019 – Present',
-    client: 'Meijer Inc. — Fortune 500 Retail (Michigan, USA)',
+    client: 'TCS — Fortune 500 Healthcare Retail (USA)',
     achievements: [
       'Led development of open APIs, reducing pharmacy vendor dependency by 100%',
       'Automated Prescription Refill System — 30% faster processing, 40% fewer medication errors',
@@ -24,7 +24,7 @@ const careerEntries = [
     company: 'Accenture',
     role: 'Software Developer',
     period: 'Jul 2016 – Feb 2019',
-    client: 'Cincinnati Bell Inc. — Telecom (Ohio, USA)',
+    client: 'Accenture — Telecom (USA)',
     achievements: [
       'Designed and built CMT application automating network equipment provisioning',
       'Reduced manual intervention by 30%, processing time by 40%',
