@@ -29,6 +29,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ── JSON Serialization (camelCase to match frontend) ──
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.PropertyNameCaseInsensitive = true;
+});
+
 var app = builder.Build();
 
 // ── Ensure DB created & seeded ──
@@ -89,6 +96,25 @@ app.MapGet("/api/profile", async (LabDbContext db) =>
     }) : Results.NotFound();
 });
 
+// ── API Key Auth Filter ──
+static async ValueTask<object?> RequireApiKey(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+{
+    var config = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+    var expectedKey = config["ApiKey"];
+
+    // In dev: if no key is configured, allow all requests
+    if (string.IsNullOrWhiteSpace(expectedKey))
+        return await next(context);
+
+    if (!context.HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var providedKey) ||
+        !string.Equals(providedKey, expectedKey, StringComparison.Ordinal))
+    {
+        return Results.Json(new { Error = "Unauthorized" }, statusCode: 401);
+    }
+
+    return await next(context);
+}
+
 // ── Write Endpoints ──
 
 app.MapPost("/api/activity", async (ActivityDto dto, LabDbContext db) =>
@@ -127,7 +153,7 @@ app.MapPost("/api/activity", async (ActivityDto dto, LabDbContext db) =>
         activity.Id, activity.ProjectId, activity.Type,
         activity.Title, activity.Description, activity.Timestamp
     });
-});
+}).AddEndpointFilter(RequireApiKey);
 
 app.MapMethods("/api/projects/{id:guid}", new[] { "PATCH" }, async (Guid id, ProjectPatchDto dto, LabDbContext db) =>
 {
@@ -152,7 +178,7 @@ app.MapMethods("/api/projects/{id:guid}", new[] { "PATCH" }, async (Guid id, Pro
         project.GitHubUrl, project.LiveUrl, project.Status,
         project.CreatedAt, project.UpdatedAt, project.LastCommitAt
     });
-});
+}).AddEndpointFilter(RequireApiKey);
 
 app.MapGet("/api/health", () => Results.Ok(new { Status = "healthy", Timestamp = DateTime.UtcNow }));
 
