@@ -114,7 +114,10 @@ app.MapPost("/api/activity", async (ActivityDto dto, LabDbContext db) =>
     {
         project.UpdatedAt = DateTime.UtcNow;
         if (dto.Type == "commit" && dto.CommittedAt.HasValue)
-            project.LastCommitAt = dto.CommittedAt.Value;
+        {
+            if (project.LastCommitAt is null || dto.CommittedAt.Value > project.LastCommitAt)
+                project.LastCommitAt = dto.CommittedAt.Value;
+        }
         else if (dto.Type == "commit")
             project.LastCommitAt = DateTime.UtcNow;
         await db.SaveChangesAsync();

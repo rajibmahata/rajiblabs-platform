@@ -61,7 +61,6 @@ export default function ProjectCard({
           className="font-mono text-[10px] px-2 py-0.5 rounded-sm border"
           style={{
             backgroundColor: `${src.color} / ${src.bgOpacity * 100}`,
-            borderColor: src.color,
             borderColor: `${src.color} / ${src.borderOpacity * 100}`,
             color: src.color,
           }}

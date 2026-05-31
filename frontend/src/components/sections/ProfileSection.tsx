@@ -189,7 +189,7 @@ export default function ProfileSection() {
                 <div className="hidden sm:block absolute top-5 left-0 right-0 h-0.5"
                   style={{ background: `repeating-linear-gradient(90deg, var(--c-border) 0, var(--c-border) 4px, transparent 4px, transparent 8px)` }}
                 />
-                {timeline.map((item, i) => (
+                {timeline.map((item) => (
                   <div key={item.company} className="relative flex flex-col items-center sm:flex-1 z-10">
                     {/* Node */}
                     <div
