@@ -158,8 +158,7 @@ export default function ProfileSection() {
                 color: 'var(--c-text-secondary)',
                 marginBottom: 12,
               }}>
-                B.Tech CSE, West Bengal University of Technology, 2012. 12 years of enterprise software delivery.
-                Built systems for TCS, Accenture, Keshri Software.
+                B.Tech CSE, West Bengal University of Technology, 2012. 12 years of enterprise software delivery across TCS, Accenture, and Keshri Software.
               </p>
               <p style={{
                 fontFamily: 'var(--font-body)',
