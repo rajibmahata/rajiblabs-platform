@@ -17,22 +17,20 @@ export default function ContactSection() {
     if (!form.name || !form.email || !form.message) return;
     setStatus('loading');
 
-    // Simulate API call
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setStatus('success');
-      setForm({ name: '', email: '', company: '', message: '' });
-    } catch {
-      setStatus('error');
-    }
+    // Send email via mailto with form data
+    const body = `Name: ${form.name}%0D%0AEmail: ${form.email}%0D%0ACompany: ${form.company || 'N/A'}%0D%0A%0D%0AMessage:%0D%0A${form.message}`;
+    window.location.href = `mailto:rajibmahata143@gmail.com?subject=${encodeURIComponent(`RajibLabs Contact: ${form.name}`)}&body=${encodeURIComponent(body)}`;
+    
+    setStatus('success');
+    setForm({ name: '', email: '', company: '', message: '' });
   };
 
   const contactItems = [
     {
       icon: '📧',
       label: 'Email',
-      value: 'rajib@rajiblabs.com',
-      href: 'mailto:rajib@rajiblabs.com',
+      value: 'rajibmahata143@gmail.com',
+      href: 'mailto:rajibmahata143@gmail.com',
     },
     {
       icon: '💼',
@@ -86,15 +84,15 @@ export default function ContactSection() {
               lineHeight: 'var(--lh-body)',
               marginBottom: 20,
             }}>
-              I'm available for:
+              I'm open to:
             </p>
 
             <ul className="space-y-3 mb-10" style={{ listStyle: 'none' }}>
               {[
-                'Project collaborations',
-                'Freelance & contract work',
-                'Architecture consultations',
-                'AI & .NET advisory',
+                'Enterprise architecture collaborations',
+                'AI & cloud-native solution consulting',
+                'Technical advisory & architecture reviews',
+                'Part-time consulting (based on availability)',
               ].map(item => (
                 <li key={item} className="flex items-center gap-3" style={{
                   fontFamily: 'var(--font-body)',

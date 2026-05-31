@@ -4,7 +4,7 @@ export default function GlobalFooter() {
   const footerLinks = [
     { label: 'GitHub',    href: 'https://github.com/rajibmahata' },
     { label: 'LinkedIn',  href: 'https://linkedin.com/in/rajib-mahata' },
-    { label: 'Email',     href: 'mailto:rajib@rajiblabs.com' },
+    { label: 'Email',     href: 'mailto:rajibmahata143@gmail.com' },
   ];
 
   return (
