@@ -30,6 +30,26 @@ public class Activity
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
+// ── Request DTOs ──
+
+public class ActivityDto
+{
+    public Guid ProjectId { get; set; }
+    public string? Type { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public DateTime? Timestamp { get; set; }
+    public DateTime? CommittedAt { get; set; }
+}
+
+public class ProjectPatchDto
+{
+    public DateTime? LastCommitAt { get; set; }
+    public string? Status { get; set; }
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+}
+
 public class Profile
 {
     public Guid Id { get; set; } = Guid.NewGuid();

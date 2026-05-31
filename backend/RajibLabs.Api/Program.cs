@@ -89,6 +89,68 @@ app.MapGet("/api/profile", async (LabDbContext db) =>
     }) : Results.NotFound();
 });
 
+// ── Write Endpoints ──
+
+app.MapPost("/api/activity", async (ActivityDto dto, LabDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(dto.Title))
+        return Results.BadRequest(new { Error = "Title is required" });
+
+    var activity = new Activity
+    {
+        Id = Guid.NewGuid(),
+        ProjectId = dto.ProjectId,
+        Type = dto.Type ?? "commit",
+        Title = dto.Title,
+        Description = dto.Description ?? string.Empty,
+        Timestamp = dto.Timestamp ?? DateTime.UtcNow
+    };
+    db.Activities.Add(activity);
+    await db.SaveChangesAsync();
+
+    // Also update the parent project's UpdatedAt and LastCommitAt
+    var project = await db.Projects.FindAsync(dto.ProjectId);
+    if (project is not null)
+    {
+        project.UpdatedAt = DateTime.UtcNow;
+        if (dto.Type == "commit" && dto.CommittedAt.HasValue)
+            project.LastCommitAt = dto.CommittedAt.Value;
+        else if (dto.Type == "commit")
+            project.LastCommitAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Created($"/api/activity/{activity.Id}", new {
+        activity.Id, activity.ProjectId, activity.Type,
+        activity.Title, activity.Description, activity.Timestamp
+    });
+});
+
+app.MapMethods("/api/projects/{id:guid}", new[] { "PATCH" }, async (Guid id, ProjectPatchDto dto, LabDbContext db) =>
+{
+    var project = await db.Projects.FindAsync(id);
+    if (project is null) return Results.NotFound();
+
+    if (dto.LastCommitAt.HasValue)
+        project.LastCommitAt = dto.LastCommitAt.Value;
+    if (dto.Status is not null)
+        project.Status = dto.Status;
+    if (dto.Title is not null)
+        project.Title = dto.Title;
+    if (dto.Description is not null)
+        project.Description = dto.Description;
+
+    project.UpdatedAt = DateTime.UtcNow;
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new {
+        project.Id, project.Title, project.Slug, project.Description,
+        techStack = project.TechStack,
+        project.GitHubUrl, project.LiveUrl, project.Status,
+        project.CreatedAt, project.UpdatedAt, project.LastCommitAt
+    });
+});
+
 app.MapGet("/api/health", () => Results.Ok(new { Status = "healthy", Timestamp = DateTime.UtcNow }));
 
 // ── Run ──
