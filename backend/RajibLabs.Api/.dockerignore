@@ -1,0 +1,18 @@
+# Build output
+publish/
+bin/
+obj/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+appsettings.Development.json
+
+# IDE
+.vs/
+.vscode/
+.idea/
