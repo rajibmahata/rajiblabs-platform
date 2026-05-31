@@ -54,7 +54,7 @@ export default function LinkedInSection() {
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
 
   return (
-    <section className="section-pad" ref={sectionRef}>
+    <section className="section-pad" ref={sectionRef} id="career">
       <div className="container-site">
         {/* Header — fixed layout, no overlap */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">

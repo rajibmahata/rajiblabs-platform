@@ -30,7 +30,7 @@ export default function ProductsSection() {
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
 
   return (
-    <section className="section-pad" ref={sectionRef}
+    <section className="section-pad" ref={sectionRef} id="products"
       style={{ background: 'var(--c-bg-secondary)' }}
     >
       <div className="container-site">

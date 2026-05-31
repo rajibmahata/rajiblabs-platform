@@ -158,9 +158,9 @@ export default function GlobalNav() {
       {/* Mobile full-screen overlay */}
       {menuOpen && (
         <div
-          className="md:hidden fixed inset-0 top-16 z-40 flex flex-col items-center justify-center gap-6"
+          className="md:hidden fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6"
           style={{
-            background: 'var(--c-bg-primary)',
+            background: 'rgba(8, 13, 26, 0.97)',
             backdropFilter: 'blur(20px)',
           }}
         >

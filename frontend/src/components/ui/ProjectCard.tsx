@@ -102,13 +102,30 @@ export default function ProjectCard({ project, onMoreInfo, className = '' }: Pro
 
       {/* Action buttons — pinned to bottom */}
       <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'var(--c-border)', flex: '0 0 auto' }}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onMoreInfo(project)}
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMoreInfo(project); }}
+          className="text-xs font-medium transition-all"
+          style={{
+            fontFamily: 'var(--font-heading)',
+            padding: '6px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'transparent',
+            color: 'var(--c-text-secondary)',
+            border: '1px solid var(--c-border)',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'var(--c-accent-blue)';
+            e.currentTarget.style.color = 'var(--c-text-primary)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'var(--c-border)';
+            e.currentTarget.style.color = 'var(--c-text-secondary)';
+          }}
+          data-testid={`more-info-${project.name.replace(/\s+/g, '-').toLowerCase()}`}
         >
           ℹ More Info
-        </Button>
+        </button>
         {project.liveUrl && (
           <Button variant="primary" size="sm" asLink href={project.liveUrl}>
             ↗ Live
