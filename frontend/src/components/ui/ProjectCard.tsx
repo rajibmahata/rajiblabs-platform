@@ -10,6 +10,7 @@ interface ProjectCardProps {
 
 const sourceConfig = {
   github:     { label: 'GitHub',     color: '#22C55E' },
+  enterprise: { label: 'Enterprise', color: '#C49A2A' },
   claude_cb:  { label: 'Claude/CB',  color: '#8B5CF6' },
   localhost:  { label: 'Localhost',  color: '#C49A2A' },
 };

@@ -12,7 +12,7 @@ export interface ProjectDetail {
   techStack: string[];
   liveUrl?: string | null;
   githubUrl?: string | null;
-  source: 'github' | 'claude_cb' | 'localhost';
+  source: 'github' | 'claude_cb' | 'localhost' | 'enterprise';
   status?: 'live' | 'beta' | 'complete' | 'wip';
   role: string;
   impact: string;
