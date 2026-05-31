@@ -33,6 +33,12 @@ export default function ContactSection() {
       href: 'mailto:rajibmahata143@gmail.com',
     },
     {
+      icon: '📨',
+      label: 'Outlook',
+      value: 'rajibmahata143@outlook.com',
+      href: 'mailto:rajibmahata143@outlook.com',
+    },
+    {
       icon: '💼',
       label: 'LinkedIn',
       value: 'linkedin.com/in/rajib-mahata',
