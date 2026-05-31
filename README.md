@@ -9,19 +9,20 @@ rajiblabs-platform/
 ├── frontend/          # React + TypeScript + Tailwind CSS (Vite)
 │   └── src/
 │       ├── components/
-│       │   ├── layout/       # Header, Footer, Layout
-│       │   ├── hero/         # Hero section
-│       │   ├── projects/     # ProjectGrid, ProjectCard
+│       │   ├── layout/       # GlobalNav, GlobalFooter, Layout
 │       │   ├── activity/     # ActivityFeed
-│       │   └── common/       # Shared components
+│       │   ├── projects/     # ProjectGrid, ProjectCard
+│       │   ├── sections/     # HeroSection, ProfileSection, ProductsSection,
+│       │   │                   GitHubActivitySection, ContactSection, etc.
+│       │   └── ui/           # Button, StatusBadge, TechChip, CommitRow, etc.
 │       ├── pages/            # Home, Projects
-│       ├── services/         # API client
+│       ├── services/         # api.ts, fallbackData.ts
 │       └── types/            # TypeScript interfaces
-├── backend/           # .NET 8 Minimal API
+├── backend/           # .NET 8 Minimal API + SQLite
 │   └── RajibLabs.Api/
-│       ├── Models/           # Project, Activity, Profile
-│       ├── Data/             # EF Core DbContext (future)
-│       └── Services/         # GitHub integration (future)
+│       ├── Models/           # Project, Activity, Profile, DTOs
+│       ├── Data/             # EF Core DbContext
+│       └── Program.cs        # Minimal API endpoints
 └── ARCHITECTURE.md     # Full architecture doc (in rajiblabs/)
 ```
 
@@ -44,14 +45,27 @@ npm run dev
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/projects` | List all projects |
-| GET | `/api/projects/{id}` | Single project |
-| POST | `/api/projects` | Create project (agent) |
-| GET | `/api/activity` | Activity feed |
-| GET | `/api/profile` | Professional profile |
-| GET | `/api/health` | Health check |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/projects` | — | List all projects |
+| GET | `/api/projects/{id}` | — | Single project by ID |
+| PATCH | `/api/projects/{id}` | API Key | Update project (agent) |
+| GET | `/api/activity?limit=` | — | Activity feed (optional limit) |
+| POST | `/api/activity` | API Key | Log new activity (agent) |
+| GET | `/api/profile` | — | Professional profile |
+| GET | `/api/health` | — | Health check |
+
+### Authentication
+
+Write endpoints (`POST`, `PATCH`) require an API key passed via the `X-Api-Key` header. Configure in `appsettings.json`:
+
+```json
+{
+  "ApiKey": "rajiblabs-agent-key-change-me"
+}
+```
+
+Read endpoints (`GET`) are public and require no authentication.
 
 ## AI Workforce (OpenClaw Agents)
 
