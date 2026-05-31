@@ -7,7 +7,7 @@ import type { ProjectDetail } from '../ui/ProjectModal';
 
 type FilterTab = 'all' | 'github' | 'enterprise' | 'claude_cb' | 'localhost';
 
-const projects: ProjectDetail[] = [
+export const projects: ProjectDetail[] = [
   // ─── OWN PRODUCTS ──────────────────────────────────
   {
     name: 'DocSignerHub',

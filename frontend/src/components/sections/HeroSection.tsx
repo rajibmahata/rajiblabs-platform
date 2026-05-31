@@ -1,13 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 
-const stats = [
-  { value: 12, suffix: '', label: 'Yrs Exp' },
-  { value: 6, suffix: '', label: 'Products' },
-  { value: 3, suffix: '', label: 'Companies' },
-  { value: 40, suffix: '%', label: 'Less Errors' },
-];
-
 const skills = [
   { name: '.NET 8 / C#',  level: 95 },
   { name: 'Azure Cloud',  level: 90 },
@@ -91,11 +84,23 @@ function CountUpStat({ value, suffix, label, delay }: { value: number; suffix: s
   );
 }
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  productCount?: number;
+  companyCount?: number;
+}
+
+export default function HeroSection({ productCount = 16, companyCount = 3 }: HeroSectionProps) {
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const stats = [
+    { value: 12, suffix: '', label: 'Yrs Exp' },
+    { value: productCount, suffix: '', label: 'Products' },
+    { value: companyCount, suffix: '', label: 'Companies' },
+    { value: 40, suffix: '%', label: 'Less Errors' },
+  ];
 
   return (
     <section
