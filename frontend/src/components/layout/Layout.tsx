@@ -1,18 +1,33 @@
-import { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, Outlet } from 'react-router-dom';
 
 export default function Layout() {
-  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const links = [
-    { to: '/', label: 'Home' },
-    { to: '/projects', label: 'Projects' },
+    { to: '/#work', label: 'Work' },
+    { to: '/#workforce', label: 'AI Agents' },
+    { to: '/#projects', label: 'Projects' },
+    { to: '/#activity', label: 'Activity' },
   ];
+
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] relative">
-      <nav className="fixed top-0 inset-x-0 z-50 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)]">
+      <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+        scrolled ? 'bg-[var(--bg)]/90 backdrop-blur-xl border-b border-[var(--border)]' : 'bg-transparent'
+      }`}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/20">
@@ -25,13 +40,9 @@ export default function Layout() {
 
           <div className="hidden md:flex items-center gap-1">
             {links.map(l => (
-              <Link key={l.to} to={l.to}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  location.pathname === l.to
-                    ? 'text-white bg-white/5'
-                    : 'text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.03]'
-                }`}
-              >{l.label}</Link>
+              <button key={l.to} onClick={() => scrollTo(l.to.replace('/#', ''))}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.03] transition-all"
+              >{l.label}</button>
             ))}
             <a href="https://github.com/rajibmahata" target="_blank" rel="noopener noreferrer"
               className="ml-4 px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-gray-200 transition-all">
@@ -50,20 +61,20 @@ export default function Layout() {
         {menuOpen && (
           <div className="md:hidden border-t border-[var(--border)] px-6 py-4 space-y-2 bg-[var(--bg)]/95 backdrop-blur-xl">
             {links.map(l => (
-              <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}
-                className={`block px-3 py-2 rounded-lg text-sm ${location.pathname === l.to ? 'text-white bg-white/5' : 'text-[var(--text-secondary)]'}`}
-              >{l.label}</Link>
+              <button key={l.to} onClick={() => { scrollTo(l.to.replace('/#', '')); setMenuOpen(false); }}
+                className="block w-full text-left px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:text-white"
+              >{l.label}</button>
             ))}
           </div>
         )}
       </nav>
 
-      <main className="pt-16 relative z-10">
+      <main className="relative z-10">
         <Outlet />
       </main>
 
       <footer className="relative z-10 border-t border-[var(--border)] py-8 text-center text-xs text-[var(--text-muted)]">
-        © {new Date().getFullYear()} Rajib Labs — AI-powered software lab
+        © {new Date().getFullYear()} Rajib Labs — AI-powered innovation platform. Built with React + .NET 8. Managed by autonomous AI agents.
       </footer>
     </div>
   );
