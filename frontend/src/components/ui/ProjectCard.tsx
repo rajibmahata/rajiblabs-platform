@@ -1,41 +1,27 @@
 import TechChip from './TechChip';
+import Button from './Button';
+import type { ProjectDetail } from './ProjectModal';
 
 interface ProjectCardProps {
-  name: string;
-  description: string;
-  techStack: string[];
-  liveUrl?: string | null;
-  githubUrl?: string | null;
-  cbUrl?: string | null;
-  source: 'github' | 'claude_cb' | 'localhost';
-  isFeatured?: boolean;
+  project: ProjectDetail;
+  onMoreInfo: (project: ProjectDetail) => void;
   className?: string;
 }
 
 const sourceConfig = {
-  github:     { label: 'GitHub',     color: '#22C55E', bgOpacity: 0.15, borderOpacity: 0.4 },
-  claude_cb:  { label: 'Claude/CB',  color: '#8B5CF6', bgOpacity: 0.15, borderOpacity: 0.4 },
-  localhost:  { label: 'Localhost',  color: 'var(--c-accent-gold)', bgOpacity: 0.15, borderOpacity: 0.4 },
+  github:     { label: 'GitHub',     color: '#22C55E' },
+  claude_cb:  { label: 'Claude/CB',  color: '#8B5CF6' },
+  localhost:  { label: 'Localhost',  color: '#C49A2A' },
 };
 
-export default function ProjectCard({
-  name,
-  description,
-  techStack,
-  liveUrl,
-  githubUrl,
-  cbUrl,
-  source,
-  isFeatured = false,
-  className = '',
-}: ProjectCardProps) {
-  const src = sourceConfig[source];
+export default function ProjectCard({ project, onMoreInfo, className = '' }: ProjectCardProps) {
+  const src = sourceConfig[project.source];
 
   return (
     <div
-      className={`card p-5 group ${isFeatured ? 'ring-1 ring-[var(--c-accent-blue)]/30' : ''} ${className}`}
+      className={`card p-5 group flex flex-col ${className}`}
       style={{
-        minHeight: 280,
+        minHeight: 260,
         transition: 'all 250ms var(--ease-spring)',
       }}
       onMouseEnter={e => {
@@ -47,44 +33,57 @@ export default function ProjectCard({
         e.currentTarget.style.boxShadow = '';
       }}
     >
-      {/* Source badge */}
-      <div className="flex justify-between items-start mb-3">
+      {/* Source badge + Name */}
+      <div className="flex justify-between items-start gap-2 mb-2">
         <h3 style={{
           fontFamily: 'var(--font-heading)',
           fontSize: 16,
           fontWeight: 500,
           color: 'var(--c-text-primary)',
+          lineHeight: 1.3,
         }}>
-          {name}
+          {project.name}
         </h3>
         <span
-          className="font-mono text-[10px] px-2 py-0.5 rounded-sm border"
           style={{
-            backgroundColor: `${src.color} / ${src.bgOpacity * 100}`,
-            borderColor: `${src.color} / ${src.borderOpacity * 100}`,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            fontWeight: 500,
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: `${src.color}18`,
+            border: `1px solid ${src.color}40`,
             color: src.color,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           {src.label}
         </span>
       </div>
 
+      {/* Short description */}
       <p style={{
         fontFamily: 'var(--font-body)',
         fontSize: 14,
         color: 'var(--c-text-secondary)',
-        lineHeight: 'var(--lh-body)',
-        marginBottom: 12,
+        lineHeight: 'var(--lh-compact)',
+        marginBottom: 10,
+        flex: '0 0 auto',
       }}>
-        {description}
+        {project.shortDesc}
       </p>
 
-      {/* Tech stack */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {techStack.slice(0, 5).map(t => (
-          <TechChip key={t} label={t} category={getCategory(t)} />
+      {/* Tech stack — limited to 4 */}
+      <div className="flex flex-wrap gap-1 mb-4" style={{ flex: '0 0 auto' }}>
+        {project.techStack.slice(0, 4).map(t => (
+          <TechChip key={t} label={t} category={
+            /azure|docker|cloud/i.test(t) ? 'cloud' :
+            /react|typescript|javascript|html|css|tailwind/i.test(t) ? 'frontend' :
+            /ai|rag|openai|gpt|llm|chroma|vector/i.test(t) ? 'ai' : 'backend'
+          } />
         ))}
-        {techStack.length > 5 && (
+        {project.techStack.length > 4 && (
           <span style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 11,
@@ -93,62 +92,34 @@ export default function ProjectCard({
             border: '1px solid var(--c-border)',
             borderRadius: 'var(--radius-sm)',
           }}>
-            +{techStack.length - 5} more
+            +{project.techStack.length - 4}
           </span>
         )}
       </div>
 
-      {/* Action buttons */}
-      <div className="flex flex-wrap gap-2 mt-auto">
-        {liveUrl && (
-          <a
-            href={liveUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[13px] font-medium inline-flex items-center gap-1 transition-colors"
-            style={{ color: 'var(--c-accent-blue)' }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--c-accent-blue-l)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--c-accent-blue)'; }}
-          >
+      {/* Spacer pushes buttons to bottom */}
+      <div style={{ flex: 1 }} />
+
+      {/* Action buttons — pinned to bottom */}
+      <div className="flex items-center gap-2 pt-2 border-t" style={{ borderColor: 'var(--c-border)', flex: '0 0 auto' }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onMoreInfo(project)}
+        >
+          ℹ More Info
+        </Button>
+        {project.liveUrl && (
+          <Button variant="primary" size="sm" asLink href={project.liveUrl}>
             ↗ Live
-          </a>
+          </Button>
         )}
-        {githubUrl && (
-          <a
-            href={githubUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[13px] font-medium inline-flex items-center gap-1 transition-colors"
-            style={{ color: 'var(--c-text-muted)' }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--c-text-primary)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--c-text-muted)'; }}
-          >
-            ⌥ GitHub
-          </a>
-        )}
-        {cbUrl && (
-          <a
-            href={cbUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[13px] font-medium inline-flex items-center gap-1 transition-colors"
-            style={{ color: 'var(--c-text-muted)' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#8B5CF6'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--c-text-muted)'; }}
-          >
-            ⌥ CB
-          </a>
+        {project.githubUrl && (
+          <Button variant="ghost" size="sm" asLink href={project.githubUrl}>
+            ⌥ Code
+          </Button>
         )}
       </div>
     </div>
   );
-}
-
-function getCategory(tech: string): 'backend' | 'cloud' | 'frontend' | 'ai' | 'tools' {
-  const t = tech.toLowerCase();
-  if (/\.net|c#|asp\.net|blazor|python|fastapi|entity|sql|cosmos|wcf/.test(t)) return 'backend';
-  if (/azure|docker|kubernetes|aws|cloud|terraform/.test(t)) return 'cloud';
-  if (/react|typescript|javascript|next|vue|angular|html|css/.test(t)) return 'frontend';
-  if (/ai|rag|openai|gpt|llm|claude|ml|machine|chroma|vector|embed/.test(t)) return 'ai';
-  return 'tools';
 }
