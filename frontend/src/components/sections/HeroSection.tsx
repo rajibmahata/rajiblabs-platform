@@ -208,7 +208,7 @@ export default function HeroSection({ productCount = 16, companyCount = 3 }: Her
                 marginBottom: 32,
               }}
             >
-              12 years. Enterprise-grade. TCS · Accenture · AI Products.
+              12 years. Enterprise-grade. Fortune 500 delivery. AI Products.
             </motion.p>
 
             {/* CTAs */}
