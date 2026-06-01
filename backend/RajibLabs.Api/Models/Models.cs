@@ -58,13 +58,48 @@ public class Profile
     public string Bio { get; set; } = string.Empty;
     public string SkillsJson { get; set; } = "[]";
     public string SocialLinksJson { get; set; } = "{}";
+    public string CareerJson { get; set; } = "[]"; // JSON array of career entries
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Frontend-friendly projections
     public List<string> Skills => System.Text.Json.JsonSerializer.Deserialize<List<string>>(SkillsJson) ?? new();
     public Dictionary<string, string> SocialLinks => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(SocialLinksJson) ?? new();
+    public List<CareerEntry> Career => System.Text.Json.JsonSerializer.Deserialize<List<CareerEntry>>(CareerJson) ?? new();
     public void SetSkills(List<string> skills) =>
         SkillsJson = System.Text.Json.JsonSerializer.Serialize(skills);
     public void SetSocialLinks(Dictionary<string, string> links) =>
         SocialLinksJson = System.Text.Json.JsonSerializer.Serialize(links);
+    public void SetCareer(List<CareerEntry> entries) =>
+        CareerJson = System.Text.Json.JsonSerializer.Serialize(entries);
+}
+
+public class CareerEntry
+{
+    public string Company { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string Period { get; set; } = string.Empty;
+    public string Client { get; set; } = string.Empty;
+    public List<string> Achievements { get; set; } = new();
+    public List<string> TechStack { get; set; } = new();
+    public string Color { get; set; } = string.Empty;
+}
+
+// ── Contact ──
+
+public class Contact
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Company { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class ContactDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Company { get; set; }
+    public string Message { get; set; } = string.Empty;
 }

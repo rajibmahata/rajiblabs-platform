@@ -1,4 +1,4 @@
-import type { Project, Activity, Profile } from '../types';
+import type { Project, Activity, Profile, GitHubSummary, WipData } from '../types';
 
 export const fallbackProjects: Project[] = [
   {
@@ -116,4 +116,99 @@ export const fallbackProfile: Profile = {
     github: 'https://github.com/rajibmahata',
     linkedin: 'https://linkedin.com/in/rajib-mahata',
   },
+  career: [
+    {
+      company: 'Tata Consultancy Services',
+      role: 'Assistant Consultant',
+      period: 'Aug 2019 – Present',
+      client: 'TCS — Fortune 500 Healthcare Retail (USA)',
+      achievements: [
+        'Led development of open APIs, reducing pharmacy vendor dependency by 100%',
+        'Automated Prescription Refill System — 30% faster processing, 40% fewer medication errors',
+        'Vaccine Appointment System — streamlined COVID-19 immunization scheduling nationally',
+        'Built Rule Engine on Azure PaaS processing 500K+ daily prescription events',
+        'Integrated MParks secure payment, barcode scanning, voice/SMS notifications',
+      ],
+      techStack: ['.NET 8', 'Blazor', 'Azure Functions', 'Logic Apps', 'Service Bus', 'Event Grid', 'Cosmos DB', 'AngularJS'],
+      color: 'var(--c-accent-blue)',
+    },
+    {
+      company: 'Accenture',
+      role: 'Software Developer',
+      period: 'Jul 2016 – Feb 2019',
+      client: 'Accenture — Telecom (USA)',
+      achievements: [
+        'Designed and built CMT application automating network equipment provisioning',
+        'Reduced manual intervention by 30%, processing time by 40%',
+        'Achieved 95% issue resolution within 24 hours via automated ticket system',
+        'Built intuitive UI improving user satisfaction scores by 25%',
+      ],
+      techStack: ['ASP.NET MVC', 'WCF', 'Entity Framework', 'SQL Server', 'JavaScript'],
+      color: 'var(--c-accent-teal)',
+    },
+    {
+      company: 'Keshri Software Solutions',
+      role: 'Web Developer',
+      period: 'Mar 2013 – Apr 2016',
+      achievements: [
+        'Built Corporate Hour — B2B media advertisement & trade platform',
+        'Developed Cinematic Lens — product visual storytelling platform',
+        'Created TRANSZOOM — car rental & TruckIt365 freight matching solution',
+        'Full-stack ownership: database design to frontend deployment',
+      ],
+      techStack: ['ASP.NET MVC', 'SQL Server', 'JavaScript', 'HTML/CSS', 'AJAX'],
+      color: 'var(--c-accent-gold)',
+    },
+  ],
+};
+
+export const fallbackGitHubSummary: GitHubSummary = {
+  stats: [
+    { value: '247', label: 'contributions', icon: '📊' },
+    { value: '12', label: 'repos', icon: '📦' },
+    { value: '3', label: 'languages', icon: '🔤' },
+    { value: 'Kolkata', label: 'location', icon: '📍' },
+  ],
+  topRepos: [
+    { name: 'DocSignerHub', language: 'C#', stars: 12, forks: 3, updated: '2 days ago', langColor: '#178600' },
+    { name: 'AI-Avatar-RAG-Platform', language: 'Python', stars: 8, forks: 2, updated: '5 hours ago', langColor: '#3572A5' },
+    { name: 'FoodFleet', language: 'TypeScript', stars: 6, forks: 1, updated: '3 weeks ago', langColor: '#3178C6' },
+    { name: 'SolicitorCaseManagementSystem', language: 'C#', stars: 5, forks: 1, updated: '1 month ago', langColor: '#178600' },
+    { name: 'rajiblabs-platform', language: 'TypeScript', stars: 4, forks: 0, updated: 'just now', langColor: '#3178C6' },
+    { name: 'BudgetEase', language: 'C#', stars: 3, forks: 0, updated: '2 months ago', langColor: '#178600' },
+  ],
+};
+
+export const fallbackWipData: WipData = {
+  projects: [
+    {
+      name: 'DocSignerHub v2',
+      stack: '.NET 8 · Blazor · Azure · SQL',
+      progress: 68,
+      lastActivity: '2 hours ago',
+      status: 'live' as const,
+    },
+    {
+      name: 'ARIA Phase 2',
+      stack: 'FastAPI · GPT-4o · ChromaDB · React',
+      progress: 45,
+      lastActivity: '3 hours ago',
+      status: 'wip' as const,
+    },
+    {
+      name: 'rajiblabs-site',
+      stack: 'React · TypeScript · Vite · Tailwind',
+      progress: 80,
+      lastActivity: 'Yesterday',
+      status: 'wip' as const,
+    },
+  ],
+  commits: [
+    { hash: 'd4f7c2a', message: 'feat: multi-signer workflow with HMAC auth', repoName: 'DocSignerHub', timestamp: '2 minutes ago' },
+    { hash: 'a9e1b3f', message: 'fix: token expiry bug in middleware pipeline', repoName: 'ARIA', timestamp: '1 hour ago' },
+    { hash: '3c8d912', message: 'feat: RAG pipeline v2 with hybrid vector search', repoName: 'ARIA', timestamp: '3 hours ago' },
+    { hash: '7f2a134', message: 'chore: update deps and migrate to Tailwind v4', repoName: 'rajiblabs-site', timestamp: 'Yesterday' },
+    { hash: 'b5c6e8f', message: 'feat: add global navigation component with scroll blur', repoName: 'rajiblabs-site', timestamp: 'Yesterday' },
+    { hash: '2e4a7d1', message: 'refactor: extract service layer for document processing', repoName: 'DocSignerHub', timestamp: '2 days ago' },
+  ],
 };

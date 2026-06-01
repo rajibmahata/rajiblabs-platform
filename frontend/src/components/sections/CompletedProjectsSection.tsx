@@ -1,13 +1,17 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
 import ProjectCard from '../ui/ProjectCard';
 import ProjectModal from '../ui/ProjectModal';
+import { getProjects } from '../../services/api';
+import type { Project } from '../../types';
 import type { ProjectDetail } from '../ui/ProjectModal';
 
 type FilterTab = 'all' | 'github' | 'enterprise' | 'claude_cb' | 'localhost';
 
-export const projects: ProjectDetail[] = [
+// ── Fallback hardcoded projects (used when API is unavailable) ──
+
+const fallbackProjects: ProjectDetail[] = [
   // ─── OWN PRODUCTS ──────────────────────────────────
   {
     name: 'DocSignerHub',
@@ -202,6 +206,36 @@ export const projects: ProjectDetail[] = [
   },
 ];
 
+// ── Map API Project → ProjectDetail ──
+
+function apiProjectToDetail(p: Project): ProjectDetail {
+  const source = p.liveUrl?.includes('docsignerhub') || p.liveUrl?.includes('rajiblabs')
+    ? 'localhost'
+    : p.githubUrl ? 'github' : 'enterprise';
+
+  let status: ProjectDetail['status'] = 'wip';
+  if (p.status === 'deployed') status = 'live';
+  else if (p.status === 'planning') status = 'wip';
+  else if (p.status === 'development') status = 'wip';
+  else if (p.status === 'qa') status = 'beta';
+
+  return {
+    name: p.title,
+    shortDesc: p.description.length > 120 ? p.description.substring(0, 120) + '...' : p.description,
+    longDesc: p.description,
+    features: [],
+    techStack: p.techStack,
+    liveUrl: p.liveUrl,
+    githubUrl: p.githubUrl,
+    source,
+    status,
+    role: 'Developer',
+    impact: '',
+  };
+}
+
+// ── Tabs ──
+
 const tabs: { key: FilterTab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'enterprise', label: 'Enterprise' },
@@ -210,22 +244,48 @@ const tabs: { key: FilterTab; label: string }[] = [
   { key: 'localhost', label: 'This Site' },
 ];
 
+// ── Component ──
+
 export default function CompletedProjectsSection() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [selectedProject, setSelectedProject] = useState<ProjectDetail | null>(null);
+  const [projects, setProjects] = useState<ProjectDetail[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
 
+  useEffect(() => {
+    let cancelled = false;
+    getProjects()
+      .then(apiProjects => {
+        if (!cancelled) {
+          const mapped = apiProjects.map(apiProjectToDetail);
+          // If the API returned data, use it; otherwise stay with fallback
+          setProjects(mapped.length > 0 ? mapped : fallbackProjects);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setProjects(fallbackProjects);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // While loading, show nothing (or a subtle skeleton)
+  const displayProjects = isLoaded ? projects : fallbackProjects;
+
   const filtered = activeFilter === 'all'
-    ? projects
-    : projects.filter(p => p.source === activeFilter);
+    ? displayProjects
+    : displayProjects.filter(p => p.source === activeFilter);
 
   const counts: Record<FilterTab, number> = {
-    all: projects.length,
-    enterprise: projects.filter(p => p.source === 'enterprise').length,
-    github: projects.filter(p => p.source === 'github').length,
-    claude_cb: projects.filter(p => p.source === 'claude_cb').length,
-    localhost: projects.filter(p => p.source === 'localhost').length,
+    all: displayProjects.length,
+    enterprise: displayProjects.filter(p => p.source === 'enterprise').length,
+    github: displayProjects.filter(p => p.source === 'github').length,
+    claude_cb: displayProjects.filter(p => p.source === 'claude_cb').length,
+    localhost: displayProjects.filter(p => p.source === 'localhost').length,
   };
 
   return (

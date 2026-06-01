@@ -10,6 +10,7 @@ public class LabDbContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<Profile> Profiles => Set<Profile>();
+    public DbSet<Contact> Contacts => Set<Contact>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +33,15 @@ public class LabDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.FullName).HasMaxLength(200);
             entity.Property(e => e.Title).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<Contact>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Company).HasMaxLength(200);
+            entity.Property(e => e.Message).IsRequired().HasMaxLength(5000);
         });
     }
 }

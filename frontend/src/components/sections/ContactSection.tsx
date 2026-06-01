@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
+import { submitContact } from '../../services/api';
+import type { ContactForm } from '../../types';
 
 export default function ContactSection() {
-  const [form, setForm] = useState({ name: '', email: '', company: '', message: '' });
+  const [form, setForm] = useState<ContactForm>({ name: '', email: '', company: '', message: '' });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
@@ -17,12 +19,13 @@ export default function ContactSection() {
     if (!form.name || !form.email || !form.message) return;
     setStatus('loading');
 
-    // Send email via mailto with form data
-    const body = `Name: ${form.name}%0D%0AEmail: ${form.email}%0D%0ACompany: ${form.company || 'N/A'}%0D%0A%0D%0AMessage:%0D%0A${form.message}`;
-    window.location.href = `mailto:rajibmahata143@gmail.com,rajibmahata143@outlook.com?subject=${encodeURIComponent(`RajibLabs Contact: ${form.name}`)}&body=${encodeURIComponent(body)}`;
-    
-    setStatus('success');
-    setForm({ name: '', email: '', company: '', message: '' });
+    try {
+      await submitContact(form);
+      setStatus('success');
+      setForm({ name: '', email: '', company: '', message: '' });
+    } catch {
+      setStatus('error');
+    }
   };
 
   const contactItems = [

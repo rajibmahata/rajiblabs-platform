@@ -1,26 +1,22 @@
-import { useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
-
-const githubStats = [
-  { value: '247', label: 'contributions', icon: '📊' },
-  { value: '12', label: 'repos', icon: '📦' },
-  { value: '3', label: 'languages', icon: '🔤' },
-  { value: 'Kolkata', label: 'location', icon: '📍' },
-];
-
-const topRepos = [
-  { name: 'DocSignerHub', language: 'C#', stars: 12, forks: 3, updated: '2 days ago', langColor: '#178600' },
-  { name: 'AI-Avatar-RAG-Platform', language: 'Python', stars: 8, forks: 2, updated: '5 hours ago', langColor: '#3572A5' },
-  { name: 'FoodFleet', language: 'TypeScript', stars: 6, forks: 1, updated: '3 weeks ago', langColor: '#3178C6' },
-  { name: 'SolicitorCaseManagementSystem', language: 'C#', stars: 5, forks: 1, updated: '1 month ago', langColor: '#178600' },
-  { name: 'rajiblabs-platform', language: 'TypeScript', stars: 4, forks: 0, updated: 'just now', langColor: '#3178C6' },
-  { name: 'BudgetEase', language: 'C#', stars: 3, forks: 0, updated: '2 months ago', langColor: '#178600' },
-];
+import { getGitHubSummary } from '../../services/api';
+import { fallbackGitHubSummary } from '../../services/fallbackData';
+import type { GitHubSummary } from '../../types';
 
 export default function GitHubActivitySection() {
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
+  const [data, setData] = useState<GitHubSummary>(fallbackGitHubSummary);
+
+  useEffect(() => {
+    let cancelled = false;
+    getGitHubSummary().then(result => {
+      if (!cancelled) setData(result);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <section id="github" className="section-pad" ref={sectionRef}
@@ -106,9 +102,9 @@ export default function GitHubActivitySection() {
             </div>
           </div>
 
-          {/* Stats Row */}
+          {/* Stats Row — from API or fallback */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-            {githubStats.map(stat => (
+            {data.stats.map(stat => (
               <div key={stat.label} className="card p-4">
                 <span style={{ fontSize: 20 }}>{stat.icon}</span>
                 <div className="mt-2">
@@ -132,7 +128,7 @@ export default function GitHubActivitySection() {
             ))}
           </div>
 
-          {/* Top Repositories */}
+          {/* Top Repositories — from API or fallback */}
           <div>
             <h3 style={{
               fontFamily: 'var(--font-heading)',
@@ -146,7 +142,7 @@ export default function GitHubActivitySection() {
               Top Repositories
             </h3>
             <div className="space-y-2">
-              {topRepos.map(repo => (
+              {data.topRepos.map(repo => (
                 <a
                   key={repo.name}
                   href={`https://github.com/rajibmahata/${repo.name}`}

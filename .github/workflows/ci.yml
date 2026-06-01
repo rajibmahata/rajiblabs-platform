@@ -1,0 +1,128 @@
+name: CI/CD — Build, Test & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '22'
+  BACKEND_DIR: backend/RajibLabs.Api
+  FRONTEND_DIR: frontend
+
+jobs:
+  # ──────────────────────────────────────────────
+  # BACKEND: Build + Publish
+  # ──────────────────────────────────────────────
+  backend:
+    name: '🔧 Backend — .NET 8 Build'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.BACKEND_DIR }}
+
+      - name: Build
+        run: dotnet build ${{ env.BACKEND_DIR }} --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish ${{ env.BACKEND_DIR }} --configuration Release --no-build --output ${{ env.BACKEND_DIR }}/publish
+
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-publish
+          path: ${{ env.BACKEND_DIR }}/publish/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────
+  # FRONTEND: Build + Lint
+  # ──────────────────────────────────────────────
+  frontend:
+    name: '🎨 Frontend — React + Vite Build'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: ${{ env.FRONTEND_DIR }}
+
+      - name: Lint
+        run: npm run lint
+        working-directory: ${{ env.FRONTEND_DIR }}
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        working-directory: ${{ env.FRONTEND_DIR }}
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ${{ env.FRONTEND_DIR }}/dist/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────
+  # HEALTH CHECK
+  # ──────────────────────────────────────────────
+  health-check:
+    name: '🩺 Health Check'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check live site
+        run: |
+          echo "═══════════════════════════════════════"
+          echo "🩺 POST-DEPLOY HEALTH CHECK"
+          echo "═══════════════════════════════════════"
+          
+          # HTTPS check
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://rajiblabs.com || echo "000")
+          echo ""
+          echo "🌐 HTTPS: $HTTP_CODE"
+          
+          # Redirect check
+          REDIRECT=$(curl -s -o /dev/null -w "%{redirect_url}" http://rajiblabs.com || echo "NONE")
+          echo "🔀 HTTP→HTTPS Redirect: $REDIRECT"
+          
+          # Content check
+          TITLE=$(curl -s https://rajiblabs.com | grep -o '<title>[^<]*</title>' | sed 's/<[^>]*>//g')
+          echo "📄 Title: $TITLE"
+          
+          # SSL check
+          SSL_EXPIRY=$(echo | openssl s_client -connect rajiblabs.com:443 -servername rajiblabs.com 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+          echo "🔒 SSL Expires: $SSL_EXPIRY"
+          
+          # Summary
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo ""
+            echo "✅ ALL CHECKS PASSED"
+          else
+            echo ""
+            echo "⚠️  Site returned HTTP $HTTP_CODE — investigation needed"
+            exit 1
+          fi

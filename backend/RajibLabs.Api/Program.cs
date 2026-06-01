@@ -92,6 +92,7 @@ app.MapGet("/api/profile", async (LabDbContext db) =>
         p.Id, p.FullName, p.Title, p.Bio,
         skills = p.Skills,
         socialLinks = p.SocialLinks,
+        career = p.Career,
         p.UpdatedAt
     }) : Results.NotFound();
 });
@@ -114,6 +115,32 @@ static async ValueTask<object?> RequireApiKey(EndpointFilterInvocationContext co
 
     return await next(context);
 }
+
+// ── Contact Endpoint ──
+
+app.MapPost("/api/contact", async (ContactDto dto, LabDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(dto.Name) || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Message))
+        return Results.BadRequest(new { Error = "Name, email, and message are required" });
+
+    var contact = new Contact
+    {
+        Id = Guid.NewGuid(),
+        Name = dto.Name.Trim(),
+        Email = dto.Email.Trim(),
+        Company = dto.Company?.Trim(),
+        Message = dto.Message.Trim(),
+        SubmittedAt = DateTime.UtcNow
+    };
+    db.Contacts.Add(contact);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/contact/{contact.Id}", new
+    {
+        contact.Id,
+        Message = "Message received. Thank you!"
+    });
+});
 
 // ── Write Endpoints ──
 
@@ -224,6 +251,12 @@ static void SeedData(LabDbContext db)
     };
     profile.SetSkills(new() { ".NET 8/10", "C#", "ASP.NET Core", "Blazor", "React", "Python FastAPI", "Azure Cloud", "Microservices", "SQL Server", "Cosmos DB", "OpenAI/Gemini APIs", "RAG Systems", "Docker", "GitHub Copilot" });
     profile.SetSocialLinks(new() { { "github", "https://github.com/rajibmahata" }, { "linkedin", "https://linkedin.com/in/rajib-mahata" } });
+    profile.SetCareer(new()
+    {
+        new() { Company = "Tata Consultancy Services", Role = "Assistant Consultant", Period = "Aug 2019 – Present", Client = "TCS — Fortune 500 Healthcare Retail (USA)", Color = "var(--c-accent-blue)", Achievements = new() { "Led development of open APIs, reducing pharmacy vendor dependency by 100%", "Automated Prescription Refill System — 30% faster processing, 40% fewer medication errors", "Vaccine Appointment System — streamlined COVID-19 immunization scheduling nationally", "Built Rule Engine on Azure PaaS processing 500K+ daily prescription events", "Integrated MParks secure payment, barcode scanning, voice/SMS notifications" }, TechStack = new() { ".NET 8", "Blazor", "Azure Functions", "Logic Apps", "Service Bus", "Event Grid", "Cosmos DB", "AngularJS" } },
+        new() { Company = "Accenture", Role = "Software Developer", Period = "Jul 2016 – Feb 2019", Client = "Accenture — Telecom (USA)", Color = "var(--c-accent-teal)", Achievements = new() { "Designed and built CMT application automating network equipment provisioning", "Reduced manual intervention by 30%, processing time by 40%", "Achieved 95% issue resolution within 24 hours via automated ticket system", "Built intuitive UI improving user satisfaction scores by 25%" }, TechStack = new() { "ASP.NET MVC", "WCF", "Entity Framework", "SQL Server", "JavaScript" } },
+        new() { Company = "Keshri Software Solutions", Role = "Web Developer", Period = "Mar 2013 – Apr 2016", Color = "var(--c-accent-gold)", Achievements = new() { "Built Corporate Hour — B2B media advertisement & trade platform", "Developed Cinematic Lens — product visual storytelling platform", "Created TRANSZOOM — car rental & TruckIt365 freight matching solution", "Full-stack ownership: database design to frontend deployment" }, TechStack = new() { "ASP.NET MVC", "SQL Server", "JavaScript", "HTML/CSS", "AJAX" } }
+    });
 
     db.Profiles.Add(profile);
     db.SaveChanges();

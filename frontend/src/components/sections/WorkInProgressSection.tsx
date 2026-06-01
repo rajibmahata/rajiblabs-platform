@@ -1,45 +1,24 @@
-import { useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
 import StatusBadge from '../ui/StatusBadge';
 import CommitRow from '../ui/CommitRow';
-
-const wipProjects = [
-  {
-    name: 'DocSignerHub v2',
-    stack: '.NET 8 · Blazor · Azure · SQL',
-    progress: 68,
-    lastActivity: '2 hours ago',
-    status: 'live' as const,
-  },
-  {
-    name: 'ARIA Phase 2',
-    stack: 'FastAPI · GPT-4o · ChromaDB · React',
-    progress: 45,
-    lastActivity: '3 hours ago',
-    status: 'wip' as const,
-  },
-  {
-    name: 'rajiblabs-site',
-    stack: 'React · TypeScript · Vite · Tailwind',
-    progress: 80,
-    lastActivity: 'Yesterday',
-    status: 'wip' as const,
-  },
-];
-
-const mockCommits = [
-  { hash: 'd4f7c2a', message: 'feat: multi-signer workflow with HMAC auth', repoName: 'DocSignerHub', timestamp: '2 minutes ago' },
-  { hash: 'a9e1b3f', message: 'fix: token expiry bug in middleware pipeline', repoName: 'ARIA', timestamp: '1 hour ago' },
-  { hash: '3c8d912', message: 'feat: RAG pipeline v2 with hybrid vector search', repoName: 'ARIA', timestamp: '3 hours ago' },
-  { hash: '7f2a134', message: 'chore: update deps and migrate to Tailwind v4', repoName: 'rajiblabs-site', timestamp: 'Yesterday' },
-  { hash: 'b5c6e8f', message: 'feat: add global navigation component with scroll blur', repoName: 'rajiblabs-site', timestamp: 'Yesterday' },
-  { hash: '2e4a7d1', message: 'refactor: extract service layer for document processing', repoName: 'DocSignerHub', timestamp: '2 days ago' },
-];
+import { getWorkInProgress } from '../../services/api';
+import { fallbackWipData } from '../../services/fallbackData';
+import type { WipData } from '../../types';
 
 export default function WorkInProgressSection() {
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
+  const [data, setData] = useState<WipData>(fallbackWipData);
+
+  useEffect(() => {
+    let cancelled = false;
+    getWorkInProgress().then(result => {
+      if (!cancelled) setData(result);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <section id="wip" className="section-pad" ref={sectionRef}
@@ -67,7 +46,7 @@ export default function WorkInProgressSection() {
             color: 'var(--c-text-muted)',
             marginLeft: 'auto',
           }}>
-            {wipProjects.length} Active
+            {data.projects.length} Active
           </span>
         </div>
 
@@ -79,7 +58,7 @@ export default function WorkInProgressSection() {
         >
           {/* LEFT — Project Cards */}
           <div className="space-y-4">
-            {wipProjects.map(project => (
+            {data.projects.map(project => (
               <div
                 key={project.name}
                 className="card p-5"
@@ -167,10 +146,10 @@ export default function WorkInProgressSection() {
                 fontSize: 10,
                 color: 'var(--c-text-muted)',
               }}>
-                {mockCommits.length} commits
+                {data.commits.length} commits
               </span>
             </div>
-            {mockCommits.map(commit => (
+            {data.commits.map(commit => (
               <CommitRow
                 key={commit.hash}
                 hash={commit.hash}

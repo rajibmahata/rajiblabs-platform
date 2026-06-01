@@ -1,57 +1,38 @@
-import { useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
 import TechChip from '../ui/TechChip';
 import Button from '../ui/Button';
-
-const careerEntries = [
-  {
-    company: 'Tata Consultancy Services',
-    role: 'Assistant Consultant',
-    period: 'Aug 2019 – Present',
-    client: 'TCS — Fortune 500 Healthcare Retail (USA)',
-    achievements: [
-      'Led development of open APIs, reducing pharmacy vendor dependency by 100%',
-      'Automated Prescription Refill System — 30% faster processing, 40% fewer medication errors',
-      'Vaccine Appointment System — streamlined COVID-19 immunization scheduling nationally',
-      'Built Rule Engine on Azure PaaS processing 500K+ daily prescription events',
-      'Integrated MParks secure payment, barcode scanning, voice/SMS notifications',
-    ],
-    techStack: ['.NET 8', 'Blazor', 'Azure Functions', 'Logic Apps', 'Service Bus', 'Event Grid', 'Cosmos DB', 'AngularJS'],
-    color: 'var(--c-accent-blue)',
-  },
-  {
-    company: 'Accenture',
-    role: 'Software Developer',
-    period: 'Jul 2016 – Feb 2019',
-    client: 'Accenture — Telecom (USA)',
-    achievements: [
-      'Designed and built CMT application automating network equipment provisioning',
-      'Reduced manual intervention by 30%, processing time by 40%',
-      'Achieved 95% issue resolution within 24 hours via automated ticket system',
-      'Built intuitive UI improving user satisfaction scores by 25%',
-    ],
-    techStack: ['ASP.NET MVC', 'WCF', 'Entity Framework', 'SQL Server', 'JavaScript'],
-    color: 'var(--c-accent-teal)',
-  },
-  {
-    company: 'Keshri Software Solutions',
-    role: 'Web Developer',
-    period: 'Mar 2013 – Apr 2016',
-    achievements: [
-      'Built Corporate Hour — B2B media advertisement & trade platform',
-      'Developed Cinematic Lens — product visual storytelling platform',
-      'Created TRANSZOOM — car rental & TruckIt365 freight matching solution',
-      'Full-stack ownership: database design to frontend deployment',
-    ],
-    techStack: ['ASP.NET MVC', 'SQL Server', 'JavaScript', 'HTML/CSS', 'AJAX'],
-    color: 'var(--c-accent-gold)',
-  },
-];
+import { getProfile } from '../../services/api';
+import type { CareerEntry } from '../../types';
 
 export default function LinkedInSection() {
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
+  const [careerEntries, setCareerEntries] = useState<CareerEntry[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProfile().then(profile => {
+      if (!cancelled && profile.career && profile.career.length > 0) {
+        setCareerEntries(profile.career);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (careerEntries.length === 0) {
+    return (
+      <section className="section-pad" ref={sectionRef} id="career">
+        <div className="container-site">
+          <SectionLabel>CAREER EXPERIENCE</SectionLabel>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--c-text-muted)' }}>
+            Loading career data…
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="section-pad" ref={sectionRef} id="career">
@@ -112,14 +93,16 @@ export default function LinkedInSection() {
                           · {entry.role}
                         </span>
                       </div>
-                      <p style={{
-                        fontFamily: 'var(--font-body)',
-                        fontSize: 13,
-                        color: 'var(--c-text-muted)',
-                        marginTop: 2,
-                      }}>
-                        {entry.client}
-                      </p>
+                      {entry.client && (
+                        <p style={{
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 13,
+                          color: 'var(--c-text-muted)',
+                          marginTop: 2,
+                        }}>
+                          {entry.client}
+                        </p>
+                      )}
                     </div>
                     <span style={{
                       fontFamily: 'var(--font-mono)',
