@@ -8,6 +8,8 @@ import GitHubActivitySection from '../components/sections/GitHubActivitySection'
 import LinkedInSection from '../components/sections/LinkedInSection';
 import ProductsSection from '../components/sections/ProductsSection';
 import ContactSection from '../components/sections/ContactSection';
+import HowIWorkSection from '../components/sections/HowIWorkSection';
+import EmailSubscribeSection from '../components/sections/EmailSubscribeSection';
 
 export default function Home() {
   const productCount = projects.length;
@@ -24,6 +26,8 @@ export default function Home() {
         <GitHubActivitySection />
         <LinkedInSection />
         <ProductsSection />
+        <HowIWorkSection />
+        <EmailSubscribeSection />
         <ContactSection />
       </main>
       <GlobalFooter />

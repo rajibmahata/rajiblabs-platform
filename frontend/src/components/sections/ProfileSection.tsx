@@ -67,23 +67,37 @@ export default function ProfileSection() {
         >
           {/* LEFT — Avatar + Social */}
           <div className="flex flex-col items-center md:items-start">
-            {/* Avatar placeholder */}
+            {/* Avatar — styled dark gradient initials */}
             <div
-              className="w-40 h-40 md:w-48 md:h-48 flex items-center justify-center mb-6"
+              className="w-40 h-40 md:w-48 md:h-48 flex items-center justify-center mb-6 relative"
               style={{
                 border: '2px solid var(--c-border)',
                 borderRadius: 'var(--radius-xl)',
-                background: 'linear-gradient(135deg, var(--c-bg-secondary), var(--c-bg-tertiary))',
+                background: 'linear-gradient(135deg, #080D1A 0%, #1547BE 100%)',
+                boxShadow: '0 0 60px rgba(21,71,190,0.25)',
               }}
             >
               <span style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 48,
+                fontSize: 52,
                 fontWeight: 700,
-                color: 'var(--c-accent-gold)',
+                color: '#fff',
+                textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                letterSpacing: '0.02em',
               }}>
                 RM
               </span>
+              {/* Gold accent dot */}
+              <div style={{
+                position: 'absolute',
+                bottom: 14,
+                right: 14,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: 'var(--c-accent-gold)',
+                boxShadow: '0 0 8px rgba(196,154,42,0.6)',
+              }} />
             </div>
 
             <h3 style={{
@@ -116,13 +130,14 @@ export default function ProfileSection() {
               {[
                 { label: '↗ LinkedIn', href: 'https://linkedin.com/in/rajib-mahata' },
                 { label: '↗ GitHub', href: 'https://github.com/rajibmahata' },
-                { label: '↓ Resume', href: '#resume' },
+                { label: '↓ Download Resume (PDF)', href: '/Resume-RajibMahata.pdf', download: true },
               ].map(link => (
                 <a
                   key={link.label}
                   href={link.href}
                   target={link.href.startsWith('http') ? '_blank' : undefined}
                   rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  download={link.download ? '' : undefined}
                   className="inline-flex items-center px-4 py-2 text-xs font-medium rounded-md border transition-all"
                   style={{
                     fontFamily: 'var(--font-body)',
@@ -158,7 +173,16 @@ export default function ProfileSection() {
                 color: 'var(--c-text-secondary)',
                 marginBottom: 12,
               }}>
-                B.Tech CSE, West Bengal University of Technology, 2012. 12 years of enterprise software delivery across TCS, Accenture, and Keshri Software.
+                I'm Rajib Mahata — a Senior .NET and Azure Engineer based in Kolkata, with a B.Tech in Computer Science and 12 years of experience shipping production software for enterprise clients. I started building web applications at Keshri Software Solutions in 2013, moved to Accenture in 2016 where I modernised telecom platforms for Cincinnati Bell, and since 2019 I've been at TCS as an Assistant Consultant, leading the digital transformation of Meijer Pharmacy in the United States.
+              </p>
+              <p style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 16,
+                lineHeight: 'var(--lh-body)',
+                color: 'var(--c-text-secondary)',
+                marginBottom: 12,
+              }}>
+                The work I'm most proud of is the Meijer Pharmacy system — an Azure-hosted automation platform that eliminated manual phone calls for prescription refills, achieved 30% faster processing, reduced medication errors by 40%, and improved patient satisfaction scores by 25%. It ran nationally during the COVID-19 vaccine rollout. That kind of measurable, mission-critical impact is what I build towards.
               </p>
               <p style={{
                 fontFamily: 'var(--font-body)',
@@ -166,7 +190,7 @@ export default function ProfileSection() {
                 lineHeight: 'var(--lh-body)',
                 color: 'var(--c-text-secondary)',
               }}>
-                Now building AI-powered products under RajibLabs: DocSignerHub, ARIA, and more.
+                RajibLabs is my independent engineering studio where I build AI-powered SaaS products and take on freelance software projects. The model is simple: share your business idea, receive a proposal at no cost, and pay only on milestone delivery. My current products — DocSignerHub (enterprise e-signing) and ARIA (AI knowledge platform) — are live and available. If you have a software problem that needs solving, let's talk.
               </p>
             </div>
 

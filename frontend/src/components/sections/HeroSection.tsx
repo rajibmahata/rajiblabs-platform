@@ -205,11 +205,56 @@ export default function HeroSection({ productCount = 16, companyCount = 3 }: Her
                 lineHeight: 'var(--lh-body)',
                 color: 'var(--c-text-secondary)',
                 maxWidth: 500,
-                marginBottom: 32,
+                marginBottom: 16,
               }}
             >
               12 years. Enterprise-grade. Fortune 500 delivery. AI Products.
             </motion.p>
+
+            {/* Outcomes badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.42, duration: 0.5 }}
+              className="inline-flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-lg mb-6"
+              style={{
+                background: 'rgba(10,123,108,0.1)',
+                border: '1px solid rgba(10,123,108,0.25)',
+              }}
+            >
+              {['30% faster processing', '40% fewer medication errors', '25% higher patient satisfaction'].map((metric, i) => (
+                <span key={metric} className="flex items-center gap-2">
+                  {i > 0 && <span style={{ color: 'var(--c-border)', fontSize: 14 }}>·</span>}
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: 'var(--c-accent-teal)',
+                  }}>
+                    {metric}
+                  </span>
+                </span>
+              ))}
+            </motion.div>
+
+            {/* Email badge */}
+            <motion.a
+              href="mailto:rajibmahata143@gmail.com"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.46, duration: 0.5 }}
+              className="inline-flex items-center gap-2 mb-6 transition-colors"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 14,
+                color: 'var(--c-text-muted)',
+                textDecoration: 'none',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--c-accent-blue-l)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--c-text-muted)'; }}
+            >
+              ✉ rajibmahata143@gmail.com
+            </motion.a>
 
             {/* CTAs */}
             <motion.div
@@ -265,6 +310,29 @@ export default function HeroSection({ productCount = 16, companyCount = 3 }: Her
                 Get in Touch
               </button>
             </motion.div>
+
+            {/* Email */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65, duration: 0.5 }}
+              style={{ marginTop: 20 }}
+            >
+              <a
+                href="mailto:rajibmahata143@gmail.com"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  color: 'var(--c-text-muted)',
+                  textDecoration: 'none',
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--c-accent-blue-l)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--c-text-muted)'; }}
+              >
+                ✉ rajibmahata143@gmail.com
+              </a>
+            </motion.p>
           </motion.div>
 
           {/* RIGHT COLUMN — Terminal Card */}
@@ -334,6 +402,31 @@ export default function HeroSection({ productCount = 16, companyCount = 3 }: Her
               )}
               <CountUpStat value={stat.value} suffix={stat.suffix} label={stat.label} delay={900 + i * 120} />
             </div>
+          ))}
+        </motion.div>
+
+        {/* ── Outcomes Strip ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 0.5 }}
+          className="flex flex-wrap justify-center gap-x-6 gap-y-2 py-6 border-t text-center"
+          style={{ borderColor: 'var(--c-border)' }}
+        >
+          {[
+            { icon: '📊', text: '30% faster processing' },
+            { icon: '🛡️', text: '40% fewer medication errors' },
+            { icon: '⭐', text: '25% higher patient satisfaction' },
+          ].map((item, i) => (
+            <span key={i} className="flex items-center gap-1.5">
+              <span className="text-base">{item.icon}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 500, color: 'var(--c-text-secondary)' }}>
+                {item.text}
+              </span>
+              {i < 2 && (
+                <span style={{ color: 'var(--c-accent-gold)', marginLeft: 8, opacity: 0.6 }}>·</span>
+              )}
+            </span>
           ))}
         </motion.div>
       </div>
