@@ -2,37 +2,49 @@ import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
 
-const serviceCards = [
-  {
-    icon: '🏗️',
-    title: 'Enterprise Architecture',
-    description: 'Scalable cloud-native systems on .NET + Azure. From monolith-to-microservice migration to greenfield SaaS platforms.',
-    color: 'var(--c-accent-blue)',
-  },
+const explorationAreas = [
   {
     icon: '🤖',
-    title: 'AI Integration',
-    description: 'RAG systems, LLM-powered workflows, agentic pipelines, and AI-augmented SaaS features — built for production.',
+    title: 'AI & Automation',
+    description: 'Building RAG systems, agentic pipelines, and multi-agent AI workflows. Exploring LLM-powered automation for real-world problems.',
     color: 'var(--c-accent-teal)',
   },
   {
-    icon: '🔧',
-    title: 'Technical Consulting',
-    description: 'Architecture reviews, code audits, technology selection, and technical advisory for startups and enterprises.',
+    icon: '☁️',
+    title: 'Cloud-Native Architecture',
+    description: 'Designing scalable systems on .NET + Azure. Event-driven patterns, serverless workflows, and distributed system experiments.',
+    color: 'var(--c-accent-blue)',
+  },
+  {
+    icon: '🧪',
+    title: 'SaaS Product Experiments',
+    description: 'Building end-to-end SaaS products as learning sandboxes — from auth and payments to AI features and deployment.',
     color: 'var(--c-accent-gold)',
   },
   {
-    icon: '🚀',
-    title: 'SaaS Product Development',
-    description: 'End-to-end product building — from concept validation to live deployment with payment, auth, and AI features.',
+    icon: '🔬',
+    title: 'LLM & API Integration',
+    description: 'Experimenting with GPT-4o, DeepSeek, Gemini, and Claude APIs. Prompt engineering, function calling, and AI copilot patterns.',
     color: 'var(--c-accent-blue)',
   },
 ];
 
-const processSteps = [
-  { step: '01', title: 'Share Your Idea', description: 'Tell me what you need — a product, a feature, or a technical problem. No cost, no commitment.' },
-  { step: '02', title: 'Receive a Proposal', description: 'I review your requirements and send back a clear proposal with timeline, budget, and deliverables.' },
-  { step: '03', title: 'Build & Deliver', description: 'You pay only on milestone delivery. No upfront fees. Clean code, regular updates, on-time delivery.' },
+const buildProcess = [
+  {
+    step: '01',
+    title: 'Share an Idea',
+    description: 'A technical challenge, an AI experiment, or a product concept worth exploring. I build things purely for learning and curiosity.',
+  },
+  {
+    step: '02',
+    title: 'Build & Learn',
+    description: 'I bring the idea to life using modern AI tooling, cloud infrastructure, and clean architecture — learning something new with every project.',
+  },
+  {
+    step: '03',
+    title: 'Ship & Share',
+    description: 'The result goes live as an open-source project or a working prototype. Lessons learned become part of this portfolio.',
+  },
 ];
 
 export default function HowIWorkSection() {
@@ -44,16 +56,16 @@ export default function HowIWorkSection() {
       style={{ background: 'var(--c-bg-secondary)' }}
     >
       <div className="container-site">
-        <SectionLabel>HOW I WORK</SectionLabel>
+        <SectionLabel>WHAT I EXPLORE</SectionLabel>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
         >
-          {/* Service Cards */}
+          {/* Exploration Areas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
-            {serviceCards.map(card => (
+            {explorationAreas.map(card => (
               <div
                 key={card.title}
                 className="card p-5 group"
@@ -89,7 +101,7 @@ export default function HowIWorkSection() {
             ))}
           </div>
 
-          {/* 3-Step Process */}
+          {/* How I Build */}
           <div className="card p-8" style={{
             background: 'linear-gradient(135deg, var(--c-bg-secondary), var(--c-bg-tertiary))',
           }}>
@@ -101,14 +113,14 @@ export default function HowIWorkSection() {
               textAlign: 'center',
               marginBottom: 40,
             }}>
-              Share Idea → Proposal → Build
+              Share Idea → Build & Learn → Ship & Share
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {processSteps.map((step, i) => (
+              {buildProcess.map((step, i) => (
                 <div key={step.step} className="text-center relative">
                   {/* Step connector line (desktop) */}
-                  {i < processSteps.length - 1 && (
+                  {i < buildProcess.length - 1 && (
                     <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5"
                       style={{
                         background: `repeating-linear-gradient(90deg, var(--c-border) 0, var(--c-border) 4px, transparent 4px, transparent 8px)`,
@@ -179,7 +191,7 @@ export default function HowIWorkSection() {
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}
               >
-                Start a Project →
+                Let's Connect →
               </a>
             </div>
           </div>

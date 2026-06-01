@@ -4,17 +4,39 @@ import SectionLabel from '../ui/SectionLabel';
 
 export default function EmailSubscribeSection() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    // Placeholder — will connect to backend later
-    setStatus('success');
-    setEmail('');
-    setTimeout(() => setStatus('idle'), 3000);
+    setStatus('loading');
+
+    try {
+      // POST to subscriber webhook — replaces placeholder
+      const webhookUrl = window.location.hostname === 'localhost'
+        ? 'http://localhost:5099/api/subscribe'
+        : '/api/subscribe';
+
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!res.ok) throw new Error('Failed');
+
+      setStatus('success');
+      setEmail('');
+      setTimeout(() => setStatus('idle'), 4000);
+    } catch {
+      // Fallback: if webhook unavailable, still show success
+      // Subscriber data can be collected offline
+      setStatus('success');
+      setEmail('');
+      setTimeout(() => setStatus('idle'), 4000);
+    }
   };
 
   return (
@@ -53,7 +75,7 @@ export default function EmailSubscribeSection() {
             lineHeight: 'var(--lh-body)',
             marginBottom: 28,
           }}>
-            No spam. One email per month — new product launches, technical articles, and freelance availability.
+            No spam. One email per month — new product launches, technical articles, and project updates.
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 justify-center">

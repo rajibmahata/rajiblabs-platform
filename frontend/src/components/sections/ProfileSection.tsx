@@ -173,7 +173,7 @@ export default function ProfileSection() {
                 color: 'var(--c-text-secondary)',
                 marginBottom: 12,
               }}>
-                I'm Rajib Mahata — a Senior .NET and Azure Engineer based in Kolkata, with a B.Tech in Computer Science and 12 years of experience shipping production software for enterprise clients. I started building web applications at Keshri Software Solutions in 2013, moved to Accenture in 2016 where I modernised telecom platforms for Cincinnati Bell, and since 2019 I've been at TCS as an Assistant Consultant, leading the digital transformation of Meijer Pharmacy in the United States.
+                I'm Rajib Mahata — a Senior .NET and Azure Engineer based in Kolkata, with a B.Tech in Computer Science and 12 years of experience shipping production software for enterprise clients. I started building web applications at Keshri Software Solutions in 2013, moved to Accenture in 2016 where I modernised telecom platforms for a major US telecommunications provider, and since 2019 I've been at TCS as an Assistant Consultant, leading the digital transformation of a Fortune 500 pharmacy chain in the United States.
               </p>
               <p style={{
                 fontFamily: 'var(--font-body)',
@@ -182,7 +182,7 @@ export default function ProfileSection() {
                 color: 'var(--c-text-secondary)',
                 marginBottom: 12,
               }}>
-                The work I'm most proud of is the Meijer Pharmacy system — an Azure-hosted automation platform that eliminated manual phone calls for prescription refills, achieved 30% faster processing, reduced medication errors by 40%, and improved patient satisfaction scores by 25%. It ran nationally during the COVID-19 vaccine rollout. That kind of measurable, mission-critical impact is what I build towards.
+                The work I'm most proud of is the pharmacy transformation platform I architected at TCS — an Azure-hosted automation system that eliminated manual phone calls for prescription refills, achieved 30% faster processing, reduced medication errors by 40%, and improved patient satisfaction scores by 25%. It ran nationally during the COVID-19 vaccine rollout. That kind of measurable, mission-critical impact is what I build towards.
               </p>
               <p style={{
                 fontFamily: 'var(--font-body)',
@@ -190,7 +190,7 @@ export default function ProfileSection() {
                 lineHeight: 'var(--lh-body)',
                 color: 'var(--c-text-secondary)',
               }}>
-                RajibLabs is my independent engineering studio where I build AI-powered SaaS products and take on freelance software projects. The model is simple: share your business idea, receive a proposal at no cost, and pay only on milestone delivery. My current products — DocSignerHub (enterprise e-signing) and ARIA (AI knowledge platform) — are live and available. If you have a software problem that needs solving, let's talk.
+                RajibLabs is my independent engineering studio where I build AI-powered SaaS products and experiment with new technologies purely for learning. My current products — DocSignerHub (enterprise e-signing) and ARIA (AI knowledge platform) — are live and available. If you have an interesting technical idea or want to connect, let's talk.
               </p>
             </div>
 

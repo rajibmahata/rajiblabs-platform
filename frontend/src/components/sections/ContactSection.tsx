@@ -19,7 +19,7 @@ export default function ContactSection() {
 
     // Send email via mailto with form data
     const body = `Name: ${form.name}%0D%0AEmail: ${form.email}%0D%0ACompany: ${form.company || 'N/A'}%0D%0A%0D%0AMessage:%0D%0A${form.message}`;
-    window.location.href = `mailto:rajibmahata143@gmail.com?subject=${encodeURIComponent(`RajibLabs Contact: ${form.name}`)}&body=${encodeURIComponent(body)}`;
+    window.location.href = `mailto:rajibmahata143@gmail.com,rajibmahata143@outlook.com?subject=${encodeURIComponent(`RajibLabs Contact: ${form.name}`)}&body=${encodeURIComponent(body)}`;
     
     setStatus('success');
     setForm({ name: '', email: '', company: '', message: '' });
@@ -90,15 +90,15 @@ export default function ContactSection() {
               lineHeight: 'var(--lh-body)',
               marginBottom: 20,
             }}>
-              I'm open to:
+              I'm always open to:
             </p>
 
             <ul className="space-y-3 mb-10" style={{ listStyle: 'none' }}>
               {[
-                'Enterprise architecture collaborations',
-                'AI & cloud-native solution consulting',
-                'Technical advisory & architecture reviews',
-                'Part-time consulting (based on availability)',
+                'Technical discussions on AI, cloud, and SaaS architecture',
+                'Collaborating on open-source or learning projects',
+                'Sharing ideas for AI experiments and product concepts',
+                'Connecting with fellow engineers and builders',
               ].map(item => (
                 <li key={item} className="flex items-center gap-3" style={{
                   fontFamily: 'var(--font-body)',

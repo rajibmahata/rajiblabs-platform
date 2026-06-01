@@ -23,6 +23,10 @@ backend/RajibLabs.Api/publish/
 .DS_Store
 Thumbs.db
 
+# SQLite
+*.db-shm
+*.db-wal
+
 # Logs
 *.log
 deploy/
