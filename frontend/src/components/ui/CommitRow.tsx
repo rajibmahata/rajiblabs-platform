@@ -9,15 +9,12 @@ interface CommitRowProps {
 }
 
 export default function CommitRow({ hash, message, repoName, timestamp, isNew = false }: CommitRowProps) {
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(!isNew);
 
   useEffect(() => {
-    if (isNew) {
-      const timer = setTimeout(() => setShow(true), 50);
-      return () => clearTimeout(timer);
-    } else {
-      setShow(true);
-    }
+    if (!isNew) return;
+    const timer = setTimeout(() => setShow(true), 50);
+    return () => clearTimeout(timer);
   }, [isNew]);
 
   const shortHash = hash.slice(0, 7);

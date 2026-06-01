@@ -1,15 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
 import ProjectCard from '../ui/ProjectCard';
 import ProjectModal from '../ui/ProjectModal';
-import { getProjects } from '../../services/api';
-import type { Project } from '../../types';
 import type { ProjectDetail } from '../ui/ProjectModal';
 
 type FilterTab = 'all' | 'github' | 'enterprise' | 'claude_cb' | 'localhost';
 
-// ── Fallback hardcoded projects (used when API is unavailable) ──
+// ── Projects data ──
 
 const fallbackProjects: ProjectDetail[] = [
   // ─── OWN PRODUCTS ──────────────────────────────────
@@ -206,34 +204,6 @@ const fallbackProjects: ProjectDetail[] = [
   },
 ];
 
-// ── Map API Project → ProjectDetail ──
-
-function apiProjectToDetail(p: Project): ProjectDetail {
-  const source = p.liveUrl?.includes('docsignerhub') || p.liveUrl?.includes('rajiblabs')
-    ? 'localhost'
-    : p.githubUrl ? 'github' : 'enterprise';
-
-  let status: ProjectDetail['status'] = 'wip';
-  if (p.status === 'deployed') status = 'live';
-  else if (p.status === 'planning') status = 'wip';
-  else if (p.status === 'development') status = 'wip';
-  else if (p.status === 'qa') status = 'beta';
-
-  return {
-    name: p.title,
-    shortDesc: p.description.length > 120 ? p.description.substring(0, 120) + '...' : p.description,
-    longDesc: p.description,
-    features: [],
-    techStack: p.techStack,
-    liveUrl: p.liveUrl,
-    githubUrl: p.githubUrl,
-    source,
-    status,
-    role: 'Developer',
-    impact: '',
-  };
-}
-
 // ── Tabs ──
 
 const tabs: { key: FilterTab; label: string }[] = [
@@ -249,43 +219,23 @@ const tabs: { key: FilterTab; label: string }[] = [
 export default function CompletedProjectsSection() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [selectedProject, setSelectedProject] = useState<ProjectDetail | null>(null);
-  const [projects, setProjects] = useState<ProjectDetail[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
 
-  useEffect(() => {
-    let cancelled = false;
-    getProjects()
-      .then(apiProjects => {
-        if (!cancelled) {
-          const mapped = apiProjects.map(apiProjectToDetail);
-          // If the API returned data, use it; otherwise stay with fallback
-          setProjects(mapped.length > 0 ? mapped : fallbackProjects);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setProjects(fallbackProjects);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoaded(true);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  // While loading, show nothing (or a subtle skeleton)
-  const displayProjects = isLoaded ? projects : fallbackProjects;
+  // Always use static projects as the primary data source.
+  // API-backed live data can be merged in later when backend is available.
+  const displayProjects = fallbackProjects;
 
   const filtered = activeFilter === 'all'
     ? displayProjects
-    : displayProjects.filter(p => p.source === activeFilter);
+    : displayProjects.filter((p: ProjectDetail) => p.source === activeFilter);
 
   const counts: Record<FilterTab, number> = {
     all: displayProjects.length,
-    enterprise: displayProjects.filter(p => p.source === 'enterprise').length,
-    github: displayProjects.filter(p => p.source === 'github').length,
-    claude_cb: displayProjects.filter(p => p.source === 'claude_cb').length,
-    localhost: displayProjects.filter(p => p.source === 'localhost').length,
+    enterprise: displayProjects.filter((p: ProjectDetail) => p.source === 'enterprise').length,
+    github: displayProjects.filter((p: ProjectDetail) => p.source === 'github').length,
+    claude_cb: displayProjects.filter((p: ProjectDetail) => p.source === 'claude_cb').length,
+    localhost: displayProjects.filter((p: ProjectDetail) => p.source === 'localhost').length,
   };
 
   return (
@@ -326,7 +276,7 @@ export default function CompletedProjectsSection() {
           transition={{ duration: 0.4 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
-          {filtered.map(project => (
+          {filtered.map((project: ProjectDetail) => (
             <ProjectCard
               key={project.name}
               project={project}

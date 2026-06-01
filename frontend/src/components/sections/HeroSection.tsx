@@ -46,40 +46,23 @@ function AnimatedBar({ label, target, delay }: { label: string; target: number; 
   );
 }
 
-function CountUpStat({ value, suffix, label, delay }: { value: number; suffix: string; label: string; delay: number }) {
-  const [display, setDisplay] = useState(0);
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-50px' });
-
-  useEffect(() => {
-    if (!inView) return;
-    const timer = setTimeout(() => {
-      const duration = 1500;
-      const steps = 30;
-      const inc = value / steps;
-      let current = 0;
-      const interval = setInterval(() => {
-        current += inc;
-        if (current >= value) {
-          setDisplay(value);
-          clearInterval(interval);
-        } else {
-          setDisplay(Math.floor(current));
-        }
-      }, duration / steps);
-      return () => clearInterval(interval);
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [inView, value, delay]);
+function StatCard({ value, label, tone }: { value: string; label: string; tone?: 'blue' | 'teal' | 'gold' }) {
+  const color = tone === 'teal' ? 'var(--c-accent-teal)' : tone === 'blue' ? 'var(--c-accent-blue-l)' : 'var(--c-accent-gold)';
 
   return (
-    <div ref={ref} className="flex items-baseline gap-0.5">
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 28, color: 'var(--c-accent-gold)', fontWeight: 500 }}>
-        {display}{suffix}
-      </span>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--c-text-secondary)' }}>
+    <div
+      className="card p-4 sm:p-5 text-left"
+      style={{
+        background: 'rgba(13, 31, 60, 0.65)',
+        backdropFilter: 'blur(10px)',
+      }}
+    >
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 30, fontWeight: 600, color, lineHeight: 1 }}>
+        {value}
+      </div>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--c-text-secondary)', marginTop: 6 }}>
         {label}
-      </span>
+      </div>
     </div>
   );
 }
@@ -96,10 +79,10 @@ export default function HeroSection({ productCount = 16, companyCount = 3 }: Her
   };
 
   const stats = [
-    { value: 12, suffix: '', label: 'Yrs Exp' },
-    { value: productCount, suffix: '', label: 'Products' },
-    { value: companyCount, suffix: '', label: 'Companies' },
-    { value: 40, suffix: '%', label: 'Less Errors' },
+    { value: '12+', label: 'Years building enterprise software', tone: 'gold' as const },
+    { value: `${productCount}+`, label: 'Shipped projects and products', tone: 'blue' as const },
+    { value: `${companyCount}+`, label: 'Companies delivered for', tone: 'teal' as const },
+    { value: '40%', label: 'Fewer medication errors on pharmacy work', tone: 'gold' as const },
   ];
 
   return (
@@ -390,18 +373,11 @@ export default function HeroSection({ productCount = 16, companyCount = 3 }: Her
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.6 }}
-          className="flex flex-wrap justify-center gap-6 sm:gap-10 lg:gap-16 py-8 border-t"
-          style={{
-            borderColor: 'var(--c-border)',
-          }}
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 py-8 border-t"
+          style={{ borderColor: 'var(--c-border)' }}
         >
-          {stats.map((stat, i) => (
-            <div key={stat.label} className="flex items-center gap-6">
-              {i > 0 && (
-                <div className="hidden sm:block w-px h-8" style={{ background: 'var(--c-border)' }} />
-              )}
-              <CountUpStat value={stat.value} suffix={stat.suffix} label={stat.label} delay={900 + i * 120} />
-            </div>
+          {stats.map((stat) => (
+            <StatCard key={stat.label} value={stat.value} label={stat.label} tone={stat.tone} />
           ))}
         </motion.div>
 

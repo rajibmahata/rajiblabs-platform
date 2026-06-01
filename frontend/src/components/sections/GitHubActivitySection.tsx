@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
 import { getGitHubSummary } from '../../services/api';
@@ -10,6 +10,16 @@ export default function GitHubActivitySection() {
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
   const [data, setData] = useState<GitHubSummary>(fallbackGitHubSummary);
 
+  const heatmapLevels = useMemo(
+    () => Array.from({ length: 52 * 7 }, (_, i) => {
+      if (i % 11 === 0) return 3;
+      if (i % 5 === 0) return 2;
+      if (i % 3 === 0) return 1;
+      return 0;
+    }),
+    []
+  );
+
   useEffect(() => {
     let cancelled = false;
     getGitHubSummary().then(result => {
@@ -19,7 +29,10 @@ export default function GitHubActivitySection() {
   }, []);
 
   return (
-    <section id="github" className="section-pad" ref={sectionRef}
+    <section
+      id="github"
+      className="section-pad"
+      ref={sectionRef}
       style={{ background: 'var(--c-bg-secondary)' }}
     >
       <div className="container-site">
@@ -46,32 +59,32 @@ export default function GitHubActivitySection() {
           transition={{ duration: 0.5 }}
         >
           {/* Contribution Heatmap (placeholder) */}
-          <div
-            className="card p-6 mb-8 overflow-x-auto"
-          >
+          <div className="card p-6 mb-8 overflow-x-auto">
             <div className="flex items-center justify-between mb-4">
-              <span style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: 14,
-                fontWeight: 500,
-                color: 'var(--c-text-primary)',
-              }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: 'var(--c-text-primary)',
+                }}
+              >
                 Contribution Heatmap
               </span>
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                color: 'var(--c-text-muted)',
-              }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  color: 'var(--c-text-muted)',
+                }}
+              >
                 Jan — Dec 2026
               </span>
             </div>
 
             {/* Custom heatmap grid */}
             <div className="flex flex-wrap gap-0.5" role="img" aria-label="GitHub contribution heatmap">
-              {Array.from({ length: 52 * 7 }).map((_, i) => {
-                const levels = [0, 1, 2, 3];
-                const level = levels[Math.floor(Math.random() * levels.length)];
+              {heatmapLevels.map((level, i) => {
                 const colors = [
                   'var(--c-bg-tertiary)',
                   'rgba(10,123,108,0.3)',
@@ -83,7 +96,8 @@ export default function GitHubActivitySection() {
                     key={i}
                     className="rounded-sm"
                     style={{
-                      width: 12, height: 12,
+                      width: 12,
+                      height: 12,
                       backgroundColor: colors[level],
                     }}
                     title={`${level} contributions`}
@@ -108,19 +122,23 @@ export default function GitHubActivitySection() {
               <div key={stat.label} className="card p-4">
                 <span style={{ fontSize: 20 }}>{stat.icon}</span>
                 <div className="mt-2">
-                  <p style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 24,
-                    color: 'var(--c-accent-gold)',
-                    fontWeight: 500,
-                  }}>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 24,
+                      color: 'var(--c-accent-gold)',
+                      fontWeight: 500,
+                    }}
+                  >
                     {stat.value}
                   </p>
-                  <p style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 13,
-                    color: 'var(--c-text-secondary)',
-                  }}>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 13,
+                      color: 'var(--c-text-secondary)',
+                    }}
+                  >
                     {stat.label}
                   </p>
                 </div>
@@ -130,15 +148,17 @@ export default function GitHubActivitySection() {
 
           {/* Top Repositories — from API or fallback */}
           <div>
-            <h3 style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: 16,
-              fontWeight: 600,
-              color: 'var(--c-text-primary)',
-              marginBottom: 16,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}>
+            <h3
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 16,
+                fontWeight: 600,
+                color: 'var(--c-text-primary)',
+                marginBottom: 16,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
               Top Repositories
             </h3>
             <div className="space-y-2">
@@ -152,12 +172,14 @@ export default function GitHubActivitySection() {
                   style={{ textDecoration: 'none' }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span style={{
-                      fontFamily: 'var(--font-heading)',
-                      fontSize: 15,
-                      fontWeight: 500,
-                      color: 'var(--c-text-primary)',
-                    }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-heading)',
+                        fontSize: 15,
+                        fontWeight: 500,
+                        color: 'var(--c-text-primary)',
+                      }}
+                    >
                       {repo.name}
                     </span>
                     <span className="flex items-center gap-1.5" style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--c-text-muted)' }}>
