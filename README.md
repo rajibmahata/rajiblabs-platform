@@ -67,6 +67,29 @@ Write endpoints (`POST`, `PATCH`) require an API key passed via the `X-Api-Key` 
 
 Read endpoints (`GET`) are public and require no authentication.
 
+## Deployment
+
+This project uses the same FTP deployment flow as the OpenClaw setup.
+
+Run from the repo root:
+
+```bash
+./deploy.sh
+./deploy.sh --build
+```
+
+What it does:
+- reads FTP credentials from your local environment or `.env`
+- uploads the frontend `dist/` files to the SmarterASP FTP host
+- keeps OpenClaw configuration untouched
+
+Required local env vars:
+- `FTP_HOST`
+- `FTP_USER`
+- `FTP_PASS`
+- `FTP_PATH`
+- `SITE_URL` (optional, used for verification)
+
 ## AI Workforce (OpenClaw Agents)
 
 - **📊 Portfolio Agent** — Manages portfolio content
