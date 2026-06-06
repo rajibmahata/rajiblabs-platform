@@ -6,6 +6,314 @@
 
 ## Workforce Overview
 
+The RajibLabs AI Workforce has two operating modes. The **Orchestrator** selects the right mode automatically based on project complexity.
+
+### Core Agents (all projects)
+
+| Agent | ID | Role | Schedule |
+|-------|----|------|----------|
+| 📋 [rajiblabs-po](./rajiblabs-po.md) | 51011256 | Product Owner | Daily 8 AM IST + on-demand |
+| 🧠 [rajiblabs-architect](./rajiblabs-architect.md) | e441e421 | Architect & PM | On-demand |
+| 🎨 [rajiblabs-ux](./rajiblabs-ux.md) | 63c7532d | UI/UX Designer | On-demand |
+| 🚀 [rajiblabs-devops](./rajiblabs-devops.md) | 16954a53 | DevOps (CI/CD, Azure) | On-demand |
+| 👀 [rajiblabs-monitor](./rajiblabs-monitor.md) | eb6f6a39 | GitHub Monitor | Every 30 min |
+| 📊 [rajiblabs-portfolio](./rajiblabs-portfolio.md) | 0a069639 | Portfolio Content | Daily 9 AM IST |
+
+### Solo Mode — Simple Projects (1-3 Must Have features)
+
+| Agent | Role |
+|-------|------|
+| 👷 [rajiblabs-dev](./rajiblabs-dev.md) | Full-stack developer (single agent) |
+| 🧪 [rajiblabs-qa](./rajiblabs-qa.md) | QA validator (single agent) |
+
+### Squad Mode — Complex Projects (4+ Must Haves, or external APIs, or auth)
+
+**Dev Squad** — parallel implementation by specialisation:
+
+| Agent | Role | Runs In Parallel With |
+|-------|------|-----------------------|
+| 👷‍♂️ [rajiblabs-dev-lead](./rajiblabs-dev-lead.md) | Dev squad coordinator | — |
+| 🔧 [rajiblabs-dev-backend](./rajiblabs-dev-backend.md) | .NET 8 API, EF Core, DB, auth | `rajiblabs-dev-frontend` |
+| 🖥️ [rajiblabs-dev-frontend](./rajiblabs-dev-frontend.md) | React, TypeScript, Vite, Tailwind | `rajiblabs-dev-backend` |
+| 🔗 [rajiblabs-dev-integration](./rajiblabs-dev-integration.md) | API wiring, external services, contract verification | After backend stubs ready |
+
+**QA Squad** — parallel validation by specialisation:
+
+| Agent | Role | Runs In Parallel With |
+|-------|------|-----------------------|
+| 🧪 [rajiblabs-qa-lead](./rajiblabs-qa-lead.md) | QA squad coordinator + final verdict | — |
+| ✅ [rajiblabs-qa-functional](./rajiblabs-qa-functional.md) | User flows, API contract, regression | `rajiblabs-qa-security`, `rajiblabs-qa-accessibility` |
+| 🔐 [rajiblabs-qa-security](./rajiblabs-qa-security.md) | OWASP Top 10, auth bypass, injection | `rajiblabs-qa-functional`, `rajiblabs-qa-accessibility` |
+| ♿ [rajiblabs-qa-accessibility](./rajiblabs-qa-accessibility.md) | WCAG 2.1 AA, keyboard, responsive | `rajiblabs-qa-functional`, `rajiblabs-qa-security` |
+
+---
+
+## ⚡ How to Start a New Project (3 Steps)
+
+### Step 1 — Load the Orchestrator in OpenClaw
+Open a new chat in OpenClaw and paste the **entire contents** of [`ORCHESTRATOR.md`](./ORCHESTRATOR.md) as your system prompt / persona instruction.
+
+### Step 2 — Describe your project
+Type your project description in plain English. The Orchestrator selects Solo or Squad mode automatically.
+
+```
+Example:
+"Build a SaaS invoicing tool where freelancers can create invoices, 
+track payments, and send automated payment reminders. 
+Tech: React frontend, .NET 8 backend, Azure SQL database."
+```
+
+### Step 3 — Save the state file between sessions
+At the end of each session, save the `agents/state/<project-slug>.md` output.  
+Paste it back at the start of your next session and the Orchestrator resumes exactly where it left off.
+
+---
+
+## 🧠 Memory & State Tracking
+
+All project progress is tracked in a **project state file**: `agents/state/<project-slug>.md`
+
+- Created from [`project-state-template.md`](./project-state-template.md) by `rajiblabs-po` at project start.
+- Every agent reads it before starting work and writes results back to it.
+- Contains: squad mode decision, feature status per sub-agent, QA sub-agent results, deployment URLs, open questions.
+- Acts as **persistent memory** across sessions — paste into OpenClaw to resume.
+
+---
+
+## Full Automated Lifecycle
+
+### Solo Mode Flow
+```mermaid
+flowchart TD
+    USER[🧑 User: Project Description] --> ORCH[🤖 ORCHESTRATOR\nSolo mode: ≤3 Must Have features]
+    ORCH --> PO[📋 rajiblabs-po]
+    PO --> ARCH[🧠 rajiblabs-architect]
+    PO --> UX[🎨 rajiblabs-ux]
+    ARCH --> DEVOPS[🚀 rajiblabs-devops\nCI/CD + Bicep]
+    ARCH --> DEV[👷 rajiblabs-dev\nFull-stack solo]
+    UX --> DEV
+    DEV --> QA[🧪 rajiblabs-qa\nSolo QA]
+    QA -->|NO-GO| DEV
+    QA -->|GO| PO_APPROVE[📋 rajiblabs-po\nRelease Approval]
+    PO_APPROVE --> DEVOPS_PROD[🚀 rajiblabs-devops\nProduction Deploy]
+    DEVOPS_PROD --> PORTFOLIO[📊 rajiblabs-portfolio]
+    DEVOPS_PROD --> MONITOR[👀 rajiblabs-monitor]
+```
+
+### Squad Mode Flow
+```mermaid
+flowchart TD
+    USER[🧑 User: Project Description] --> ORCH[🤖 ORCHESTRATOR\nSquad mode: 4+ Must Have features]
+    ORCH --> PO[📋 rajiblabs-po]
+    PO --> ARCH[🧠 rajiblabs-architect]
+    PO --> UX[🎨 rajiblabs-ux]
+    ARCH --> DEVOPS[🚀 rajiblabs-devops\nCI/CD + Bicep]
+    ARCH --> DEVLEAD[👷‍♂️ rajiblabs-dev-lead\nAssigns swim lanes]
+    UX --> DEVLEAD
+    DEVLEAD --> BACKEND[🔧 rajiblabs-dev-backend]
+    DEVLEAD --> FRONTEND[🖥️ rajiblabs-dev-frontend]
+    BACKEND --> INTEGRATION[🔗 rajiblabs-dev-integration\nAPI wiring + contract verify]
+    FRONTEND --> INTEGRATION
+    INTEGRATION --> QALEAD[🧪 rajiblabs-qa-lead\nAssigns QA swim lanes]
+    QALEAD --> QAFUNC[✅ rajiblabs-qa-functional]
+    QALEAD --> QASEC[🔐 rajiblabs-qa-security]
+    QALEAD --> QAAX[♿ rajiblabs-qa-accessibility]
+    QAFUNC --> VERDICT[🧪 rajiblabs-qa-lead\nConsolidated Go/No-Go]
+    QASEC --> VERDICT
+    QAAX --> VERDICT
+    VERDICT -->|NO-GO| DEVLEAD
+    VERDICT -->|GO| PO_APPROVE[📋 rajiblabs-po\nRelease Approval]
+    PO_APPROVE --> DEVOPS_PROD[🚀 rajiblabs-devops\nProduction Slot Swap]
+    DEVOPS_PROD --> PORTFOLIO[📊 rajiblabs-portfolio]
+    DEVOPS_PROD --> MONITOR[👀 rajiblabs-monitor]
+```
+
+---
+
+## Squad Mode Decision Rules
+
+| Condition | Mode |
+|-----------|------|
+| 1-3 Must Have features, no external APIs | **Solo** |
+| 4+ Must Have features | **Squad** |
+| Has auth + any external API (payment, OAuth, webhooks) | **Squad** |
+| Must Have features have separate backend + frontend tracks | **Squad** |
+
+The Orchestrator announces the decision after `rajiblabs-po` produces the feature backlog.
+
+---
+
+## Phases Summary
+
+| Phase | Name | Solo Agents | Squad Agents | Gate |
+|-------|------|-------------|-------------|------|
+| 0 | Discovery | po, architect, ux | po, architect, ux | Project Brief + TAD + UX Brief + mode decision |
+| 1 | Foundation | dev + devops | dev-lead + dev-backend + dev-frontend + devops | Scaffold compiles + CI pipelines live |
+| 2 | Core Features | dev | dev-lead + dev-backend + dev-frontend + dev-integration | All Must Haves complete |
+| 2 | Validation | qa | qa-lead + qa-functional + qa-security + qa-accessibility | QA GO verdict |
+| 3 | Polish & Deploy | dev, qa, devops, po | dev squads, qa squads, devops, po | Release Approval + smoke test |
+| 4 | Post-Launch | portfolio, monitor | portfolio, monitor | Portfolio updated + monitoring active |
+
+---
+
+## What Each Agent Produces (Real Files)
+
+| Agent | Produces |
+|-------|---------|
+| `rajiblabs-po` | Project Brief, backlog, mode decision, Release Approval |
+| `rajiblabs-architect` | TAD + data models + API contract |
+| `rajiblabs-ux` | UX Brief + component inventory + Design Handoff |
+| `rajiblabs-dev` *(solo)* | Complete backend + frontend code |
+| `rajiblabs-dev-backend` *(squad)* | .NET 8 API, EF Core entities, services, unit tests |
+| `rajiblabs-dev-frontend` *(squad)* | React pages, components, hooks, service layer, component tests |
+| `rajiblabs-dev-integration` *(squad)* | Contract verification report, external service wiring, env var consolidation |
+| `rajiblabs-devops` | `.github/workflows/pr.yml`, `staging.yml`, `production.yml`, `infra/main.bicep` |
+| `rajiblabs-qa` *(solo)* | Full test report + Go/No-Go verdict |
+| `rajiblabs-qa-functional` *(squad)* | Functional + API test cases + defects |
+| `rajiblabs-qa-security` *(squad)* | OWASP Top 10 audit + security defects |
+| `rajiblabs-qa-accessibility` *(squad)* | WCAG 2.1 AA audit + responsive layout results |
+| `rajiblabs-qa-lead` *(squad)* | Consolidated Test Report + final Go/No-Go verdict |
+| `rajiblabs-portfolio` | Project Showcase Entry + `fallbackData.ts` patch |
+| `rajiblabs-monitor` | 30-minute cycle reports, real-time alerts |
+
+---
+
+## Agent Handoff Protocol
+
+When any agent completes its output, it MUST:
+1. Mark its section ✅ in the state file.
+2. Announce the handoff:
+```
+## ✅ Handoff from rajiblabs-[agent]
+Output produced: [deliverable]
+Delivered to: rajiblabs-[next agent]
+Next action: [specific instruction]
+Open questions: [any / none]
+```
+3. The Orchestrator activates the next agent automatically.
+
+---
+
+## Escalation Path
+
+```
+Agent blocked on scope/priority     →  rajiblabs-po
+Agent blocked on technical design   →  rajiblabs-architect
+Contract bug (backend vs frontend)  →  rajiblabs-dev-integration → route to owner
+Security finding (Critical/High)    →  rajiblabs-architect + rajiblabs-devops (IMMEDIATE)
+Production incident                 →  rajiblabs-devops (IMMEDIATE)
+QA NO-GO after 2 fix cycles        →  rajiblabs-po (scope/design decision needed)
+Sub-agent blocker in squad          →  Lead agent (dev-lead / qa-lead)
+```
+
+---
+
+## Quality Gates (Nothing Passes Without These)
+
+| Gate | Enforced By | Required Before |
+|------|-------------|-----------------|
+| Project Brief + mode decision complete | rajiblabs-po | TAD and UX work starts |
+| TAD approved | rajiblabs-architect | Any code is written |
+| Foundation scaffold compiles | dev / dev-lead | Phase 2 features start |
+| CI passing on PR | rajiblabs-devops | Merge to develop |
+| QA GO verdict (solo or lead) | rajiblabs-qa / rajiblabs-qa-lead | Production deploy |
+| Release Approval | rajiblabs-po | rajiblabs-devops triggers production |
+| Production smoke test | rajiblabs-devops | Deploy declared complete |
+
+---
+
+## Security Non-Negotiables (All Agents, Always)
+
+1. No secrets in code or committed files — Key Vault or environment variables only.
+2. Validate all API inputs at the boundary (never trust client input).
+3. Parameterised queries only — never concatenate SQL strings.
+4. HTTPS enforced on all environments including staging.
+5. Dependabot enabled on every repository.
+6. Least-privilege service principals and managed identities.
+7. Sanitise all user-generated content before rendering (prevent XSS).
+8. Every API endpoint is either explicitly public or requires auth.
+
+---
+
+## Tech Stack Defaults
+
+| Layer | Default |
+|-------|---------|
+| Frontend | React 18 + TypeScript + Vite + Tailwind CSS |
+| Backend | .NET 8 ASP.NET Core Minimal API |
+| ORM | Entity Framework Core (code-first) |
+| Database | Azure SQL Database |
+| Frontend Hosting | Azure Static Web Apps |
+| Backend Hosting | Azure App Service (Linux) |
+| Secrets | Azure Key Vault |
+| CI/CD | GitHub Actions |
+| Monitoring | Azure Application Insights |
+| Auth | JWT Bearer / Azure AD B2C |
+
+---
+
+## File Structure
+
+```
+agents/
+├── README.md                          ← This file
+├── ORCHESTRATOR.md                    ← Load this in OpenClaw to start any project
+├── project-state-template.md          ← Shared memory template (copied per project)
+│
+├── Core Agents
+│   ├── rajiblabs-po.md
+│   ├── rajiblabs-architect.md
+│   ├── rajiblabs-ux.md
+│   ├── rajiblabs-devops.md
+│   ├── rajiblabs-monitor.md
+│   └── rajiblabs-portfolio.md
+│
+├── Solo Mode
+│   ├── rajiblabs-dev.md               ← Full-stack (solo projects)
+│   └── rajiblabs-qa.md                ← QA validator (solo projects)
+│
+├── Dev Squad (complex projects)
+│   ├── rajiblabs-dev-lead.md          ← Squad coordinator
+│   ├── rajiblabs-dev-backend.md       ← .NET 8 API specialist
+│   ├── rajiblabs-dev-frontend.md      ← React/TypeScript specialist
+│   └── rajiblabs-dev-integration.md   ← API wiring + external services
+│
+├── QA Squad (complex projects)
+│   ├── rajiblabs-qa-lead.md           ← Squad coordinator + final verdict
+│   ├── rajiblabs-qa-functional.md     ← User flows + API contract tests
+│   ├── rajiblabs-qa-security.md       ← OWASP Top 10 + auth tests
+│   └── rajiblabs-qa-accessibility.md  ← WCAG 2.1 AA + responsive tests
+│
+└── state/
+    └── <project-slug>.md              ← Per-project memory file
+```
+
+---
+
+## Quick Reference: Who to Ask
+
+| Question | Solo Mode | Squad Mode |
+|----------|-----------|-----------|
+| What should we build? | `rajiblabs-po` | `rajiblabs-po` |
+| How should we build it? | `rajiblabs-architect` | `rajiblabs-architect` |
+| What should it look like? | `rajiblabs-ux` | `rajiblabs-ux` |
+| Write the backend code | `rajiblabs-dev` | `rajiblabs-dev-backend` |
+| Write the frontend code | `rajiblabs-dev` | `rajiblabs-dev-frontend` |
+| Wire APIs / external services | `rajiblabs-dev` | `rajiblabs-dev-integration` |
+| Coordinate all dev work | — | `rajiblabs-dev-lead` |
+| Test user flows + API | `rajiblabs-qa` | `rajiblabs-qa-functional` |
+| Security audit | `rajiblabs-qa` | `rajiblabs-qa-security` |
+| Accessibility audit | `rajiblabs-qa` | `rajiblabs-qa-accessibility` |
+| Final QA verdict | `rajiblabs-qa` | `rajiblabs-qa-lead` |
+| Deploy it / set up CI-CD | `rajiblabs-devops` | `rajiblabs-devops` |
+| What's happening in repo? | `rajiblabs-monitor` | `rajiblabs-monitor` |
+| Update the portfolio | `rajiblabs-portfolio` | `rajiblabs-portfolio` |
+| Run the full project end-to-end | **ORCHESTRATOR** | **ORCHESTRATOR** |
+
+---
+
+## Workforce Overview
+
 This is the master instruction file for the **RajibLabs AI Workforce** — a team of 8 specialised AI agents that collaborate to take a project from idea to production.
 
 | Agent | ID | Role | Schedule |

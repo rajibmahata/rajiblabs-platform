@@ -103,38 +103,63 @@ monitoring: ""        # e.g. Azure Application Insights
 
 ---
 
-## 👷 Implementation (by rajiblabs-dev)
+## 👷 Implementation
 
+**Mode:** ⬜ Solo (`rajiblabs-dev`) | ⬜ Squad (`rajiblabs-dev-lead` + sub-agents)  
 **Status:** ⬜ Pending | 🔄 In Progress | ✅ Complete | ❌ Blocked  
 **Depends on:** TAD ✅, UX Handoff ✅
 
-**Phase 1 — Foundation**
-| Task | Status | Notes |
-|------|--------|-------|
-| Data models + migrations | ⬜ | |
-| API scaffolding (all endpoints stubbed) | ⬜ | |
-| Auth middleware | ⬜ | |
-| Frontend project scaffold | ⬜ | |
-| API service layer | ⬜ | |
-| Health endpoint `/health` | ⬜ | |
+### Squad Mode Decision
+```
+Must Have feature count: __
+Has external integrations: yes / no
+Squad mode: SOLO / SQUAD
+```
 
-**Phase 2 — Core Features (Must Haves)**
-| Feature | Backend ✓ | Frontend ✓ | Integrated ✓ |
-|---------|-----------|-----------|--------------|
-| | ⬜ | ⬜ | ⬜ |
+### Implementation Assignment Plan (Squad mode — filled by rajiblabs-dev-lead)
+| Task | Assigned To | Depends On | Status |
+|------|-------------|-----------|--------|
+| | rajiblabs-dev-backend | | ⬜ |
+| | rajiblabs-dev-frontend | | ⬜ |
+| | rajiblabs-dev-integration | backend stubs ready | ⬜ |
 
-**Phase 3 — Polish (Should Haves)**
-| Feature | Status |
-|---------|--------|
-| | ⬜ |
+### Phase 1 — Foundation
+| Task | Agent | Status | Notes |
+|------|-------|--------|-------|
+| Data models + migrations | dev-backend | ⬜ | |
+| API scaffolding (all endpoints stubbed) | dev-backend | ⬜ | |
+| Auth middleware | dev-backend | ⬜ | |
+| Error handling middleware | dev-backend | ⬜ | |
+| Frontend project scaffold + routing | dev-frontend | ⬜ | |
+| TypeScript types (all DTOs) | dev-frontend | ⬜ | |
+| API service layer | dev-frontend | ⬜ | |
+| Base UI components | dev-frontend | ⬜ | |
+| Health endpoint `/health` | dev-backend | ⬜ | |
 
-**Environment variables required:**
+### Phase 2 — Core Features (Must Haves)
+| Feature | Backend Agent | Backend ✓ | Frontend Agent | Frontend ✓ | Integration ✓ |
+|---------|--------------|-----------|----------------|-----------|--------------|
+| | dev-backend | ⬜ | dev-frontend | ⬜ | ⬜ |
+
+### Phase 3 — Polish (Should Haves)
+| Feature | Assigned To | Status |
+|---------|-------------|--------|
+| | | ⬜ |
+
+### Environment Variables (consolidated by rajiblabs-dev-integration)
 ```yaml
-# List all env vars devops agent must configure
-APP_DB_CONNECTION: ""
-APP_JWT_SECRET: ""
-APP_AZURE_KEYVAULT_URI: ""
-# ...add more
+# Backend (App Service / Key Vault)
+ConnectionStrings__DefaultConnection: ""
+Jwt__Key: ""
+Jwt__Issuer: ""
+Jwt__Audience: ""
+AllowedOrigins: ""
+KeyVaultUri: ""
+# Add more as discovered
+
+# Frontend (Vite .env)
+VITE_API_BASE_URL: ""
+# Add more as discovered
 ```
 
 **Known limitations / tech debt:**
@@ -142,26 +167,32 @@ APP_AZURE_KEYVAULT_URI: ""
 
 ---
 
-## 🧪 QA Validation (by rajiblabs-qa)
+## 🧪 QA Validation
 
+**Mode:** ⬜ Solo (`rajiblabs-qa`) | ⬜ Squad (`rajiblabs-qa-lead` + sub-agents)  
 **Status:** ⬜ Pending | 🔄 In Progress | ✅ Complete | ❌ Blocked  
 **Depends on:** Implementation Phase 2 ✅
 
-**Test cycle results:**
-| Test Case | Type | Status | Notes |
-|-----------|------|--------|-------|
-| | Functional | ⬜ | |
-| | API | ⬜ | |
-| | Security | ⬜ | |
-| | Accessibility | ⬜ | |
+### QA Squad Sub-Agent Results
+| Sub-Agent | Tests Run | Passed | Failed | Open Defects | Status |
+|-----------|-----------|--------|--------|-------------|--------|
+| rajiblabs-qa-functional | | | | | ⬜ |
+| rajiblabs-qa-security | | | | | ⬜ |
+| rajiblabs-qa-accessibility | | | | | ⬜ |
 
-**Defect log:**
-| ID | Severity | Description | Assigned To | Status |
-|----|----------|-------------|-------------|--------|
-| | | | rajiblabs-dev | ⬜ Open |
+### Acceptance Criteria Coverage
+| Feature | Criterion | Test Case | Result |
+|---------|-----------|-----------|--------|
+| | | TC-001 | ⬜ |
 
-**QA Verdict:** ⬜ Pending | ✅ GO | ❌ NO-GO  
-**Reason (if NO-GO):** _[fill in]_
+### Consolidated Defect Log
+| ID | Severity | Found By | Description | Assigned To | Status |
+|----|----------|----------|-------------|-------------|--------|
+| QA-001 | | qa-functional | | dev-backend | ⬜ Open |
+
+**QA Lead Verdict:** ⬜ Pending | ✅ GO | ❌ NO-GO  
+**Reason (if NO-GO):** _[fill in]_  
+**Test cycle #:** 1
 
 ---
 
