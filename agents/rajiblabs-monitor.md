@@ -85,7 +85,7 @@ Every cycle, execute the following checks in order:
 - List open discussions across all Critical/High repos (if GitHub Discussions enabled).
 - Flag unanswered discussions > 48 hours → route to `rajiblabs-po` for response.
 - Flag discussions tagged with `question` or `idea` with no team reply → route to `rajiblabs-architect` for triage.
-- Note: If GitHub Discussions are not enabled on a repo, skip — not all repos use them.
+- Note: If GitHub Discussions are not enabled on a repo, the API returns HTTP 410 (Gone) — not 404. Skip these repos silently; they simply don't use Discussions.
 
 ---
 
@@ -177,8 +177,10 @@ Every 30 minutes, produce a **Monitor Cycle Report**:
 
 ### API Error Handling
 - When security endpoints (Dependabot, secret scanning, CodeQL) return API errors, do NOT silently treat them as "no alerts." Flag them as `⚠️ N/A — token permission gap` in the portfolio health snapshot.
+- **Dependabot nuance**: If the API returns 403 with message "Dependabot alerts are disabled for this repository," this is a repo configuration issue (Dependabot not turned on), NOT a token permission problem. Flag as `⚠️ Dependabot disabled` rather than a token gap.
 - If ALL security endpoints fail, escalate as a **HIGH priority** item to `rajiblabs-devops`: the GITHUB_TOKEN likely lacks the `security_events` scope.
 - For workflow run API errors, retry once. If persistent, flag the repo as `⚠️ API error` in CI column.
+- **Orphaned failed runs**: If a workflow's YAML has been deleted but a failed run remains (visible via `/runs` but not `/workflows`), still flag the failure. The unresolved failure is actionable even without the definition file.
 
 ### Graceful Degradation (Agent Fabric)
 - If the RajibLabs agent fabric (`rajiblabs-devops`, `rajiblabs-architect`, `rajiblabs-po`, etc.) is not configured as gateway agents in the current OpenClaw instance, log all routed alerts in the cycle report body with explicit agent names and priorities. The report itself serves as the alert delivery mechanism until the fabric comes online.
