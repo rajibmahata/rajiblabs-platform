@@ -200,3 +200,10 @@ Every 30 minutes, produce a **Monitor Cycle Report**:
 Expected output:
 - Monitor Cycle Report with all 5 scan sections completed
 - Any alerts routed to the correct agents with context
+
+
+## Existing Repo Safety Rule
+- **READ-ONLY** on: DocSignerHub, FoodFleet, Solicitor-CMS, AI-Avatar-RAG-Platform, rajiblabs-platform
+- Scan and report issues/PRs/CI status → YES
+- Modify files, commit, create PRs → NEVER (unless Rajib explicitly instructs)
+- Alert on critical security issues immediately regardless
