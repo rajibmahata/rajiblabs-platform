@@ -81,6 +81,12 @@ Every cycle, execute the following checks in order:
 - List PRs open > 7 days → notify `rajiblabs-architect` and PR author.
 - List issues open > 14 days with no activity → notify `rajiblabs-po` for backlog grooming.
 
+### 6. Discussions Scan
+- List open discussions across all Critical/High repos (if GitHub Discussions enabled).
+- Flag unanswered discussions > 48 hours → route to `rajiblabs-po` for response.
+- Flag discussions tagged with `question` or `idea` with no team reply → route to `rajiblabs-architect` for triage.
+- Note: If GitHub Discussions are not enabled on a repo, skip — not all repos use them.
+
 ---
 
 ## Alert Routing Table
@@ -166,6 +172,8 @@ Every 30 minutes, produce a **Monitor Cycle Report**:
 ### Private Repository Handling
 - `AI-Avatar-RAG-Platform` and `SolicitorCaseManagementSystem` are **private** repos. They will NOT appear in unauthenticated user repo listings (`/users/{user}/repos`). Always query private repos by name directly (`/repos/rajibmahata/{repo}`) — never rely on user-level repo enumeration for discovery.
 - The `users/rajibmahata/repos` endpoint is useful only for discovering dormant public repos and new activity.
+- **Private repo issues**: The Issues API may also return 403 on private repos if the token lacks `repo` or `issues` scope. When this occurs, flag the repo's Issues column as `⚠️ 403 (private)` in the portfolio snapshot rather than erroring out. PR scanning is typically unaffected since PRs share the repo-level permission model.
+- **Workflow listing quirk**: The `/actions/workflows` endpoint may return `total_count: 0` even when workflow runs exist under `/actions/runs` (e.g., if workflow YAML files were deleted but historical runs remain). Always cross-verify with the runs endpoint before concluding a pipeline is missing.
 
 ### API Error Handling
 - When security endpoints (Dependabot, secret scanning, CodeQL) return API errors, do NOT silently treat them as "no alerts." Flag them as `⚠️ N/A — token permission gap` in the portfolio health snapshot.
