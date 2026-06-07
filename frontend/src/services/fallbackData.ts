@@ -111,7 +111,7 @@ export const fallbackProfile: Profile = {
   fullName: 'Rajib Mahata',
   title: 'Senior Software Architect | AI & SaaS Platform Builder',
   bio: 'Independent software architect with 10+ years building production SaaS platforms, AI systems, and cloud-native applications. Specialising in .NET, Azure, and AI/LLM integrations.',
-  skills: ['.NET 8/10', 'C#', 'ASP.NET Core', 'Blazor', 'React', 'Python FastAPI', 'Azure Cloud', 'Microservices', 'SQL Server', 'Cosmos DB', 'OpenAI/Gemini APIs', 'RAG Systems', 'Docker', 'GitHub Copilot'],
+  skills: ['.NET 8/10', 'C#', 'ASP.NET Core', 'Blazor', 'React', 'Python FastAPI', 'Azure Cloud', 'Azure DevOps', 'Microservices', 'CQRS & Design Patterns', 'SQL Server', 'Cosmos DB', 'OpenAI/Gemini APIs', 'RAG Systems', 'Docker', 'GitHub Copilot'],
   socialLinks: {
     github: 'https://github.com/rajibmahata',
     linkedin: 'https://linkedin.com/in/rajib-mahata',
@@ -124,12 +124,14 @@ export const fallbackProfile: Profile = {
       client: 'Healthcare & Pharmacy (USA)',
       achievements: [
         'Led development of open APIs, reducing pharmacy vendor dependency by 100%',
+        'Architected data lake on Azure for raw prescription/patient data ingestion and processing',
         'Automated Prescription Refill System — 30% faster processing, 40% fewer medication errors',
         'Vaccine Appointment System — streamlined COVID-19 immunization scheduling nationally',
-        'Built Rule Engine on Azure PaaS processing 500K+ daily prescription events',
-        'Integrated secure payment, barcode scanning, voice/SMS notifications',
+        'Built Rule Engine (CQRS) on Azure PaaS processing 500K+ daily prescription events',
+        'Deployed PWAs on Azure Cloud for secure, scalable pharmacy interfaces',
+        'Integrated secure payment (MParks), barcode scanning, voice/SMS notifications',
       ],
-      techStack: ['.NET 8', 'Blazor', 'Azure Functions', 'Logic Apps', 'Service Bus', 'Event Grid', 'Cosmos DB', 'AngularJS'],
+      techStack: ['.NET 8', 'Blazor', 'Azure Functions', 'Logic Apps', 'Service Bus', 'Event Grid', 'Cosmos DB', 'Azure Data Factory', 'AngularJS', 'Open API'],
       color: 'var(--c-accent-blue)',
     },
     {
