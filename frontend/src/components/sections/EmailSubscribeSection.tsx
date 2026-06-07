@@ -14,28 +14,15 @@ export default function EmailSubscribeSection() {
     setStatus('loading');
 
     try {
-      // POST to subscriber webhook — replaces placeholder
-      const webhookUrl = window.location.hostname === 'localhost'
-        ? 'http://localhost:5099/api/subscribe'
-        : '/api/subscribe';
-
-      const res = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!res.ok) throw new Error('Failed');
-
+      const subject = encodeURIComponent('Subscribe to RajibLabs newsletter');
+      const body = encodeURIComponent(`Please subscribe me: ${email}`);
+      window.location.href = `mailto:rajibmahata143@gmail.com?subject=${subject}&body=${body}`;
       setStatus('success');
       setEmail('');
       setTimeout(() => setStatus('idle'), 4000);
     } catch {
-      // Fallback: if webhook unavailable, still show success
-      // Subscriber data can be collected offline
-      setStatus('success');
-      setEmail('');
-      setTimeout(() => setStatus('idle'), 4000);
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 3000);
     }
   };
 
