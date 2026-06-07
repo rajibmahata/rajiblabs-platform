@@ -103,3 +103,45 @@ public class ContactDto
     public string? Company { get; set; }
     public string Message { get; set; } = string.Empty;
 }
+
+// ── LinkedIn Learning ──
+
+public class LinkedInCourse
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Title { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string? Instructor { get; set; }
+    public string? Duration { get; set; }
+    public string? Level { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string Status { get; set; } = "in-progress"; // in-progress, completed
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class LinkedInCourseDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string? Instructor { get; set; }
+    public string? Duration { get; set; }
+    public string? Level { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? Status { get; set; }
+}
+
+// ── Subscriber ──
+
+public class Subscriber
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Email { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public DateTime SubscribedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UnsubscribedAt { get; set; }
+}
+
+public class SubscriberDto
+{
+    public string Email { get; set; } = string.Empty;
+}

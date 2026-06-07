@@ -8,8 +8,8 @@ const products = [
   {
     name: 'DocSignerHub',
     status: 'live' as const,
-    description: 'Enterprise electronic signature SaaS. Multi-signer workflows, audit trail, HMAC auth, Stripe payments, AI clause analysis.',
-    techStack: ['.NET 8', 'Blazor', 'Azure', 'SQL'],
+    description: 'Enterprise electronic signature SaaS — multi-signer sequential workflows, HMAC-SHA256 token auth, full audit trail, white-label API. Built for the Indian enterprise market at a fraction of DocuSign pricing.',
+    techStack: ['.NET 8', 'Blazor', 'Azure', 'SQL', 'HMAC-SHA256', 'Stripe', 'OpenAI'],
     liveUrl: 'https://docsignerhub.com',
     githubUrl: 'https://github.com/rajibmahata/DocumentSigningPlatform',
     featured: true,
@@ -17,8 +17,8 @@ const products = [
   {
     name: 'ARIA',
     status: 'beta' as const,
-    description: 'AI Knowledge Platform with RAG-based enterprise search + Q&A. Avatar interface with hybrid vector search.',
-    techStack: ['Python', 'RAG', 'GPT-4o', 'FastAPI', 'ChromaDB'],
+    description: 'Enterprise AI knowledge platform with RAG architecture + no-code multi-agent pipeline builder. Deploy a conversational knowledge base from your documents in hours. Proposed to Hyundai Motor India Ltd.',
+    techStack: ['Python', 'FastAPI', 'GPT-4o', 'RAG', 'ChromaDB', 'LangChain', 'React'],
     githubUrl: 'https://github.com/rajibmahata/AI-Avatar-RAG-Platform',
     demoUrl: null,
     featured: false,

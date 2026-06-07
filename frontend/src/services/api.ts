@@ -46,6 +46,21 @@ export async function submitContact(form: ContactForm): Promise<{ id: string; me
   return res.json();
 }
 
+// ── Subscribe ──
+
+export async function submitSubscribe(email: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to subscribe' }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 // ── GitHub Summary (derived from projects + activity) ──
 
 const LANG_COLORS: Record<string, string> = {

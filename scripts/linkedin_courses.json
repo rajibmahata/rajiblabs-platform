@@ -1,0 +1,42 @@
+[
+  {
+    "title": "Azure Microservices with .NET",
+    "url": "https://www.linkedin.com/learning/azure-microservices-with-dot-net",
+    "instructor": "Rodrigo Díaz Concha",
+    "duration": "4h 12m",
+    "level": "Advanced",
+    "status": "in-progress"
+  },
+  {
+    "title": "Building RAG Applications with LLMs",
+    "url": "https://www.linkedin.com/learning/building-rag-applications-with-llms",
+    "instructor": "Kesha Williams",
+    "duration": "2h 35m",
+    "level": "Intermediate",
+    "status": "in-progress"
+  },
+  {
+    "title": "React: Design Patterns",
+    "url": "https://www.linkedin.com/learning/react-design-patterns",
+    "instructor": "Shaun Wassell",
+    "duration": "3h 20m",
+    "level": "Advanced",
+    "status": "completed"
+  },
+  {
+    "title": "ASP.NET Core: Clean Architecture",
+    "url": "https://www.linkedin.com/learning/asp-dot-net-core-clean-architecture",
+    "instructor": "Gill Cleeren",
+    "duration": "3h 45m",
+    "level": "Advanced",
+    "status": "completed"
+  },
+  {
+    "title": "Prompt Engineering with Gemini and ChatGPT",
+    "url": "https://www.linkedin.com/learning/prompt-engineering-with-gemini-and-chatgpt",
+    "instructor": "Jules White",
+    "duration": "1h 20m",
+    "level": "Intermediate",
+    "status": "in-progress"
+  }
+]
