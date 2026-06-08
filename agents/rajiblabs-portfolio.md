@@ -63,6 +63,7 @@ When a project is marked complete by `rajiblabs-po`:
 - Cross-check: do any projects have stale data (lastCommitAt mismatches, incorrect status)?
 - Flag projects with >30 days without commits for status review by `rajiblabs-po`.
 - Verify that deployed live URLs match what the portfolio claims.
+- **Timestamp Integrity Check:** Explicitly fetch `pushed_at` from GitHub API (`GET /repos/:owner/:repo`) for every portfolio-tracked project. Compare against the portfolio's claimed `lastCommitAt`. Flag mismatches >1 day. **RED ALERT:** If portfolio source code uses `new Date(Date.now() - X)` (relative timestamps recalculated on every page load) instead of absolute ISO dates, flag this as a CRITICAL data-quality anti-pattern — the portfolio will perpetually show "fresh" timestamps regardless of actual staleness, which misleads visitors.
 
 ### 6. Blog / Article Suggestions
 Based on interesting technical decisions or problems solved this week:
@@ -142,6 +143,7 @@ Each portfolio project entry should contain:
 - All content must be grammatically correct — use clear, active voice.
 - If GitHub API is unavailable (timeout), log the error and retry once. If second attempt fails, skip GitHub digest for that day and note the skip in the report.
 - Portfolio data changes must be submitted as a structured update for `rajiblabs-dev` to apply — do not modify code directly.
+- **Absolute dates only:** All `lastCommitAt` values must be absolute ISO-8601 timestamps sourced from GitHub API `pushed_at`, never relative calculations (`Date.now() - X`). Relative timestamps mask staleness and mislead portfolio visitors.
 
 ---
 
