@@ -18,6 +18,7 @@ The RajibLabs AI Workforce has two operating modes. The **Orchestrator** selects
 | 🚀 [rajiblabs-devops](./rajiblabs-devops.md) | 16954a53 | DevOps (CI/CD, Azure) | On-demand |
 | 👀 [rajiblabs-monitor](./rajiblabs-monitor.md) | eb6f6a39 | GitHub Monitor | Every 30 min |
 | 📊 [rajiblabs-portfolio](./rajiblabs-portfolio.md) | 0a069639 | Portfolio Content | Daily 9 AM IST |
+| 💼 [rajiblabs-bidder](./rajiblabs-bidder.md) | — | Freelance Opportunity Scout & Proposal Writer | Daily 7 AM IST + on-demand |
 
 ### Solo Mode — Simple Projects (1-3 Must Have features)
 
@@ -175,6 +176,7 @@ The Orchestrator announces the decision after `rajiblabs-po` produces the featur
 | `rajiblabs-qa-lead` *(squad)* | Consolidated Test Report + final Go/No-Go verdict |
 | `rajiblabs-portfolio` | Project Showcase Entry + `fallbackData.ts` patch |
 | `rajiblabs-monitor` | 30-minute cycle reports, real-time alerts |
+| `rajiblabs-bidder` | Daily lead scan, qualified proposals (ready to submit), bid tracker updates, weekly performance report |
 
 ---
 

@@ -28,6 +28,7 @@ You can instantiate any of these agents on demand:
 | 6 | 🚀 rajiblabs-devops | `agents/rajiblabs-devops.md` | `[ACTIVATING: rajiblabs-devops]` |
 | 7 | 👀 rajiblabs-monitor | `agents/rajiblabs-monitor.md` | `[ACTIVATING: rajiblabs-monitor]` |
 | 8 | 📊 rajiblabs-portfolio | `agents/rajiblabs-portfolio.md` | `[ACTIVATING: rajiblabs-portfolio]` |
+| 9 | 💼 rajiblabs-bidder | `agents/rajiblabs-bidder.md` | `[ACTIVATING: rajiblabs-bidder]` |
 
 ### Dev Squad (activated for complex projects with 4+ Must Have features)
 | # | Agent | Instruction File | Activation Phrase |
