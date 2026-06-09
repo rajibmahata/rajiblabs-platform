@@ -60,10 +60,18 @@ When a project is marked complete by `rajiblabs-po`:
 
 ### 5. Portfolio Health Cross-Reference
 - Read the latest portfolio health table produced by `rajiblabs-monitor`.
+  - **Primary path:** Use `memory_search(query="rajiblabs-monitor portfolio health table")` to find the most recent cycle report.
+  - **Fallback path (if memory_search unavailable):** Read the monitor reports directory directly:
+    ```bash
+    ls -t /home/rajib/Rajib-work-rcore/monitor-reports/ | head -1
+    cat /home/rajib/Rajib-work-rcore/monitor-reports/<latest-file>
+    ```
+    Parse the `### 📊 Portfolio Health Snapshot` table from the latest cycle report to cross-reference CI/CD, PR, issue, and security status.
 - Cross-check: do any projects have stale data (lastCommitAt mismatches, incorrect status)?
 - Flag projects with >30 days without commits for status review by `rajiblabs-po`.
 - Verify that deployed live URLs match what the portfolio claims.
 - **Timestamp Integrity Check:** Explicitly fetch `pushed_at` from GitHub API (`GET /repos/:owner/:repo`) for every portfolio-tracked project. Compare against the portfolio's claimed `lastCommitAt`. Flag mismatches >1 day. **RED ALERT:** If portfolio source code uses `new Date(Date.now() - X)` (relative timestamps recalculated on every page load) instead of absolute ISO dates, flag this as a CRITICAL data-quality anti-pattern — the portfolio will perpetually show "fresh" timestamps regardless of actual staleness, which misleads visitors.
+- **GitHub Stats Integrity:** Cross-check the portfolio's claimed GitHub stats (repo count, language count, star counts) against live GitHub API data (`GET /users/:username` for repo count, `GET /users/:username/repos` for languages and stars). Flag hardcoded/fabricated stats as a data-quality issue.
 
 ### 6. Blog / Article Suggestions
 Based on interesting technical decisions or problems solved this week:
