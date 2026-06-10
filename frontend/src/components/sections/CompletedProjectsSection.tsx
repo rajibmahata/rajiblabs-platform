@@ -24,13 +24,13 @@ const fallbackProjects: ProjectDetail[] = [
   },
   {
     name: 'ARIA Platform',
-    shortDesc: 'Enterprise AI knowledge retrieval with RAG pipelines and avatar-based interaction.',
-    longDesc: 'ARIA (AI Retrieval & Interaction Avatar) is an enterprise knowledge platform that combines retrieval-augmented generation with an interactive avatar interface. It ingests company documents, builds semantic indexes, and allows employees to ask natural-language questions and get accurate, sourced answers.',
-    features: ['Hybrid search: vector + BM25 keyword ranking', 'Multi-tenant RAG with document-level access control', 'Interactive AI avatar with lip-sync animation', 'Semantic chunking with overlap for context preservation', 'Source citation with confidence scoring', 'Streaming responses via Server-Sent Events'],
+    shortDesc: 'Enterprise AI knowledge platform on RAG architecture — deploy a conversational knowledge base from your own documents with a no-code multi-agent pipeline builder.',
+    longDesc: 'ARIA solves a specific enterprise problem: institutional knowledge is locked in documents, wikis, and email threads. Keyword search returns noise. Generic AI assistants know nothing about your business. ARIA turns your own content into a queryable, conversational knowledge base in hours. The architecture is RAG: documents are ingested, chunked, embedded into vectors, and stored in ChromaDB. When a user queries the system, the pipeline retrieves the most semantically relevant chunks and passes them with the query to the language model — grounding every answer in your actual documents rather than public training data. What separates ARIA from a generic chatbot is the agentic pipeline builder. Administrators configure multi-agent flows — Retrieval Agent, Context Agent, Response Agent, Validation Agent — running sequentially or in parallel. The configuration is visual and requires no code. Workflows can be tuned by non-technical administrators. ARIA was proposed to Hyundai Motor India Limited and is available for enterprise trial. Zero vendor lock-in: ChromaDB is open-source and fully deployable on-premise.',
+    features: ['Multi-agent pipeline builder — no-code visual configuration', 'Hybrid search: vector + BM25 keyword ranking', 'Multi-tenant RAG with document-level access control', 'Open-source stack — deployable on-premise', 'Source citation with confidence scoring', 'Streaming responses via Server-Sent Events'],
     techStack: ['Python', 'FastAPI', 'RAG', 'GPT-4o', 'ChromaDB', 'React', 'LangChain'],
     githubUrl: 'https://github.com/rajibmahata/AI-Avatar-RAG-Platform', source: 'github', status: 'wip',
     role: 'AI Architect & Full-Stack Developer',
-    impact: 'Enterprise-grade RAG system with multi-tenant isolation, designed for law firms and financial services. Reduces document research time by 70% in pilot testing.',
+    impact: 'Enterprise-grade RAG system with no-code visual pipeline builder. Proposed to Hyundai Motor India Ltd. Zero vendor lock-in — fully deployable on-premise.',
   },
 
   // ─── ENTERPRISE PROJECTS (Career) ──────────────────
@@ -40,7 +40,7 @@ const fallbackProjects: ProjectDetail[] = [
     longDesc: 'A 48-week engagement to replace a third-party vendor system that had locked the pharmacy into high costs, limited data control, and brittle integrations. The core problem: every prescription refill relied on an external vendor for patient data processing. Staff were making hundreds of manual phone calls daily. There was no direct API control, no real-time visibility into patient status, and no ability to adapt the system to business rule changes without vendor approval. The solution was a comprehensive Azure-hosted platform: a Rule Engine that processed prescription data in real time, a set of Progressive Web Applications (PWAs) for staff and patients, and an API layer that integrated directly with all internal and external pharmacy systems. Patients received automated reminders via SMS and voice calls, and could confirm, reschedule, or cancel refills through a personalised online experience — no phone call required. The Rule Engine was the architectural centrepiece: it received prescription data from the data lake, applied business rules to identify upcoming refills, triggered the appropriate notification channel per patient, and updated status in real time. The system also integrated barcode scanning and payment processing at storefront for streamlined pickup.',
     features: ['Open APIs eliminating vendor dependency', 'Real-time Rule Engine processing prescription data', 'Multi-channel patient notifications (SMS/voice/online)', 'PWA for staff and patient workflows', 'Barcode scanning & payment integration at storefront', 'Full data ownership returned to pharmacy'],
     techStack: ['.NET Core', '.NET 6', 'Blazor', 'Azure Functions', 'Logic Apps', 'Service Bus', 'Event Grid', 'Cosmos DB', 'AngularJS', 'Node.js', 'C#'],
-    source: 'enterprise', status: 'complete', role: 'Assistant Consultant — TCS (Healthcare, USA)',
+    source: 'enterprise', status: 'complete', role: 'Solutions Architect — Fortune 500 Healthcare (USA)',
     impact: '30% faster refill processing · 40% fewer medication errors · 25% higher patient satisfaction · Eliminated manual phone calls · 100% data ownership · Scaled for national COVID-19 vaccine rollout',
   },
   {
@@ -49,7 +49,7 @@ const fallbackProjects: ProjectDetail[] = [
     longDesc: 'Before this system, pharmacy staff were making hundreds of phone calls every day to remind patients about upcoming prescription refills. The process was entirely manual, didn\'t scale with patient volume, and was prone to missed calls, delayed refills, and patient dissatisfaction. The solution was an intelligent refill automation platform built on Azure. At its core was a custom Rule Engine that consumed prescription dispensing data from a data lake, identified patients with upcoming refills based on their medication schedules, and triggered the appropriate notification — SMS, voice call, or online reminder — at the right time. Patients received a personalised SMS link directing them to a secure priority checkout UI where they could confirm or cancel their refill in seconds. The system also gave pharmacy staff a real-time dashboard showing refill queue status, patient responses, and pending pickups — without any manual intervention required. The system integrated seamlessly with the pharmacy\'s existing infrastructure: prescription records, patient profiles, payment processing, and barcode scanning at storefront for collection. Every notification event and patient action was logged, creating an auditable trail for compliance and reporting.',
     features: ['Rule-based refill processing engine', 'Multi-channel patient notifications (SMS/voice/online)', 'Real-time staff dashboard with refill queue status', 'Integration with existing pharmacy infrastructure', 'Auditable compliance trail for every event', 'Scalable to future patient volume with zero rework'],
     techStack: ['.NET Core', 'Azure Functions', 'Logic Apps', 'Service Bus', 'Cosmos DB', 'C#', 'IVR Integration'],
-    source: 'enterprise', status: 'complete', role: 'Assistant Consultant — TCS (Healthcare, USA)',
+    source: 'enterprise', status: 'complete', role: 'Solutions Architect — Fortune 500 Healthcare (USA)',
     impact: 'Eliminated 300+ daily manual phone calls · 30% faster refill processing · 40% reduction in medication errors · 25% improvement in patient satisfaction',
   },
   {
@@ -58,16 +58,16 @@ const fallbackProjects: ProjectDetail[] = [
     longDesc: 'During the COVID-19 pandemic, pharmacies became front-line vaccine distribution centres. The pharmacy chain needed a system — fast — that could handle appointment booking across hundreds of locations, enforce government prioritisation guidelines, manage time-slot capacity, and provide a seamless experience for customers who had never booked a pharmacy appointment before. I played a pivotal role in designing and building the configurable appointment booking system that powered this rollout. The platform was built to be configuration-first: each pharmacy location could set its own time-slot windows, capacity limits, and vaccine type availability without any code changes. Government guidelines for vaccine priority groups were enforced at the registration level. The customer experience was deliberately simple: register, select a time slot, receive a confirmation. The system sent automated notifications at booking, 24 hours before, and on the day — reducing no-shows and ensuring customers arrived prepared.',
     features: ['Configurable per-location scheduling without code changes', 'Government guideline enforcement at registration', 'Automated multi-touchpoint notifications', 'National-scale deployment across pharmacy network', 'Zero downtime during peak COVID-19 demand', 'Automated compliance reporting'],
     techStack: ['Blazor PWA', 'ASP.NET MVC', '.NET 6', 'Azure App Service', 'SQL Server', 'Azure Functions', 'C#'],
-    source: 'enterprise', status: 'complete', role: 'Assistant Consultant — TCS (Healthcare, USA)',
+    source: 'enterprise', status: 'complete', role: 'Solutions Architect — Fortune 500 Healthcare (USA)',
     impact: 'National deployment across pharmacy network · Zero downtime during peak demand · Automated compliance reporting · Reduced no-show rates via multi-touchpoint notifications',
   },
   {
-    name: 'CMT Platform — Accenture',
+    name: 'CMT Platform — Telecom Enterprise',
     shortDesc: 'Network equipment provisioning and order automation platform for a US regional telecommunications provider — automating provisioning workflow, reducing manual intervention by 30% and slashing order processing time by 40%.',
-    longDesc: 'The client is a regional telecommunications provider serving Ohio, Hawaii, and the Dayton metro area. Their order management system for network equipment setup was a legacy platform — manual, fragmented, and unable to keep pace with business growth. Field engineers were spending significant time on configuration tasks that should have been automated, and order fulfilment was slow. During my time at Accenture (2016–2019), I was responsible for the design, development, and implementation of the Communication Media Technology (CMT) application — a complete overhaul of the order management and network provisioning workflow. The CMT platform captured and stored every processing detail from order initiation through to network provisioning. It automated the configuration steps that previously required manual engineer intervention, integrated with network devices for remote setup, and provided an issue resolution ticket system that tracked and resolved user-reported problems in real time.',
+    longDesc: 'The client is a regional telecommunications provider serving Ohio, Hawaii, and the Dayton metro area. Their order management system for network equipment setup was a legacy platform — manual, fragmented, and unable to keep pace with business growth. Field engineers were spending significant time on configuration tasks that should have been automated, and order fulfilment was slow. I was responsible for the design, development, and implementation of the Communication Media Technology (CMT) application — a complete overhaul of the order management and network provisioning workflow. The CMT platform captured and stored every processing detail from order initiation through to network provisioning. It automated the configuration steps that previously required manual engineer intervention, integrated with network devices for remote setup, and provided an issue resolution ticket system that tracked and resolved user-reported problems in real time.',
     features: ['Automated network equipment provisioning', 'Legacy system modernisation & workflow redesign', 'Automated issue tracking with 95% SLA compliance', 'Configuration templates replacing manual setup', 'Real-time operational monitoring dashboard'],
     techStack: ['ASP.NET MVC', 'Entity Framework', 'WCF', 'SQL Server', 'JavaScript', 'jQuery', 'AJAX', 'C#'],
-    source: 'enterprise', status: 'complete', role: 'Software Developer — Accenture (Telecom, USA)',
+    source: 'enterprise', status: 'complete', role: 'Platform Engineer — Telecom Enterprise (USA)',
     impact: '30% reduction in manual intervention · 40% decrease in order fulfilment time · 25% improvement in user satisfaction · 95% issue resolution within 24 hours',
   },
   {
@@ -76,7 +76,7 @@ const fallbackProjects: ProjectDetail[] = [
     longDesc: 'Designed and developed a complete classified advertisement marketplace enabling businesses to buy, sell, and promote products and services. Created user management with role-based access, advertisement publishing workflows, administrative management portal, and database architecture.',
     features: ['Role-based user management & access control', 'Advertisement publishing with approval workflows', 'Administrative management portal', 'Scalable database architecture', 'REST API for third-party integrations'],
     techStack: ['ASP.NET MVC', 'Entity Framework', 'SQL Server', 'Web API', 'JavaScript'], source: 'enterprise', status: 'complete',
-    role: 'Web Developer — Keshri Software Solutions',
+    role: 'Full-Stack Developer — Product Studio',
     impact: 'Complete B2B marketplace handling classified advertisements. Demonstrated full-stack capability from database design to frontend deployment.',
   },
   {
@@ -85,7 +85,7 @@ const fallbackProjects: ProjectDetail[] = [
     longDesc: 'Built a healthcare-focused application designed to support sustainable weight management through personalized recommendations. Developed BMR calculation engine, implemented personalized health recommendations, built user progress tracking capabilities, and created automation-driven health guidance workflows.',
     features: ['BMR (Basal Metabolic Rate) calculation engine', 'Personalised health & nutrition recommendations', 'Progress tracking with visual dashboards', 'Automation-driven health guidance workflows', 'User goal setting & milestone tracking'],
     techStack: ['ASP.NET MVC', 'Entity Framework', 'SQL Server', 'JavaScript'], source: 'enterprise', status: 'complete',
-    role: 'Web Developer — Keshri Software Solutions',
+    role: 'Full-Stack Developer — Product Studio',
     impact: 'Full-cycle health platform from concept to deployment. Combined complex calculation algorithms with user-friendly health tracking interface.',
   },
   {
@@ -94,7 +94,7 @@ const fallbackProjects: ProjectDetail[] = [
     longDesc: 'Developed a complete e-commerce platform for grocery ordering and home delivery management. Implemented order management workflows, developed delivery slot allocation based on location, integrated third-party payment gateways, and built order tracking and fulfillment features.',
     features: ['Complete order management lifecycle', 'Location-based delivery slot allocation', 'Third-party payment gateway integration', 'Real-time order tracking & fulfillment', 'Multi-vendor product catalogue'],
     techStack: ['ASP.NET MVC', 'Entity Framework', 'SQL Server', 'NopCommerce'], source: 'enterprise', status: 'complete',
-    role: 'Web Developer — Keshri Software Solutions',
+    role: 'Full-Stack Developer — Product Studio',
     impact: 'End-to-end e-commerce platform with location-aware delivery logistics. Full order lifecycle from cart to doorstep managed within single platform.',
   },
   {
@@ -103,7 +103,7 @@ const fallbackProjects: ProjectDetail[] = [
     longDesc: 'Built an online transportation marketplace connecting customers with vehicle operators across India. Developed booking and transportation workflows, designed customer and operator management modules, and built scalable backend services for transaction processing.',
     features: ['Online booking & transportation workflows', 'Customer & operator management portals', 'Scalable transaction processing backend', 'Multi-city vehicle availability tracking', 'Fleet management dashboard'],
     techStack: ['ASP.NET MVC', 'Entity Framework', 'SQL Server', 'JavaScript'], source: 'enterprise', status: 'complete',
-    role: 'Web Developer — Keshri Software Solutions',
+    role: 'Full-Stack Developer — Product Studio',
     impact: 'Connected customers with vehicle operators nationwide. Scalable architecture handling concurrent bookings across multiple cities.',
   },
   {

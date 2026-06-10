@@ -5,24 +5,24 @@ import TechChip from '../ui/TechChip';
 
 const timeline = [
   {
-    company: 'TCS',
-    role: 'Assistant Consultant',
+    company: 'Fortune 500',
+    role: 'Solutions Architect',
     period: '2019 – Present',
-    client: 'TCS (Healthcare, USA)',
+    client: 'Healthcare & Pharmacy (USA)',
     color: 'var(--c-accent-blue)',
   },
   {
-    company: 'Accenture',
-    role: 'Software Developer',
+    company: 'Enterprise',
+    role: 'Platform Engineer',
     period: '2016 – 2019',
-    client: 'Accenture (Telecom, USA)',
+    client: 'Telecommunications (USA)',
     color: 'var(--c-accent-teal)',
   },
   {
-    company: 'Keshri Software',
-    role: 'Web Developer',
+    company: 'Product Studio',
+    role: 'Full-Stack Developer',
     period: '2013 – 2016',
-    client: 'Own Products',
+    client: 'B2B & Logistics Platforms',
     color: 'var(--c-accent-gold)',
   },
 ];
@@ -173,7 +173,7 @@ export default function ProfileSection() {
                 color: 'var(--c-text-secondary)',
                 marginBottom: 12,
               }}>
-                I'm Rajib Mahata — a Senior .NET and Azure Engineer based in Kolkata, with a B.Tech in Computer Science and 12 years of experience shipping production software for enterprise clients. I started building web applications at Keshri Software Solutions in 2013, moved to Accenture in 2016 where I modernised telecom platforms for a major US telecommunications provider, and since 2019 I've been at TCS as an Assistant Consultant, leading the digital transformation of a Fortune 500 pharmacy chain in the United States.
+                I'm Rajib Mahata — an independent software architect and platform engineer based in Kolkata, with a B.Tech in Computer Science and 12+ years of experience shipping production systems for Fortune 500 and enterprise clients. My career spans full-stack product development, telecom platform modernisation, and leading digital transformation for a major US healthcare organisation — delivering measurable impact at every stage.
               </p>
               <p style={{
                 fontFamily: 'var(--font-body)',
@@ -182,7 +182,7 @@ export default function ProfileSection() {
                 color: 'var(--c-text-secondary)',
                 marginBottom: 12,
               }}>
-                The work I'm most proud of is the pharmacy transformation platform I architected at TCS — an Azure-hosted automation system that eliminated manual phone calls for prescription refills, achieved 30% faster processing, reduced medication errors by 40%, and improved patient satisfaction scores by 25%. It ran nationally during the COVID-19 vaccine rollout. That kind of measurable, mission-critical impact is what I build towards.
+                The work I'm most proud of is a pharmacy transformation platform I architected and delivered — an Azure-hosted automation system that eliminated manual phone calls for prescription refills, achieved 30% faster processing, reduced medication errors by 40%, and improved patient satisfaction scores by 25%. It ran nationally during the COVID-19 vaccine rollout. That kind of measurable, mission-critical impact is what I build towards.
               </p>
               <p style={{
                 fontFamily: 'var(--font-body)',

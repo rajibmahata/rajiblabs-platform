@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import SectionLabel from '../ui/SectionLabel';
-import { submitContact } from '../../services/api';
 import type { ContactForm } from '../../types';
 
 export default function ContactSection() {
@@ -20,9 +19,14 @@ export default function ContactSection() {
     setStatus('loading');
 
     try {
-      await submitContact(form);
+      const subject = encodeURIComponent(`Message from ${form.name} via rajiblabs.com`);
+      const body = encodeURIComponent(
+        `Name: ${form.name}\nEmail: ${form.email}\n${form.company ? `Company: ${form.company}\n` : ''}\n${form.message}`
+      );
+      window.location.href = `mailto:rajibmahata143@gmail.com?subject=${subject}&body=${body}`;
       setStatus('success');
       setForm({ name: '', email: '', company: '', message: '' });
+      setTimeout(() => setStatus('idle'), 3000);
     } catch {
       setStatus('error');
     }

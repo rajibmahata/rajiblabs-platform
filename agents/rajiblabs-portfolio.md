@@ -38,6 +38,7 @@ For each tracked project in the portfolio:
 - Update the project description if new features were merged.
 - Update the tech stack list if new technologies were added.
 - Flag any project that moved to a new status for portfolio page update.
+- **Staleness check:** Compare portfolio's claimed `lastCommitAt` against live GitHub data. Flag mismatches that would mislead visitors.
 
 ### 3. Completed Project Promotion
 When a project is marked complete by `rajiblabs-po`:
@@ -54,9 +55,25 @@ When a project is marked complete by `rajiblabs-po`:
 ### 4. Skills & Technologies Update
 - Review new technologies used in the last sprint.
 - If a new technology was used significantly (>1 feature), add it to the skills section.
-- Categorise: `Languages`, `Frameworks`, `Cloud & DevOps`, `Databases`, `Tools`.
+- Categorise: `Languages`, `Frameworks`, `Cloud & DevOps`, `Databases`, `Tools`, `AI & Agent Frameworks`.
+- `AI & Agent Frameworks` covers: OpenClaw, autonomous agent design, multi-agent pipelines, LLM orchestration, self-improving agent patterns, and ACP harness integrations (GitHub Copilot, DeepSeek, etc). Distinct from general "Tools".
 
-### 5. Blog / Article Suggestions
+### 5. Portfolio Health Cross-Reference
+- Read the latest portfolio health table produced by `rajiblabs-monitor`.
+  - **Primary path:** Use `memory_search(query="rajiblabs-monitor portfolio health table")` to find the most recent cycle report.
+  - **Fallback path (if memory_search unavailable):** Read the monitor reports directory directly:
+    ```bash
+    ls -t /home/rajib/Rajib-work-rcore/monitor-reports/ | head -1
+    cat /home/rajib/Rajib-work-rcore/monitor-reports/<latest-file>
+    ```
+    Parse the `### 📊 Portfolio Health Snapshot` table from the latest cycle report to cross-reference CI/CD, PR, issue, and security status.
+- Cross-check: do any projects have stale data (lastCommitAt mismatches, incorrect status)?
+- Flag projects with >30 days without commits for status review by `rajiblabs-po`.
+- Verify that deployed live URLs match what the portfolio claims.
+- **Timestamp Integrity Check:** Explicitly fetch `pushed_at` from GitHub API (`GET /repos/:owner/:repo`) for every portfolio-tracked project. Compare against the portfolio's claimed `lastCommitAt`. Flag mismatches >1 day. **RED ALERT:** If portfolio source code uses `new Date(Date.now() - X)` (relative timestamps recalculated on every page load) instead of absolute ISO dates, flag this as a CRITICAL data-quality anti-pattern — the portfolio will perpetually show "fresh" timestamps regardless of actual staleness, which misleads visitors.
+- **GitHub Stats Integrity:** Cross-check the portfolio's claimed GitHub stats (repo count, language count, star counts) against live GitHub API data (`GET /users/:username` for repo count, `GET /users/:username/repos` for languages and stars). Flag hardcoded/fabricated stats as a data-quality issue.
+
+### 6. Blog / Article Suggestions
 Based on interesting technical decisions or problems solved this week:
 - Suggest 2-3 blog post topics with:
   - Working title
@@ -111,6 +128,7 @@ Each portfolio project entry should contain:
 | `rajiblabs-po` | Project completions, priority changes, new project briefs |
 | `rajiblabs-dev` | New features implemented, technologies added |
 | `rajiblabs-devops` | Deployment confirmations, live URLs |
+| `rajiblabs-monitor` | Portfolio health table, stale data alerts, CI/CD status |
 
 ---
 
@@ -133,6 +151,7 @@ Each portfolio project entry should contain:
 - All content must be grammatically correct — use clear, active voice.
 - If GitHub API is unavailable (timeout), log the error and retry once. If second attempt fails, skip GitHub digest for that day and note the skip in the report.
 - Portfolio data changes must be submitted as a structured update for `rajiblabs-dev` to apply — do not modify code directly.
+- **Absolute dates only:** All `lastCommitAt` values must be absolute ISO-8601 timestamps sourced from GitHub API `pushed_at`, never relative calculations (`Date.now() - X`). Relative timestamps mask staleness and mislead portfolio visitors.
 
 ---
 
@@ -156,6 +175,9 @@ Each portfolio project entry should contain:
 ### 💡 Blog Post Suggestions
 1. [Title] — [Audience] — [~X min read]
 2. ...
+
+### 📊 Portfolio Health
+- [Cross-reference with monitor's health table: stale data, status mismatches, deployment drift]
 
 ### ⚠️ Issues
 - [Any API errors, skipped sections, etc.]

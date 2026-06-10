@@ -209,6 +209,101 @@ app.MapMethods("/api/projects/{id:guid}", new[] { "PATCH" }, async (Guid id, Pro
 
 app.MapGet("/api/health", () => Results.Ok(new { Status = "healthy", Timestamp = DateTime.UtcNow }));
 
+// ── LinkedIn Learning Endpoints ──
+
+app.MapGet("/api/learning", async (LabDbContext db) =>
+{
+    var courses = await db.LinkedInCourses
+        .OrderByDescending(c => c.Status == "in-progress" ? 1 : 0)
+        .ThenByDescending(c => c.UpdatedAt)
+        .ToListAsync();
+    return Results.Ok(courses.Select(c => new {
+        c.Id, c.Title, c.Url, c.Instructor, c.Duration,
+        c.Level, c.CompletedAt, c.Status, c.UpdatedAt
+    }));
+});
+
+app.MapPost("/api/learning", async (LinkedInCourseDto dto, LabDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(dto.Title))
+        return Results.BadRequest(new { Error = "Title is required" });
+
+    // Upsert by URL (unique) — update if exists, insert if new
+    var existing = await db.LinkedInCourses.FirstOrDefaultAsync(c => c.Url == dto.Url);
+    if (existing != null)
+    {
+        existing.Title = dto.Title;
+        existing.Instructor = dto.Instructor;
+        existing.Duration = dto.Duration;
+        existing.Level = dto.Level;
+        existing.CompletedAt = dto.CompletedAt;
+        existing.Status = dto.Status ?? existing.Status;
+        existing.UpdatedAt = DateTime.UtcNow;
+    }
+    else
+    {
+        var course = new LinkedInCourse
+        {
+            Id = Guid.NewGuid(),
+            Title = dto.Title.Trim(),
+            Url = dto.Url.Trim(),
+            Instructor = dto.Instructor?.Trim(),
+            Duration = dto.Duration,
+            Level = dto.Level,
+            CompletedAt = dto.CompletedAt,
+            Status = dto.Status ?? "in-progress",
+            UpdatedAt = DateTime.UtcNow
+        };
+        db.LinkedInCourses.Add(course);
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { Message = "Course synced" });
+});
+
+// ── Subscribe Endpoint ──
+
+app.MapPost("/api/subscribe", async (SubscriberDto dto, LabDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(dto.Email) || !dto.Email.Contains('@'))
+        return Results.BadRequest(new { Error = "Valid email is required" });
+
+    var email = dto.Email.Trim().ToLower();
+    var existing = await db.Subscribers.FirstOrDefaultAsync(s => s.Email == email);
+    if (existing != null)
+    {
+        if (!existing.IsActive)
+        {
+            existing.IsActive = true;
+            existing.SubscribedAt = DateTime.UtcNow;
+            existing.UnsubscribedAt = null;
+            await db.SaveChangesAsync();
+            return Results.Ok(new { Message = "Welcome back! You're re-subscribed." });
+        }
+        return Results.Ok(new { Message = "You're already subscribed!" });
+    }
+
+    var sub = new Subscriber
+    {
+        Id = Guid.NewGuid(),
+        Email = email,
+        IsActive = true,
+        SubscribedAt = DateTime.UtcNow
+    };
+    db.Subscribers.Add(sub);
+    await db.SaveChangesAsync();
+    return Results.Created("/api/subscribe", new { Message = "Subscribed! Thank you." });
+});
+
+app.MapPost("/api/unsubscribe", async (SubscriberDto dto, LabDbContext db) =>
+{
+    var sub = await db.Subscribers.FirstOrDefaultAsync(s => s.Email == dto.Email.Trim().ToLower() && s.IsActive);
+    if (sub is null) return Results.NotFound(new { Error = "Email not found" });
+    sub.IsActive = false;
+    sub.UnsubscribedAt = DateTime.UtcNow;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { Message = "Unsubscribed. We'll miss you!" });
+});
+
 // ── Run ──
 
 app.Run();
@@ -249,13 +344,13 @@ static void SeedData(LabDbContext db)
         Title = "Senior Software Architect | AI & SaaS Platform Builder",
         Bio = "Independent software architect with 10+ years building production SaaS platforms, AI systems, and cloud-native applications. Specialising in .NET, Azure, and AI/LLM integrations."
     };
-    profile.SetSkills(new() { ".NET 8/10", "C#", "ASP.NET Core", "Blazor", "React", "Python FastAPI", "Azure Cloud", "Microservices", "SQL Server", "Cosmos DB", "OpenAI/Gemini APIs", "RAG Systems", "Docker", "GitHub Copilot" });
+    profile.SetSkills(new() { ".NET 8/10", "C#", "ASP.NET Core", "Blazor", "React", "Python FastAPI", "Azure Cloud", "Azure DevOps", "Microservices", "CQRS & Design Patterns", "SQL Server", "Cosmos DB", "OpenAI/Gemini APIs", "RAG Systems", "Docker", "GitHub Copilot" });
     profile.SetSocialLinks(new() { { "github", "https://github.com/rajibmahata" }, { "linkedin", "https://linkedin.com/in/rajib-mahata" } });
     profile.SetCareer(new()
     {
-        new() { Company = "Tata Consultancy Services", Role = "Assistant Consultant", Period = "Aug 2019 – Present", Client = "TCS — Fortune 500 Healthcare Retail (USA)", Color = "var(--c-accent-blue)", Achievements = new() { "Led development of open APIs, reducing pharmacy vendor dependency by 100%", "Automated Prescription Refill System — 30% faster processing, 40% fewer medication errors", "Vaccine Appointment System — streamlined COVID-19 immunization scheduling nationally", "Built Rule Engine on Azure PaaS processing 500K+ daily prescription events", "Integrated MParks secure payment, barcode scanning, voice/SMS notifications" }, TechStack = new() { ".NET 8", "Blazor", "Azure Functions", "Logic Apps", "Service Bus", "Event Grid", "Cosmos DB", "AngularJS" } },
-        new() { Company = "Accenture", Role = "Software Developer", Period = "Jul 2016 – Feb 2019", Client = "Accenture — Telecom (USA)", Color = "var(--c-accent-teal)", Achievements = new() { "Designed and built CMT application automating network equipment provisioning", "Reduced manual intervention by 30%, processing time by 40%", "Achieved 95% issue resolution within 24 hours via automated ticket system", "Built intuitive UI improving user satisfaction scores by 25%" }, TechStack = new() { "ASP.NET MVC", "WCF", "Entity Framework", "SQL Server", "JavaScript" } },
-        new() { Company = "Keshri Software Solutions", Role = "Web Developer", Period = "Mar 2013 – Apr 2016", Color = "var(--c-accent-gold)", Achievements = new() { "Built Corporate Hour — B2B media advertisement & trade platform", "Developed Cinematic Lens — product visual storytelling platform", "Created TRANSZOOM — car rental & TruckIt365 freight matching solution", "Full-stack ownership: database design to frontend deployment" }, TechStack = new() { "ASP.NET MVC", "SQL Server", "JavaScript", "HTML/CSS", "AJAX" } }
+        new() { Company = "Fortune 500 Healthcare", Role = "Solutions Architect", Period = "Aug 2019 – Present", Client = "Healthcare & Pharmacy (USA)", Color = "var(--c-accent-blue)", Achievements = new() { "Led development of open APIs, reducing pharmacy vendor dependency by 100%", "Architected data lake on Azure for raw prescription/patient data ingestion and processing", "Automated Prescription Refill System — 30% faster processing, 40% fewer medication errors", "Vaccine Appointment System — streamlined COVID-19 immunization scheduling nationally", "Built Rule Engine (CQRS) on Azure PaaS processing 500K+ daily prescription events", "Deployed PWAs on Azure Cloud for secure, scalable pharmacy interfaces", "Integrated secure payment (MParks), barcode scanning, voice/SMS notifications" }, TechStack = new() { ".NET 8", "Blazor", "Azure Functions", "Logic Apps", "Service Bus", "Event Grid", "Cosmos DB", "Azure Data Factory", "AngularJS", "Open API" } },
+        new() { Company = "Telecom Enterprise", Role = "Platform Engineer", Period = "Jul 2016 – Feb 2019", Client = "Telecommunications (USA)", Color = "var(--c-accent-teal)", Achievements = new() { "Designed and built CMT application automating network equipment provisioning", "Reduced manual intervention by 30%, processing time by 40%", "Achieved 95% issue resolution within 24 hours via automated ticket system", "Built intuitive UI improving user satisfaction scores by 25%" }, TechStack = new() { "ASP.NET MVC", "WCF", "Entity Framework", "SQL Server", "JavaScript" } },
+        new() { Company = "Product Studio", Role = "Full-Stack Developer", Period = "Mar 2013 – Apr 2016", Color = "var(--c-accent-gold)", Achievements = new() { "Built Corporate Hour — B2B media advertisement & trade platform", "Developed Cinematic Lens — product visual storytelling platform", "Created TRANSZOOM — car rental & TruckIt365 freight matching solution", "Full-stack ownership: database design to frontend deployment" }, TechStack = new() { "ASP.NET MVC", "SQL Server", "JavaScript", "HTML/CSS", "AJAX" } }
     });
 
     db.Profiles.Add(profile);
