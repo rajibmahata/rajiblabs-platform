@@ -109,6 +109,23 @@ class H(http.server.BaseHTTPRequestHandler):
             if not nm or not em or not ms: self.json(400,{'error':'Name, email, message required'}); return
             ex('INSERT INTO Contacts(Id,Name,Email,Company,Message,SubmittedAt) VALUES(?,?,?,?,?,?)',(str(uuid.uuid4()),nm,em,co,ms,now()))
             self.json(201,{'id':str(uuid.uuid4())[:8],'message':'Message received!'})
+        elif p=='/api/learning':
+            title=(b.get('title','')or'').strip()
+            if not title: self.json(400,{'error':'Title required'}); return
+            url=(b.get('url','')or'').strip()
+            instructor=(b.get('instructor','')or'').strip()
+            duration=(b.get('duration','')or'').strip()
+            level=(b.get('level','')or'').strip()
+            status=(b.get('status','')or'').strip() or 'in-progress'
+            completed_at=b.get('completedAt','') or None
+            existing=q('SELECT Id FROM LinkedInCourses WHERE Title=?',(title,))
+            if existing:
+                ex('UPDATE LinkedInCourses SET Url=?,Instructor=?,Duration=?,Level=?,Status=?,CompletedAt=?,UpdatedAt=? WHERE Title=?',(url,instructor,duration,level,status,completed_at,now(),title))
+                self.json(200,{'id':existing[0]['Id'],'message':'Course updated!'})
+            else:
+                cid=str(uuid.uuid4())
+                ex('INSERT INTO LinkedInCourses(Id,Title,Url,Instructor,Duration,Level,Status,CompletedAt,UpdatedAt) VALUES(?,?,?,?,?,?,?,?,?)',(cid,title,url,instructor,duration,level,status,completed_at,now()))
+                self.json(201,{'id':cid,'message':'Course added!'})
         else: self.json(404,{'error':'Not found'})
     def json(self,code,data):
         self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Access-Control-Allow-Origin','*'); self.end_headers(); self.wfile.write(json.dumps(data).encode())

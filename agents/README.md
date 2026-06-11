@@ -12,6 +12,7 @@ The RajibLabs AI Workforce has two operating modes. The **Orchestrator** selects
 
 | Agent | ID | Role | Schedule |
 |-------|----|------|----------|
+| 🎯 [rajiblabs-bidder](./rajiblabs-bidder.md) | — | Freelance Acquisition & Bid Manager | Daily 8:30 AM IST + on-demand |
 | 📋 [rajiblabs-po](./rajiblabs-po.md) | 51011256 | Product Owner | Daily 8 AM IST + on-demand |
 | 🧠 [rajiblabs-architect](./rajiblabs-architect.md) | e441e421 | Architect & PM | On-demand |
 | 🎨 [rajiblabs-ux](./rajiblabs-ux.md) | 63c7532d | UI/UX Designer | On-demand |
@@ -83,10 +84,31 @@ All project progress is tracked in a **project state file**: `agents/state/<proj
 
 ## Full Automated Lifecycle
 
+### End-to-End: Acquisition → Delivery → Follow-up
+```mermaid
+flowchart TD
+    BIDDER[🎯 rajiblabs-bidder<br/>Scan Freelancer.in → Bid → Track] -->|Awarded| PO
+    USER[🧑 Rajib: Project Description] --> ORCH
+    ORCH[🤖 ORCHESTRATOR] --> PO[📋 rajiblabs-po]
+    PO --> ARCH[🧠 rajiblabs-architect]
+    PO --> UX[🎨 rajiblabs-ux]
+    ARCH --> DEVOPS[🚀 rajiblabs-devops]
+    ARCH --> DEV[👷 Dev Pipeline]
+    UX --> DEV
+    DEV --> QA[🧪 QA Pipeline]
+    QA -->|GO| PO_APPROVE[📋 rajiblabs-po<br/>Release]
+    PO_APPROVE --> DEVOPS_PROD[🚀 Production Deploy]
+    DEVOPS_PROD --> PORTFOLIO[📊 rajiblabs-portfolio]
+    DEVOPS_PROD --> MONITOR[👀 rajiblabs-monitor]
+    DEVOPS_PROD --> BIDDER_FOLLOW[🎯 rajiblabs-bidder<br/>Demo + Follow-up + Testimonial]
+```
+
 ### Solo Mode Flow
 ```mermaid
 flowchart TD
-    USER[🧑 User: Project Description] --> ORCH[🤖 ORCHESTRATOR\nSolo mode: ≤3 Must Have features]
+    BIDDER_SOLO[🎯 rajiblabs-bidder<br/>Finds project → bids → awarded] -->|Handoff| ORCH_SOLO
+    USER_SOLO[🧑 Rajib: Project Description] --> ORCH_SOLO
+    ORCH_SOLO[🤖 ORCHESTRATOR<br/>Solo mode: ≤3 Must Have features]
     ORCH --> PO[📋 rajiblabs-po]
     PO --> ARCH[🧠 rajiblabs-architect]
     PO --> UX[🎨 rajiblabs-ux]
@@ -99,12 +121,15 @@ flowchart TD
     PO_APPROVE --> DEVOPS_PROD[🚀 rajiblabs-devops\nProduction Deploy]
     DEVOPS_PROD --> PORTFOLIO[📊 rajiblabs-portfolio]
     DEVOPS_PROD --> MONITOR[👀 rajiblabs-monitor]
+    DEVOPS_PROD --> BIDDER_FOLLOW_SOLO[🎯 rajiblabs-bidder<br/>Client follow-up]
 ```
 
 ### Squad Mode Flow
 ```mermaid
 flowchart TD
-    USER[🧑 User: Project Description] --> ORCH[🤖 ORCHESTRATOR\nSquad mode: 4+ Must Have features]
+    BIDDER_SQUAD[🎯 rajiblabs-bidder<br/>Finds project → bids → awarded] -->|Handoff| ORCH_SQUAD
+    USER_SQUAD[🧑 Rajib: Project Description] --> ORCH_SQUAD
+    ORCH_SQUAD[🤖 ORCHESTRATOR<br/>Squad mode: 4+ Must Have features]
     ORCH --> PO[📋 rajiblabs-po]
     PO --> ARCH[🧠 rajiblabs-architect]
     PO --> UX[🎨 rajiblabs-ux]
@@ -127,33 +152,23 @@ flowchart TD
     PO_APPROVE --> DEVOPS_PROD[🚀 rajiblabs-devops\nProduction Slot Swap]
     DEVOPS_PROD --> PORTFOLIO[📊 rajiblabs-portfolio]
     DEVOPS_PROD --> MONITOR[👀 rajiblabs-monitor]
+    DEVOPS_PROD --> BIDDER_FOLLOW_SQUAD[🎯 rajiblabs-bidder<br/>Client follow-up]
 ```
-
----
-
-## Squad Mode Decision Rules
-
-| Condition | Mode |
-|-----------|------|
-| 1-3 Must Have features, no external APIs | **Solo** |
-| 4+ Must Have features | **Squad** |
-| Has auth + any external API (payment, OAuth, webhooks) | **Squad** |
-| Must Have features have separate backend + frontend tracks | **Squad** |
-
-The Orchestrator announces the decision after `rajiblabs-po` produces the feature backlog.
 
 ---
 
 ## Phases Summary
 
-| Phase | Name | Solo Agents | Squad Agents | Gate |
-|-------|------|-------------|-------------|------|
-| 0 | Discovery | po, architect, ux | po, architect, ux | Project Brief + TAD + UX Brief + mode decision |
+| Phase | Name | Agents | Gate |
+|-------|------|--------|------|
+| -1 | Acquisition | bidder | Bid submitted → Award detection → Handoff to PO |
+| 0 | Discovery | po, architect, ux | Project Brief + TAD + UX Brief + mode decision |
 | 1 | Foundation | dev + devops | dev-lead + dev-backend + dev-frontend + devops | Scaffold compiles + CI pipelines live |
 | 2 | Core Features | dev | dev-lead + dev-backend + dev-frontend + dev-integration | All Must Haves complete |
 | 2 | Validation | qa | qa-lead + qa-functional + qa-security + qa-accessibility | QA GO verdict |
 | 3 | Polish & Deploy | dev, qa, devops, po | dev squads, qa squads, devops, po | Release Approval + smoke test |
 | 4 | Post-Launch | portfolio, monitor | portfolio, monitor | Portfolio updated + monitoring active |
+| 5 | Follow-up | bidder | bidder | Demo coordination + Client follow-up + Testimonial + Warm lead registered |
 
 ---
 
@@ -161,6 +176,7 @@ The Orchestrator announces the decision after `rajiblabs-po` produces the featur
 
 | Agent | Produces |
 |-------|---------|
+| `rajiblabs-bidder` | Daily scan reports, drafted proposals, bid state files, client follow-up messages |
 | `rajiblabs-po` | Project Brief, backlog, mode decision, Release Approval |
 | `rajiblabs-architect` | TAD + data models + API contract |
 | `rajiblabs-ux` | UX Brief + component inventory + Design Handoff |
@@ -263,6 +279,7 @@ agents/
 ├── project-state-template.md          ← Shared memory template (copied per project)
 │
 ├── Core Agents
+│   ├── rajiblabs-bidder.md            ← 🎯 Freelance acquisition & bid manager (NEW)
 │   ├── rajiblabs-po.md
 │   ├── rajiblabs-architect.md
 │   ├── rajiblabs-ux.md
@@ -286,6 +303,9 @@ agents/
 │   ├── rajiblabs-qa-security.md       ← OWASP Top 10 + auth tests
 │   └── rajiblabs-qa-accessibility.md  ← WCAG 2.1 AA + responsive tests
 │
+├── bids/                              ← Bid tracking (NEW)
+│   └── <project-slug>-bid.md          ← Per-bid lifecycle tracking
+│
 └── state/
     └── <project-slug>.md              ← Per-project memory file
 ```
@@ -296,6 +316,7 @@ agents/
 
 | Question | Solo Mode | Squad Mode |
 |----------|-----------|-----------|
+| Find projects & bid | `rajiblabs-bidder` | `rajiblabs-bidder` |
 | What should we build? | `rajiblabs-po` | `rajiblabs-po` |
 | How should we build it? | `rajiblabs-architect` | `rajiblabs-architect` |
 | What should it look like? | `rajiblabs-ux` | `rajiblabs-ux` |
@@ -310,16 +331,18 @@ agents/
 | Deploy it / set up CI-CD | `rajiblabs-devops` | `rajiblabs-devops` |
 | What's happening in repo? | `rajiblabs-monitor` | `rajiblabs-monitor` |
 | Update the portfolio | `rajiblabs-portfolio` | `rajiblabs-portfolio` |
+| Follow up with client | `rajiblabs-bidder` | `rajiblabs-bidder` |
 | Run the full project end-to-end | **ORCHESTRATOR** | **ORCHESTRATOR** |
 
 ---
 
 ## Workforce Overview
 
-This is the master instruction file for the **RajibLabs AI Workforce** — a team of 8 specialised AI agents that collaborate to take a project from idea to production.
+This is the master instruction file for the **RajibLabs AI Workforce** — a team of 9 specialised AI agents that collaborate to take a project from acquisition to production.
 
 | Agent | ID | Role | Schedule |
 |-------|----|------|----------|
+| 🎯 [rajiblabs-bidder](./rajiblabs-bidder.md) | — | Freelance Acquisition & Bid Manager | Daily 8:30 AM IST + on-demand |
 | 📋 [rajiblabs-po](./rajiblabs-po.md) | 51011256 | Product Owner | Daily 8 AM IST + on-demand |
 | 🎨 [rajiblabs-ux](./rajiblabs-ux.md) | 63c7532d | UI/UX Designer | On-demand |
 | 🧠 [rajiblabs-architect](./rajiblabs-architect.md) | e441e421 | Architect & PM | On-demand |

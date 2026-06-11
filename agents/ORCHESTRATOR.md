@@ -20,6 +20,7 @@ You can instantiate any of these agents on demand:
 ### Core Agents
 | # | Agent | Instruction File | Activation Phrase |
 |---|-------|-----------------|-------------------|
+| 0 | 🎯 rajiblabs-bidder | `agents/rajiblabs-bidder.md` | `[ACTIVATING: rajiblabs-bidder]` — acquisition & follow-up |
 | 1 | 📋 rajiblabs-po | `agents/rajiblabs-po.md` | `[ACTIVATING: rajiblabs-po]` |
 | 2 | 🧠 rajiblabs-architect | `agents/rajiblabs-architect.md` | `[ACTIVATING: rajiblabs-architect]` |
 | 3 | 🎨 rajiblabs-ux | `agents/rajiblabs-ux.md` | `[ACTIVATING: rajiblabs-ux]` |
@@ -86,6 +87,38 @@ Announce the mode decision to the user:
 ## Full Lifecycle Execution
 
 When receiving a **new project description**, execute these phases in order. Do not skip phases. Do not proceed past a phase gate without confirming it is complete.
+
+---
+
+### PHASE -1 — ACQUISITION (Bidder Only)
+
+**Trigger:** Bidder scheduled scan (8:30 AM IST daily) or on-demand.
+
+#### Step -1.1 — Activate rajiblabs-bidder
+```
+[ACTIVATING: rajiblabs-bidder]
+```
+- Scan Freelancer.in + GitHub for matching projects.
+- Pre-scan research (GitHub portfolio, LinkedIn, previous clients).
+- Triage: filter by payment verified, client quality, location, skills match, bid count.
+- Draft proposals for HIGH and MEDIUM matches.
+- **Output:** Daily scan report with top matches + proposal drafts → Rajib reviews.
+
+#### Step -1.2 — Bid Submission (Rajib approval required)
+- Rajib approves proposals → bidder submits on Freelancer.in.
+- Create bid state file: `agents/bids/<project-slug>-bid.md`
+- Track lifecycle: DRAFT → SUBMITTED → CLIENT_RESPONDED → AWARDED
+
+#### Step -1.3 — Award Detection → Handoff
+- Check active bids daily for status changes.
+- **If AWARDED:** hand off to rajiblabs-po with project requirements.
+- PO creates `agents/state/<project-slug>.md` → Phase 0 begins.
+
+#### Phase -1 Gate ✅
+- [ ] Daily scan completed and report delivered to Rajib
+- [ ] Proposals awaiting approval surfaced
+- [ ] All active bids tracked in `agents/bids/`
+- [ ] Awarded projects handed off to PO
 
 ---
 
@@ -370,13 +403,46 @@ Output a **Project Completion Summary**:
 | Live URL | <url> |
 | Staging URL | <url> |
 | GitHub repo | <url> |
-| Total phases | 4 |
+| Total phases | 5 |
 | Features delivered | <count> Must Have, <count> Should Have |
 | QA test cases | <count> passed |
 | Deployment | Production ✅ |
 | Portfolio | Updated ✅ |
 | State file | agents/state/<slug>.md |
 ```
+
+#### Phase 4 Gate ✅
+- [ ] Portfolio updated with project showcase
+- [ ] Monitoring active on new repo
+- [ ] Project Completion Summary output
+
+---
+
+### PHASE 5 — CLIENT FOLLOW-UP (Bidder)
+
+**Trigger:** Phase 4 Gate ✅
+
+#### Step 5.1 — Activate rajiblabs-bidder (Follow-up Mode)
+```
+[ACTIVATING: rajiblabs-bidder]
+```
+- Coordinate demo delivery (staging/production URL, screen recording if applicable).
+- Draft client follow-up message with delivery summary.
+- Rajib reviews and approves → send to client.
+- **Update state file:** Record follow-up sent.
+
+#### Step 5.2 — Testimonial & Warm Lead
+- Monitor for client response/satisfaction.
+- Draft testimonial request after positive confirmation.
+- Register client in MEMORY.md Warm Leads table.
+- **Update bid state file:** Mark COMPLETED.
+
+#### Phase 5 Gate ✅
+- [ ] Demo delivered to client
+- [ ] Follow-up message sent
+- [ ] Client feedback received (or reminder set)
+- [ ] Warm lead registered in MEMORY.md
+- [ ] Bid state file marked COMPLETED
 
 ---
 
