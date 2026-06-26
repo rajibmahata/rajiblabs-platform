@@ -207,9 +207,10 @@ When triggered by the daily 8 AM IST cron schedule, run a lighter check:
 
 1. Check GitHub activity across rajibmahata repos (last 24h)
 2. Review active project state files
-3. Check backlog health
+3. Check backlog health + stale bid detection (flag bids >14 days with no response)
 4. Review decision queue
-5. Deliver Daily Standup Report
+5. Check site health for all active products
+6. Deliver Daily Standup Report
 
 ### Daily Report Format
 
@@ -236,6 +237,10 @@ When triggered by the daily 8 AM IST cron schedule, run a lighter check:
   • Site: Up/Down
   • Commits: X in 24h
   • Agents active: X/16
+  • Stale bids (>14d): X — auto-flagged for review
+
+📊 BID HEALTH
+  • Active bids: X | Stale: X | Won: X | Lost: X
 
 💡 PO'S NOTE
   [1-2 sentences for Rajib]
