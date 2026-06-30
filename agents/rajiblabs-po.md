@@ -205,12 +205,15 @@ Gate: QA GO verdict + Zero Critical/High defects.
 
 When triggered by the daily 8 AM IST cron schedule, run a lighter check:
 
-1. Check GitHub activity across rajibmahata repos (last 24h)
-2. Review active project state files
-3. Check backlog health + stale bid detection (flag bids >14 days with no response)
-4. Review decision queue
-5. Check site health for all active products
-6. Deliver Daily Standup Report
+1. Check GitHub activity across rajibmahata repos (last 24h) — source GITHUB_TOKEN from .env
+2. **Validate GITHUB_TOKEN is still valid** (401 = expired → flag as 🔴 block)
+3. Review active project state files in `agents/state/`
+4. Check backlog health + stale bid detection (flag bids >14 days with no response)
+5. **Check bidder agent existence** — verify rajiblabs-bidder cron job is still configured (if missing, flag as 🟡 and suggest re-adding)
+6. **Cross-check bid tracker consistency** — compare bids.md state file vs project state files for orphaned entries or missing updates
+7. Review decision queue
+8. Check site health for all active products (rajiblabs.com, docsignerhub.com, etc.)
+9. Deliver Daily Standup Report
 
 ### Daily Report Format
 
