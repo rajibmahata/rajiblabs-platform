@@ -40,12 +40,6 @@ export default function ContactSection() {
       href: 'mailto:rajibmahata143@gmail.com',
     },
     {
-      icon: '📨',
-      label: 'Outlook',
-      value: 'rajibmahata143@outlook.com',
-      href: 'mailto:rajibmahata143@outlook.com',
-    },
-    {
       icon: '💼',
       label: 'LinkedIn',
       value: 'linkedin.com/in/rajib-mahata',
@@ -59,16 +53,25 @@ export default function ContactSection() {
     },
   ];
 
+  const inputStyle = {
+    background: 'var(--c-bg-tertiary)',
+    border: '1px solid var(--c-border)',
+    borderRadius: 'var(--radius-md)',
+    padding: '14px 16px',
+    fontFamily: 'var(--font-body)',
+    fontSize: 15,
+    color: 'var(--c-text-primary)',
+    outline: 'none',
+    width: '100%',
+    transition: 'border-color 200ms, box-shadow 200ms',
+  };
+
   return (
     <section id="contact" className="section-pad" ref={sectionRef}
-      style={{
-        background: 'var(--c-bg-secondary)',
-        backgroundImage: 'radial-gradient(circle, var(--c-border) 1px, transparent 1px)',
-        backgroundSize: '24px 24px',
-      }}
+      style={{ background: 'var(--c-bg-primary)' }}
     >
       <div className="container-site">
-        <SectionLabel>GET IN TOUCH</SectionLabel>
+        <SectionLabel>LET'S CONNECT</SectionLabel>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -76,18 +79,20 @@ export default function ContactSection() {
           transition={{ duration: 0.5 }}
           className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start"
         >
-          {/* LEFT — Info */}
+          {/* LEFT — Copy + Info */}
           <div>
             <h2 style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 36,
+              fontSize: 'clamp(28px, 3.5vw, 42px)',
               fontWeight: 700,
               color: 'var(--c-text-primary)',
               lineHeight: 'var(--lh-display)',
-              letterSpacing: 'var(--ls-display)',
-              marginBottom: 24,
+              marginBottom: 20,
             }}>
-              Let's build something together.
+              Have a project in mind?{' '}
+              <span style={{ color: 'var(--c-text-secondary)', fontWeight: 400 }}>
+                Let's talk.
+              </span>
             </h2>
 
             <p style={{
@@ -95,39 +100,46 @@ export default function ContactSection() {
               fontSize: 16,
               color: 'var(--c-text-secondary)',
               lineHeight: 'var(--lh-body)',
-              marginBottom: 20,
+              marginBottom: 24,
             }}>
-              I'm always open to:
+              I work with SaaS founders, agencies, and enterprises who need senior-level architecture and
+              development. Whether it's a greenfield product, a complex integration, or an AI feature —
+              I bring 12+ years of production experience to your project.
             </p>
 
-            <ul className="space-y-3 mb-10" style={{ listStyle: 'none' }}>
+            <div className="flex flex-wrap gap-2 mb-8">
               {[
-                'Technical discussions on AI, cloud, and SaaS architecture',
-                'Collaborating on open-source or learning projects',
-                'Sharing ideas for AI experiments and product concepts',
-                'Connecting with fellow engineers and builders',
-              ].map(item => (
-                <li key={item} className="flex items-center gap-3" style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 16,
-                  color: 'var(--c-text-secondary)',
+                'Backend Architecture',
+                'Azure Cloud',
+                'AI / RAG Systems',
+                'SaaS Development',
+                'API Design',
+                'Microservices',
+              ].map(tag => (
+                <span key={tag} style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(21,71,190,0.1)',
+                  color: 'var(--c-accent-blue-l)',
+                  border: '1px solid rgba(21,71,190,0.2)',
                 }}>
-                  <span style={{ color: 'var(--c-accent-gold)', fontSize: 14 }}>▸</span>
-                  {item}
-                </li>
+                  {tag}
+                </span>
               ))}
-            </ul>
+            </div>
 
             <div className="h-px mb-8" style={{ background: 'var(--c-border)' }} />
 
             <p style={{
               fontFamily: 'var(--font-heading)',
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 500,
               color: 'var(--c-text-muted)',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              marginBottom: 12,
+              marginBottom: 16,
             }}>
               Direct Contact
             </p>
@@ -141,8 +153,10 @@ export default function ContactSection() {
                   rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
                   className="flex items-center gap-3 group transition-colors"
                   style={{ textDecoration: 'none' }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                 >
-                  <span className="text-lg">{item.icon}</span>
+                  <span style={{ fontSize: 20 }}>{item.icon}</span>
                   <div>
                     <span style={{
                       fontFamily: 'var(--font-body)',
@@ -167,202 +181,114 @@ export default function ContactSection() {
               fontFamily: 'var(--font-mono)',
               fontSize: 12,
               color: 'var(--c-text-muted)',
-              marginTop: 16,
+              marginTop: 20,
             }}>
-              📍 Kolkata, India · Available globally
+              📍 Kolkata, India · Available globally · Remote-first
             </p>
+
+            {/* Resume download link */}
+            <a
+              href="/Resume-RajibMahata.pdf"
+              download
+              className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-md border transition-all"
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 14,
+                fontWeight: 500,
+                borderColor: 'var(--c-accent-gold)',
+                color: 'var(--c-accent-gold)',
+                borderRadius: 'var(--radius-md)',
+                textDecoration: 'none',
+                background: 'transparent',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = 'var(--c-accent-gold)';
+                e.currentTarget.style.color = '#080D1A';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = 'var(--c-accent-gold)';
+              }}
+            >
+              📄 Download Resume (PDF)
+            </a>
           </div>
 
           {/* RIGHT — Form */}
           <div>
-            <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-              {/* Name */}
+            <form onSubmit={handleSubmit} className="card p-8 space-y-5"
+              style={{ background: 'var(--c-bg-secondary)' }}
+            >
               <div>
-                <label
-                  htmlFor="name"
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 13,
-                    fontWeight: 400,
-                    color: 'var(--c-text-secondary)',
-                    marginBottom: 4,
-                    display: 'block',
-                  }}
-                >
+                <label htmlFor="name" style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--c-text-secondary)',
+                  marginBottom: 6, display: 'block',
+                }}>
                   Name *
                 </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={handleChange}
-                  className="w-full transition-all"
-                  style={{
-                    background: 'var(--c-bg-tertiary)',
-                    border: '1px solid var(--c-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '12px 16px',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 15,
-                    color: 'var(--c-text-primary)',
-                    outline: 'none',
-                  }}
-                  onFocus={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-accent-blue)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)';
-                  }}
-                  onBlur={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-border)';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
+                <input id="name" name="name" type="text" required value={form.name}
+                  onChange={handleChange} style={inputStyle}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--c-accent-blue)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--c-border)'; e.currentTarget.style.boxShadow = ''; }}
+                  placeholder="Your name"
                 />
               </div>
 
-              {/* Email */}
               <div>
-                <label
-                  htmlFor="email"
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 13,
-                    fontWeight: 400,
-                    color: 'var(--c-text-secondary)',
-                    marginBottom: 4,
-                    display: 'block',
-                  }}
-                >
+                <label htmlFor="email" style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--c-text-secondary)',
+                  marginBottom: 6, display: 'block',
+                }}>
                   Email *
                 </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={handleChange}
-                  className="w-full transition-all"
-                  style={{
-                    background: 'var(--c-bg-tertiary)',
-                    border: '1px solid var(--c-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '12px 16px',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 15,
-                    color: 'var(--c-text-primary)',
-                    outline: 'none',
-                  }}
-                  onFocus={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-accent-blue)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)';
-                  }}
-                  onBlur={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-border)';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
+                <input id="email" name="email" type="email" required value={form.email}
+                  onChange={handleChange} style={inputStyle}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--c-accent-blue)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--c-border)'; e.currentTarget.style.boxShadow = ''; }}
+                  placeholder="you@company.com"
                 />
               </div>
 
-              {/* Company (optional) */}
               <div>
-                <label
-                  htmlFor="company"
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 13,
-                    fontWeight: 400,
-                    color: 'var(--c-text-secondary)',
-                    marginBottom: 4,
-                    display: 'block',
-                  }}
-                >
-                  Company
+                <label htmlFor="company" style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--c-text-secondary)',
+                  marginBottom: 6, display: 'block',
+                }}>
+                  Company (optional)
                 </label>
-                <input
-                  id="company"
-                  name="company"
-                  type="text"
-                  value={form.company}
-                  onChange={handleChange}
-                  className="w-full transition-all"
-                  style={{
-                    background: 'var(--c-bg-tertiary)',
-                    border: '1px solid var(--c-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '12px 16px',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 15,
-                    color: 'var(--c-text-primary)',
-                    outline: 'none',
-                  }}
-                  onFocus={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-accent-blue)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)';
-                  }}
-                  onBlur={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-border)';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
+                <input id="company" name="company" type="text" value={form.company}
+                  onChange={handleChange} style={inputStyle}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--c-accent-blue)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--c-border)'; e.currentTarget.style.boxShadow = ''; }}
+                  placeholder="Your company"
                 />
               </div>
 
-              {/* Message */}
               <div>
-                <label
-                  htmlFor="message"
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 13,
-                    fontWeight: 400,
-                    color: 'var(--c-text-secondary)',
-                    marginBottom: 4,
-                    display: 'block',
-                  }}
-                >
-                  Your idea or question:
+                <label htmlFor="message" style={{
+                  fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--c-text-secondary)',
+                  marginBottom: 6, display: 'block',
+                }}>
+                  Tell me about your project *
                 </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  required
-                  rows={4}
-                  value={form.message}
+                <textarea id="message" name="message" required rows={5} value={form.message}
                   onChange={handleChange}
-                  className="w-full transition-all"
-                  style={{
-                    background: 'var(--c-bg-tertiary)',
-                    border: '1px solid var(--c-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '12px 16px',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 15,
-                    color: 'var(--c-text-primary)',
-                    minHeight: 120,
-                    resize: 'vertical',
-                    outline: 'none',
-                  }}
-                  onFocus={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-accent-blue)';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)';
-                  }}
-                  onBlur={e => {
-                    e.currentTarget.style.borderColor = 'var(--c-border)';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
+                  style={{ ...inputStyle, minHeight: 130, resize: 'vertical' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--c-accent-blue)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(21,71,190,0.15)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--c-border)'; e.currentTarget.style.boxShadow = ''; }}
+                  placeholder="What are you building? What do you need help with?"
                 />
               </div>
 
-              {/* Honey pot (hidden) */}
+              {/* Honeypot */}
               <div style={{ position: 'absolute', left: '-9999px', opacity: 0 }} aria-hidden="true">
                 <input type="text" name="website" tabIndex={-1} autoComplete="off" readOnly />
               </div>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={status === 'loading' || status === 'success'}
-                className="w-full flex items-center justify-center px-6 py-3.5 text-[15px] font-medium rounded-md transition-all duration-200 disabled:opacity-50"
+                className="w-full flex items-center justify-center px-6 py-4 text-[15px] font-medium rounded-md transition-all duration-200 disabled:opacity-50"
                 style={{
                   fontFamily: 'var(--font-heading)',
                   fontWeight: 500,
@@ -371,6 +297,18 @@ export default function ContactSection() {
                   border: 'none',
                   borderRadius: 'var(--radius-md)',
                   cursor: status === 'loading' ? 'wait' : 'pointer',
+                }}
+                onMouseEnter={e => {
+                  if (status !== 'loading' && status !== 'success') {
+                    e.currentTarget.style.backgroundColor = 'var(--c-accent-blue-l)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-glow-blue)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (status !== 'loading' && status !== 'success') {
+                    e.currentTarget.style.backgroundColor = 'var(--c-accent-blue)';
+                    e.currentTarget.style.boxShadow = '';
+                  }
                 }}
               >
                 {status === 'loading' && (
@@ -383,13 +321,8 @@ export default function ContactSection() {
               </button>
 
               {status === 'error' && (
-                <p style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 13,
-                  color: '#EF4444',
-                  textAlign: 'center',
-                }}>
-                  Something went wrong. Please try again.
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#EF4444', textAlign: 'center' }}>
+                  Something went wrong. Please try again or email me directly.
                 </p>
               )}
             </form>
