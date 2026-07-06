@@ -184,6 +184,12 @@ body {
 
 .section-pad {
   padding-block: clamp(48px, 8vw, 96px);
+  position: relative;
+}
+
+/* Subtle top-border for section separation on dark backgrounds */
+.section-pad + .section-pad {
+  border-top: 0.5px solid rgba(30, 45, 74, 0.3);
 }
 
 /* Section label — mono gold caps */
@@ -201,16 +207,16 @@ body {
 /* Base card — refined with subtle border */
 .card {
   background: var(--c-bg-secondary);
-  border: 1px solid rgba(30, 45, 74, 0.6);
+  border: 0.5px solid rgba(30, 45, 74, 0.5);
   border-radius: var(--radius-lg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
   transition: border-color var(--dur-base) var(--ease-out),
               transform var(--dur-base) var(--ease-spring),
               box-shadow var(--dur-base) var(--ease-out);
 }
 .card:hover {
-  border-color: rgba(37, 99, 244, 0.25);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(37, 99, 244, 0.08);
+  border-color: rgba(37, 99, 244, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(37, 99, 244, 0.06);
 }
 
 /* Elevated card */

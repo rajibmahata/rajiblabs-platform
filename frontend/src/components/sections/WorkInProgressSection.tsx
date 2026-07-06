@@ -25,139 +25,156 @@ export default function WorkInProgressSection() {
       style={{ background: 'var(--c-bg-secondary)' }}
     >
       <div className="container-site">
-        <div className="flex items-center justify-between mb-2">
-          <SectionLabel>CURRENTLY BUILDING</SectionLabel>
-        </div>
+        <SectionLabel>CURRENTLY BUILDING</SectionLabel>
 
-        <div className="flex items-center gap-2 mb-8">
-          <span className="pulse-dot" style={{ backgroundColor: 'var(--c-accent-teal)' }} />
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
-            color: 'var(--c-accent-teal)',
-            fontWeight: 500,
-            letterSpacing: '0.05em',
+        <div className="mb-10">
+          <h2 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(24px, 3vw, 36px)',
+            fontWeight: 700,
+            color: 'var(--c-text-primary)',
+            lineHeight: 'var(--lh-display)',
+            marginBottom: 8,
           }}>
-            ● LIVE — updates on every commit
-          </span>
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
-            color: 'var(--c-text-muted)',
-            marginLeft: 'auto',
+            Active projects &amp; recent activity
+          </h2>
+          <p style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: 15,
+            color: 'var(--c-text-secondary)',
+            lineHeight: 'var(--lh-body)',
           }}>
-            {data.projects.length} Active
-          </span>
+            {data.projects.length} projects in development, tracked from public GitHub activity.
+          </p>
         </div>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8"
         >
           {/* LEFT — Project Cards */}
           <div className="space-y-4">
-            {data.projects.map(project => (
-              <div
+            {data.projects.map((project, i) => (
+              <motion.div
                 key={project.name}
-                className="card p-5"
-                style={{
-                  borderLeft: `3px solid ${project.status === 'live' ? 'var(--c-accent-teal)' : project.status === 'wip' ? 'var(--c-accent-blue)' : 'var(--c-accent-gold)'}`,
+                initial={{ opacity: 0, y: 16 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.08 * i, duration: 0.4 }}
+                className="card p-5 group"
+                style={{ transition: 'all 250ms var(--ease-spring)' }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '';
                 }}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 style={{
-                    fontFamily: 'var(--font-heading)',
-                    fontSize: 16,
-                    fontWeight: 500,
-                    color: 'var(--c-text-primary)',
-                  }}>
-                    {project.name}
-                  </h3>
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 style={{
+                      fontFamily: 'var(--font-heading)',
+                      fontSize: 16,
+                      fontWeight: 600,
+                      color: 'var(--c-text-primary)',
+                      marginBottom: 4,
+                    }}>
+                      {project.name}
+                    </h3>
+                    <p style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 11,
+                      color: 'var(--c-text-muted)',
+                    }}>
+                      {project.stack}
+                    </p>
+                  </div>
                   <StatusBadge variant={project.status} />
                 </div>
-                <p style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  color: 'var(--c-text-muted)',
-                  marginBottom: 12,
-                }}>
-                  {project.stack}
-                </p>
 
                 {/* Progress bar */}
-                <div className="flex items-center gap-3 mb-1">
-                  <p style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 13,
-                    color: 'var(--c-text-secondary)',
-                  }}>
-                    Progress: {project.progress}%
-                  </p>
-                  <div className="flex-1 h-1 rounded-full" style={{ background: 'var(--c-bg-tertiary)' }}>
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 12,
+                      color: 'var(--c-text-secondary)',
+                    }}>
+                      Progress
+                    </span>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: project.progress >= 70 ? 'var(--c-accent-teal)' : project.progress >= 30 ? 'var(--c-accent-blue-l)' : 'var(--c-accent-gold)',
+                    }}>
+                      {project.progress}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full" style={{ background: 'var(--c-bg-tertiary)' }}>
                     <div
-                      className="h-full rounded-full"
+                      className="h-full rounded-full transition-all duration-700"
                       style={{
                         width: `${project.progress}%`,
-                        background: 'linear-gradient(90deg, var(--c-accent-blue), var(--c-accent-teal))',
-                        transition: 'width 1s var(--ease-out)',
+                        background: project.progress >= 70
+                          ? 'linear-gradient(90deg, var(--c-accent-teal), var(--c-accent-teal-l))'
+                          : project.progress >= 30
+                          ? 'linear-gradient(90deg, var(--c-accent-blue), var(--c-accent-blue-l))'
+                          : 'linear-gradient(90deg, var(--c-accent-gold), var(--c-accent-gold-l))',
                       }}
                     />
                   </div>
                 </div>
-                <p style={{
+
+                <div className="flex items-center gap-2" style={{
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
+                  fontSize: 11,
                   color: 'var(--c-text-muted)',
                 }}>
-                  Last: {project.lastActivity}
-                </p>
-              </div>
+                  <span>Last activity:</span>
+                  <span style={{ color: 'var(--c-text-secondary)' }}>{project.lastActivity}</span>
+                </div>
+              </motion.div>
             ))}
           </div>
 
           {/* RIGHT — Commit Feed */}
-          <div
-            className="rounded-lg overflow-y-auto border"
-            style={{
-              background: 'var(--c-bg-secondary)',
-              borderColor: 'var(--c-border)',
-              maxHeight: 360,
-            }}
-            aria-live="polite"
-            aria-label="Live commit feed"
-          >
-            <div className="px-4 py-3 border-b flex items-center justify-between"
-              style={{ borderColor: 'var(--c-border)' }}
+          <div className="card overflow-hidden" style={{ maxHeight: 420 }}>
+            <div className="px-5 py-4 border-b flex items-center justify-between"
+              style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg-tertiary)' }}
             >
               <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                fontWeight: 500,
-                color: 'var(--c-text-secondary)',
+                fontFamily: 'var(--font-heading)',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--c-text-primary)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.03em',
               }}>
                 Recent Commits
               </span>
               <span style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 10,
+                fontSize: 11,
                 color: 'var(--c-text-muted)',
               }}>
                 {data.commits.length} commits
               </span>
             </div>
-            {data.commits.map(commit => (
-              <CommitRow
-                key={commit.hash}
-                hash={commit.hash}
-                message={commit.message}
-                repoName={commit.repoName}
-                timestamp={commit.timestamp}
-              />
-            ))}
+            <div className="overflow-y-auto" style={{ maxHeight: 370 }}>
+              {data.commits.map(commit => (
+                <CommitRow
+                  key={commit.hash}
+                  hash={commit.hash}
+                  message={commit.message}
+                  repoName={commit.repoName}
+                  timestamp={commit.timestamp}
+                />
+              ))}
+            </div>
           </div>
         </motion.div>
       </div>

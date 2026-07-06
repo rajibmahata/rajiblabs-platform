@@ -111,30 +111,30 @@ export default function GlobalNav() {
         </div>
 
         {/* CTA Button */}
-        <button
-          onClick={() => scrollTo('contact')}
-          className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-all duration-200"
+        <a
+          href="#contact"
+          onClick={e => { e.preventDefault(); scrollTo('contact'); }}
+          className="hidden md:inline-flex items-center px-5 py-2 text-sm font-medium rounded-md transition-all duration-200"
           style={{
             fontFamily: 'var(--font-heading)',
             fontSize: 13,
-            fontWeight: 500,
-            border: '1px solid var(--c-accent-blue)',
-            color: 'var(--c-accent-blue)',
+            fontWeight: 600,
+            backgroundColor: 'var(--c-accent-blue)',
+            color: '#fff',
             borderRadius: 'var(--radius-md)',
-            background: 'transparent',
-            cursor: 'pointer',
+            textDecoration: 'none',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.backgroundColor = 'var(--c-accent-blue)';
-            e.currentTarget.style.color = '#fff';
+            e.currentTarget.style.backgroundColor = 'var(--c-accent-blue-l)';
+            e.currentTarget.style.boxShadow = 'var(--shadow-glow-blue)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = 'var(--c-accent-blue)';
+            e.currentTarget.style.backgroundColor = 'var(--c-accent-blue)';
+            e.currentTarget.style.boxShadow = '';
           }}
         >
-          Get in Touch
-        </button>
+          Hire Me
+        </a>
 
         {/* Mobile hamburger */}
         <button
