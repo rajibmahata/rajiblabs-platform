@@ -10,15 +10,21 @@ export default function GitHubActivitySection() {
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
   const [data, setData] = useState<GitHubSummary>(fallbackGitHubSummary);
 
-  const heatmapLevels = useMemo(
-    () => Array.from({ length: 52 * 7 }, (_, i) => {
-      if (i % 11 === 0) return 3;
-      if (i % 5 === 0) return 2;
-      if (i % 3 === 0) return 1;
+  // Seeded pseudo-random heatmap — illustrative, not live GitHub data
+  const heatmapLevels = useMemo(() => {
+    const seed = 2026_07_06;
+    let s = seed;
+    const rng = () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+    const cells = 52 * 7;
+    return Array.from({ length: cells }, () => {
+      const r = rng();
+      // Weight toward lower activity (realistic distribution)
+      if (r > 0.92) return 3;
+      if (r > 0.78) return 2;
+      if (r > 0.55) return 1;
       return 0;
-    }),
-    []
-  );
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
