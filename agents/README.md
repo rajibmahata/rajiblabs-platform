@@ -18,8 +18,9 @@ The RajibLabs AI Workforce has two operating modes. The **Orchestrator** selects
 | 🎨 [rajiblabs-ux](./rajiblabs-ux.md) | 63c7532d | UI/UX Designer | On-demand |
 | 🚀 [rajiblabs-devops](./rajiblabs-devops.md) | 16954a53 | DevOps (CI/CD, Azure) | On-demand |
 | 👀 [rajiblabs-monitor](./rajiblabs-monitor.md) | eb6f6a39 | GitHub Monitor | Every 30 min |
-| 📊 [rajiblabs-portfolio](./rajiblabs-portfolio.md) | 0a069639 | Portfolio Content | Daily 9 AM IST |
-| 💼 [rajiblabs-bidder](./rajiblabs-bidder.md) | — | Freelance Opportunity Scout & Proposal Writer | Daily 7 AM IST + on-demand |
+| 📊 [rajiblabs-portfolio](./rajiblabs-portfolio.md) | 0a069639 | Portfolio Content | Weekly Mon 9 AM IST |
+| 🛡️ [rajiblabs-security-checker](./rajiblabs-security-checker.md) | 74ec53ba | Security Watchdog | Weekly Sat 10 AM IST |
+| 💼 [rajiblabs-bidder](./rajiblabs-bidder.md) | — | Freelance Bid Manager | Daily 8:30 AM IST + on-demand |
 
 ### Solo Mode — Simple Projects (1-3 Must Have features)
 
