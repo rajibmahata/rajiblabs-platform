@@ -8,20 +8,52 @@ const products = [
   {
     name: 'DocSignerHub',
     status: 'live' as const,
-    description: 'Enterprise electronic signature SaaS — multi-signer sequential workflows, HMAC-SHA256 token auth, full audit trail, white-label API. Built for the Indian enterprise market at a fraction of DocuSign pricing.',
-    techStack: ['.NET 8', 'Blazor', 'Azure', 'SQL', 'HMAC-SHA256', 'Stripe', 'OpenAI'],
+    description: 'Enterprise electronic signature SaaS — multi-signer sequential & parallel workflows, HMAC-SHA256 token auth, AI clause analysis, full audit trail, white-label API. 140+ REST endpoints. Built for the Indian enterprise market.',
+    techStack: ['.NET 8', 'Blazor', 'Azure', 'SQL Server', 'HMAC-SHA256', 'Stripe', 'OpenAI'],
     liveUrl: 'https://docsignerhub.com',
     githubUrl: 'https://github.com/rajibmahata/DocumentSigningPlatform',
     featured: true,
+    priority: 'CRITICAL',
   },
   {
     name: 'ARIA',
     status: 'beta' as const,
-    description: 'Enterprise AI knowledge platform with RAG architecture + no-code multi-agent pipeline builder. Deploy a conversational knowledge base from your documents in hours. Proposed to Hyundai Motor India Ltd.',
+    description: 'Enterprise AI knowledge platform — RAG architecture with no-code multi-agent pipeline builder. Hybrid vector + BM25 search. Deployable on-premise with zero vendor lock-in. Proposed to Hyundai Motor India Ltd.',
     techStack: ['Python', 'FastAPI', 'GPT-4o', 'RAG', 'ChromaDB', 'LangChain', 'React'],
     githubUrl: 'https://github.com/rajibmahata/AI-Avatar-RAG-Platform',
     demoUrl: null,
     featured: false,
+    priority: 'HIGH',
+  },
+  {
+    name: 'Solicitor CMS',
+    status: 'wip' as const,
+    description: 'Legal case management platform for mid-size law firms — visual workflow builder, automated document generation from templates, deadline tracking, client portal, and time/billing integration.',
+    techStack: ['.NET 8', 'Blazor', 'SQL Server', 'Azure', 'Cosmos DB'],
+    githubUrl: 'https://github.com/rajibmahata/SolicitorCaseManagementSystem',
+    liveUrl: null,
+    featured: false,
+    priority: 'MEDIUM',
+  },
+  {
+    name: 'LexVault',
+    status: 'wip' as const,
+    description: 'Legal document intelligence platform — LLM-assisted knowledge base ingestion + zero-LLM confidence scoring via hybrid search (dense + sparse BM42) on Qdrant. On-premise Windows Server, no cloud dependency.',
+    techStack: ['.NET 8', 'Qdrant', 'RAG', 'Hybrid Search', 'Azure OpenAI', 'Redis'],
+    githubUrl: 'https://github.com/rajibmahata/Legal-Document-RAG-System-LEXVAULT',
+    liveUrl: null,
+    featured: false,
+    priority: 'HIGH',
+  },
+  {
+    name: 'AI Student Tutor',
+    status: 'wip' as const,
+    description: 'Multi-role AI learning platform — 12 specialized agents (Teacher, Assessment, Content Gen, Voice, Analytics), voice-first tutoring in 4 languages, human-in-the-loop validation. Nursery to Class 12.',
+    techStack: ['FastAPI', 'LangGraph', 'Next.js', 'PostgreSQL', 'Qdrant', 'OpenAI'],
+    githubUrl: 'https://github.com/rajibmahata/Math-tutor-AI-Agent',
+    liveUrl: null,
+    featured: false,
+    priority: 'HIGH',
   },
 ];
 
@@ -60,14 +92,30 @@ export default function ProductsSection() {
               }}
             >
               <div className="flex justify-between items-start mb-3">
-                <h3 style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: product.featured ? 22 : 18,
-                  fontWeight: 600,
-                  color: 'var(--c-text-primary)',
-                }}>
-                  {product.name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 style={{
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: product.featured ? 22 : 18,
+                    fontWeight: 600,
+                    color: 'var(--c-text-primary)',
+                  }}>
+                    {product.name}
+                  </h3>
+                  {product.priority && (
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: '1px 6px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: product.priority === 'CRITICAL' ? 'rgba(196,154,42,0.15)' : product.priority === 'HIGH' ? 'rgba(21,71,190,0.15)' : 'rgba(10,123,108,0.15)',
+                      color: product.priority === 'CRITICAL' ? 'var(--c-accent-gold)' : product.priority === 'HIGH' ? 'var(--c-accent-blue-l)' : 'var(--c-accent-teal)',
+                      letterSpacing: '0.05em',
+                    }}>
+                      {product.priority}
+                    </span>
+                  )}
+                </div>
                 <StatusBadge variant={product.status} />
               </div>
 

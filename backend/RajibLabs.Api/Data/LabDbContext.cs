@@ -16,6 +16,9 @@ public class LabDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // CareerEntry is stored as JSON in Profile — not a separate entity
+        modelBuilder.Ignore<CareerEntry>();
+
         modelBuilder.Entity<Project>(entity =>
         {
             entity.HasKey(e => e.Id);
