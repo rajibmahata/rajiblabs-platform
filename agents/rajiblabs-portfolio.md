@@ -98,11 +98,20 @@ When a project is marked complete by `rajiblabs-po`:
 ### 6. Source Code Data-Quality Audit (MANDATORY EVERY CYCLE)
 **This is not optional.** Run these checks every cycle:
 
-1. **Relative-date anti-pattern scan:**
+1. **Relative-date anti-pattern scan (TWO-TIER):**
    ```bash
+   # TIER 1: Data fabrication — `new Date(Date.now() - X)` patterns. CRITICAL.
+   grep -rn "new Date(Date.now()" frontend/src/ --include="*.tsx" --include="*.ts" | grep -v node_modules
+   
+   # TIER 2: All Date.now() usage — catches display logic + missed fabrication.
    grep -rn "Date.now()" frontend/src/ --include="*.tsx" --include="*.ts" | grep -v node_modules
    ```
-   **🔴 RED ALERT:** If ANY file uses `new Date(Date.now() - X)` for `lastCommitAt`, activity timestamps, or WIP "last activity" fields, flag EVERY occurrence with file path and line. This anti-pattern causes the portfolio to perpetually show "fresh" timestamps regardless of actual staleness, actively misleading portfolio visitors. This is the #1 data-quality issue to catch.
+   
+   **Classification when hits found:**
+   - **Category A — DATA FABRICATION (🔴 CRITICAL):** `new Date(Date.now() - X)` creating fake timestamps for `lastCommitAt`, activity entries, project metadata. These actively mislead portfolio visitors by showing perpetually "fresh" dates regardless of actual staleness.
+   - **Category B — DISPLAY LOGIC (🟠 HIGH):** `Date.now() - new Date(d).getTime()` computing relative time for UI display (e.g., "4 hours ago"). Not fabrication but should use `date-fns` for correctness.
+   
+   **🔴 RED ALERT:** Flag EVERY Category A occurrence with file path, line number, and the expression. Separation from "hours ago" vs "days ago" math helps determine if it's mock data fabrication or just relative-display logic. This is the #1 data-quality issue to catch.
 
 2. **Timestamp integrity verification:**
    Fetch `pushed_at` from GitHub API for every portfolio-tracked project:
