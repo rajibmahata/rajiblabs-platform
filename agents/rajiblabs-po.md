@@ -205,15 +205,27 @@ Gate: QA GO verdict + Zero Critical/High defects.
 
 When triggered by the daily 8 AM IST cron schedule, run a lighter check:
 
+### Pre-flight Checks
+Before gathering data:
+- **Check model billing health** — if previous consecutive error count > 0 on the PO cron job, note the error reason and include it in the report. Model billing failures are a 🔴 block for the entire workforce.
+- **Check current model availability** — if this run itself is succeeding, note that billing issues appear resolved.
+
+### Data Collection Steps
 1. Check GitHub activity across rajibmahata repos (last 24h) — source GITHUB_TOKEN from .env
 2. **Validate GITHUB_TOKEN is still valid** (401 = expired → flag as 🔴 block)
 3. Review active project state files in `agents/state/`
 4. Check backlog health + stale bid detection (flag bids >14 days with no response)
-5. **Check bidder agent existence** — verify rajiblabs-bidder cron job is still configured (if missing, flag as 🟡 and suggest re-adding)
+5. **Check bidder agent existence** — two-part check:
+   a. Verify `agents/rajiblabs-bidder.md` exists in the repo
+   b. Check if a bidder cron job is registered. **Note:** The cron tool lists jobs filtered by current `agentId`. To detect the bidder cron, look for it explicitly by name by checking with agentId filter, or infer from known schedule (per USER.md: 8:30 AM IST daily). If missing, flag as 🟡 and suggest re-adding.
 6. **Cross-check bid tracker consistency** — compare bids.md state file vs project state files for orphaned entries or missing updates
-7. Review decision queue
-8. Check site health for all active products (rajiblabs.com, docsignerhub.com, etc.)
-9. Deliver Daily Standup Report
+7. Review decision queue (check for `agents/decision-queue/` or similar)
+8. Check site health for all active products:
+   - rajiblabs.com
+   - docsignerhub.com
+   - Any staging or demo URLs in project state files
+9. **Check stale projects** — flag any project in "AWAITING CLIENT RESPONSE" or "Discovery" state for >30 days
+10. Deliver Daily Standup Report
 
 ### Daily Report Format
 
@@ -241,6 +253,7 @@ When triggered by the daily 8 AM IST cron schedule, run a lighter check:
   • Commits: X in 24h
   • Agents active: X/16
   • Stale bids (>14d): X — auto-flagged for review
+  • Model billing: 🟢 Healthy / 🟡 Warning / 🔴 Exhausted
 
 📊 BID HEALTH
   • Active bids: X | Stale: X | Won: X | Lost: X
