@@ -74,8 +74,8 @@ cd <repo> && pip-audit 2>/dev/null || safety check 2>/dev/null || echo "Python a
 **A. Git history scan (last 200 commits):**
 ```bash
 cd <repo>
-# Common secret patterns
-git log -200 -p | grep -iE '(sk_live_|sk_test_|AKIA[0-9A-Z]{16}|password\s*=\s*["\x27][^"\x27]{4,}|connectionString\s*=\s*["\x27]|api[_-]?key\s*=\s*["\x27][^"\x27]{8,}|token\s*=\s*["\x27][^"\x27]{8,}|secret\s*=\s*["\x27][^"\x27]{4,}|-----BEGIN (RSA |EC |DSA |OPENSSH )PRIVATE KEY-----)' 2>/dev/null | head -50 || echo "No git history secrets found"
+# Common secret patterns (exclude .venv and node_modules noise)
+git log -200 --all -p -- ':!.venv' ':!node_modules' ':!__pycache__' 2>/dev/null | grep -iE '(sk_live_|sk_test_|AKIA[0-9A-Z]{16}|password\s*=\s*["\x27][^"\x27]{4,}|connectionString\s*=\s*["\x27]|api[_-]?key\s*=\s*["\x27][^"\x27]{8,}|token\s*=\s*["\x27][^"\x27]{8,}|secret\s*=\s*["\x27][^"\x27]{4,}|-----BEGIN (RSA |EC |DSA |OPENSSH )PRIVATE KEY-----)' 2>/dev/null | head -50 || echo "No git history secrets found"
 ```
 
 **B. Current file scan:**
@@ -96,11 +96,16 @@ grep -rI --include="*.cs" --include="*.py" --include="*.ts" --include="*.tsx" --
 **A. .gitignore audit:**
 ```bash
 cd <repo>
-must_ignore=(".env" "*.env.local" "appsettings.*.json" "*.pfx" "*.key" "*.pem" "secrets.json")
-for pattern in "${must_ignore[@]}"; do
-  grep -qF "$pattern" .gitignore 2>/dev/null || echo "⚠️ Missing .gitignore entry: $pattern"
-done
-echo "✅ .gitignore audit complete"
+# Check .gitignore exists first
+if [ ! -f .gitignore ]; then
+  echo "🔴 CRITICAL: No .gitignore file at repository root!"
+else
+  must_ignore=(".env" "*.env.local" "appsettings.*.json" "*.pfx" "*.key" "*.pem" "secrets.json")
+  for pattern in "${must_ignore[@]}"; do
+    grep -qF "$pattern" .gitignore 2>/dev/null || echo "⚠️ Missing .gitignore entry: $pattern"
+  done
+  echo "✅ .gitignore audit complete"
+fi
 ```
 
 **B. CORS / Security headers check (if live URL):**
@@ -156,6 +161,9 @@ grep -rI "IssuerSigningKey\|TokenValidationParameters\|JwtBearer" --include="*.c
 
 # Check for hardcoded keys (not from config)
 grep -rI 'Key\s*=\s*"[A-Za-z0-9+/=]{20,}"' --include="*.cs" . 2>/dev/null && echo "⚠️ Potential hardcoded key!" || echo "✅ No hardcoded keys"
+
+# Check for placeholder/default JWT secrets
+grep -rnI 'change-this\|CHANGE_ME\|your-secret\|your-jwt-secret\|placeholder' --include="*.py" --include="*.cs" --include="*.ts" --include="*.json" --exclude-dir=node_modules --exclude-dir=.venv . 2>/dev/null | grep -i 'jwt\|secret\|key' && echo "⚠️ Placeholder JWT secret found!" || echo "✅ No placeholder JWT secrets"
 ```
 
 ---
