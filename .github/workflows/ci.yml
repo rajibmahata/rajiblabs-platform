@@ -2,10 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/*]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -26,15 +29,15 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Install frontend deps
+      - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Lint frontend
         working-directory: frontend
-        run: npm run lint --if-present
+        run: npm run lint
 
-      - name: Typecheck frontend (tsc -b)
+      - name: Typecheck frontend
         working-directory: frontend
         run: npx tsc -b --verbose
 
@@ -45,10 +48,13 @@ jobs:
       - name: Verify PWA artifacts
         working-directory: frontend
         run: |
-          ls -lh dist/manifest.webmanifest dist/sw.js dist/offline.html dist/icons/ | head -20
-          test -f dist/manifest.webmanifest || (echo "manifest missing" && exit 1)
-          test -f dist/sw.js || (echo "sw.js missing" && exit 1)
-          echo "PWA artifacts OK"
+          echo "Checking dist..."
+          ls -lh dist/
+          ls -lh dist/manifest.webmanifest dist/sw.js dist/offline.html
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          test -f dist/offline.html
+          echo "PWA OK"
 
       - name: Restore backend
         working-directory: backend/RajibLabs.Api
@@ -58,7 +64,7 @@ jobs:
         working-directory: backend/RajibLabs.Api
         run: dotnet build --no-restore -c Release
 
-      - name: Publish backend (for deploy artifact)
+      - name: Publish backend
         working-directory: backend/RajibLabs.Api
         run: dotnet publish -c Release -o publish
 
@@ -75,29 +81,3 @@ jobs:
           name: backend-publish
           path: backend/RajibLabs.Api/publish
           retention-days: 7
-
-  deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download frontend dist
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist
-
-      - name: Deploy via FTP (SmarterASP)
-        if: ${{ secrets.FTP_HOST != '' }}
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASS }}
-          FTP_PATH: ${{ secrets.FTP_PATH }}
-          SITE_URL: ${{ secrets.SITE_URL }}
-        run: |
-          chmod +x ./deploy.sh
-          ./deploy.sh
