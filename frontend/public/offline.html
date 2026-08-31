@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080D1A" />
+  <title>Offline — RajibLabs</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#080D1A;color:#F0F4FF;font-family: 'DM Sans', system-ui, sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:#0D1F3C;border:1px solid #1E2D4A;border-radius:16px;padding:40px;max-width:480px;width:100%;text-align:center}
+    .icon{width:64px;height:64px;background:#152B52;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px}
+    h1{font-family: Fraunces, Georgia, serif;font-size:24px;font-weight:700;margin-bottom:10px}
+    p{color:#8896B3;font-size:15px;line-height:1.6;margin-bottom:24px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#1547BE;color:#fff;border-radius:8px;text-decoration:none;font-weight:500;font-size:14px}
+    .btn:hover{background:#2563F4}
+    .secondary{margin-left:8px;background:transparent;border:1px solid #2A3C5E;color:#8896B3}
+    .secondary:hover{border-color:#1547BE;color:#F0F4FF}
+    .mono{font-family:JetBrains Mono, monospace;font-size:11px;color:#6A7B9E;margin-top:16px;letter-spacing:0.06em;text-transform:uppercase}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>You’re offline</h1>
+    <p>RajibLabs is installed and ready. Some content is available offline, but you’ll need an internet connection for the latest projects and commits.</p>
+    <div>
+      <a class="btn" href="/" onclick="location.reload(); return false;">↻ Try again</a>
+      <a class="btn secondary" href="/">Go to Home</a>
+    </div>
+    <div class="mono">PWA · Works offline · Cached shell available</div>
+  </div>
+  <script>
+    window.addEventListener('online', () => location.reload());
+  </script>
+</body>
+</html>
