@@ -1,0 +1,14 @@
+# Auto detect text files and normalize to LF on commit
+* text=auto eol=lf
+# Windows batch files need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+# Shell scripts keep LF
+*.sh text eol=lf
+# Images and binaries not modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
