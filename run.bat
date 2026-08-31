@@ -118,9 +118,38 @@ echo   Project : %BACKEND_DIR%
 echo   URL     : %BACKEND_URL%  ^(SQLite auto-creates rajiblabs.db^)
 echo.
 
-:: Kill previous backend on 5000 if still running (optional, ignore errors)
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5000 ^| findstr LISTENING') do (
-  echo   - Found existing process on :5000 PID %%a ^(will reuse / will be killed if needed^)
+:: Ensure wwwroot exists (fixes StaticFileMiddleware warning)
+if not exist "%BACKEND_DIR%\wwwroot" (
+  mkdir "%BACKEND_DIR%\wwwroot" >nul 2>nul
+  echo   - Created missing wwwroot folder.
+)
+
+:: Check and FREE port 5000 if already in use (fixes "address already in use")
+set "PORT_BUSY=0"
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5000 ^| findstr LISTENING 2^>nul') do (
+  set "PORT_BUSY=1"
+  echo   ! Found process on :5000 PID %%a - killing...
+  taskkill /PID %%a /F >nul 2>nul
+  timeout /t 1 /nobreak >nul
+)
+:: Verify port is now free
+netstat -aon | findstr :5000 | findstr LISTENING >nul 2>nul
+if %errorlevel%==0 (
+  color 0C
+  echo   [WARN] Port 5000 still busy after kill. Backend may fail to start.
+  echo   Tip: Run CMD as Administrator, then:
+  echo        netstat -ano ^| findstr :5000
+  echo        taskkill /PID ^<PID^> /F
+  echo   Or change backend port: edit backend/RajibLabs.Api/Properties/launchSettings.json
+  echo        and frontend/vite.config.ts proxy, or run:
+  echo        dotnet run --urls http://localhost:5001
+  color 0B
+) else (
+  if "!PORT_BUSY!"=="1" (
+    echo   - Port 5000 freed.
+  ) else (
+    echo   - Port 5000 is free.
+  )
 )
 
 :: Start backend in new window - keeps logs visible, auto-restores packages
@@ -155,6 +184,23 @@ if not exist "%FRONTEND_DIR%\node_modules" (
   echo   - npm install complete.
 ) else (
   echo   - node_modules exists, skipping install.
+)
+
+:: Free frontend port 5173 if busy
+set "FRONTEND_BUSY=0"
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING 2^>nul') do (
+  set "FRONTEND_BUSY=1"
+  echo   ! Found process on :5173 PID %%a - killing...
+  taskkill /PID %%a /F >nul 2>nul
+  timeout /t 1 /nobreak >nul
+)
+netstat -aon | findstr :5173 | findstr LISTENING >nul 2>nul
+if %errorlevel%==0 (
+  color 0C
+  echo   [WARN] Port 5173 still busy. Frontend may fail. Try: taskkill /F /IM node.exe
+  color 0B
+) else (
+  if "!FRONTEND_BUSY!"=="1" echo   - Port 5173 freed.
 )
 
 :: Start frontend in new window with --host for PWA mobile testing (Network URL)
