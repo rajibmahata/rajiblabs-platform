@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rajib Mahata | Senior .NET &amp; Azure Architect</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&amp;family=Fraunces:opsz,wght@9..144,700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#0e1320",
+                    "on-surface": "#dee2f5",
+                    "error": "#ffb4ab",
+                    "surface-dim": "#0e1320",
+                    "primary-fixed": "#dce1ff",
+                    "primary": "#b5c4ff",
+                    "background": "#0e1320",
+                    "tertiary": "#7bd7c5",
+                    "text-muted": "#6A7B9E",
+                    "secondary-fixed-dim": "#eec04e",
+                    "outline-variant": "#434654",
+                    "on-error-container": "#ffdad6",
+                    "surface-tint": "#b5c4ff",
+                    "surface-floating": "#1F3666",
+                    "on-primary": "#00287d",
+                    "surface-container-lowest": "#090e1b",
+                    "tertiary-fixed": "#97f3e1",
+                    "on-error": "#690005",
+                    "secondary": "#eec04e",
+                    "text-secondary": "#8896B3",
+                    "on-primary-fixed-variant": "#003baf",
+                    "on-surface-variant": "#c4c5d6",
+                    "secondary-fixed": "#ffdf99",
+                    "on-secondary-fixed-variant": "#5a4300",
+                    "on-secondary": "#3f2e00",
+                    "surface-inset": "#152B52",
+                    "surface-container-highest": "#303443",
+                    "surface-bright": "#343948",
+                    "surface-card": "#0D1F3C",
+                    "border-subtle": "#1E2D4A",
+                    "accent-blue-hover": "#2563F4",
+                    "on-background": "#dee2f5",
+                    "surface-variant": "#303443",
+                    "surface-container": "#1a1f2d",
+                    "inverse-surface": "#dee2f5",
+                    "on-tertiary": "#003730",
+                    "tertiary-container": "#005d51",
+                    "on-tertiary-fixed-variant": "#005046",
+                    "surface-container-low": "#161b29",
+                    "accent-gold-hover": "#F0C040",
+                    "on-secondary-container": "#362700",
+                    "error-container": "#93000a",
+                    "on-tertiary-container": "#7ad6c4",
+                    "secondary-container": "#b38b19",
+                    "on-primary-fixed": "#00164e",
+                    "tertiary-fixed-dim": "#7bd7c5",
+                    "outline": "#8e909f",
+                    "primary-fixed-dim": "#b5c4ff",
+                    "surface-container-high": "#252a38",
+                    "inverse-primary": "#2955cb",
+                    "primary-container": "#1547be",
+                    "text-primary": "#F0F4FF",
+                    "on-tertiary-fixed": "#00201b",
+                    "inverse-on-surface": "#2b303e",
+                    "whatsapp": "#25D366",
+                    "on-secondary-fixed": "#251a00",
+                    "on-primary-container": "#b4c3ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "section-gap-sm": "48px",
+                    "container-max": "1200px",
+                    "section-gap-lg": "96px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "48px",
+                    "grid-unit": "4px"
+            },
+            "fontFamily": {
+                    "body-compact": ["DM Sans"],
+                    "body-base": ["DM Sans"],
+                    "body-large": ["DM Sans"],
+                    "card-heading": ["DM Sans"],
+                    "tech-chip": ["JetBrains Mono"],
+                    "display-hero": ["Fraunces"],
+                    "section-title": ["Fraunces"],
+                    "telemetry-stat": ["JetBrains Mono"],
+                    "label-caps": ["JetBrains Mono"],
+                    "display-hero-mobile": ["Fraunces"]
+            },
+            "fontSize": {
+                    "body-compact": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                    "body-base": ["16px", { "lineHeight": "1.65", "fontWeight": "400" }],
+                    "body-large": ["18px", { "lineHeight": "1.7", "fontWeight": "300" }],
+                    "card-heading": ["20px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                    "tech-chip": ["11px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                    "display-hero": ["56px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                    "section-title": ["42px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "telemetry-stat": ["32px", { "lineHeight": "1.0", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                    "label-caps": ["11px", { "lineHeight": "1.4", "letterSpacing": "0.10em", "fontWeight": "500" }],
+                    "display-hero-mobile": ["34px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-surface');
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .safe-pb {
+            padding-bottom: env(safe-area-inset-bottom, 24px);
+        }
+
+        /* Subtle glow animation for interactive elements */
+        @keyframes subtle-glow {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 244, 0); }
+            50% { box-shadow: 0 0 20px 0 rgba(37, 99, 244, 0.2); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 244, 0); }
+        }
+        
+        .hover-lift {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            border-color: theme('colors.primary');
+        }
+
+        .ambient-mesh {
+            background: radial-gradient(circle at 15% 50%, rgba(21, 71, 190, 0.15), transparent 40%),
+                        radial-gradient(circle at 85% 30%, rgba(123, 215, 197, 0.1), transparent 40%);
+        }
+    </style>
+</head>
+<body class="ambient-mesh min-h-screen flex flex-col relative">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/90 dark:bg-surface/90 backdrop-blur-lg border-b border-outline-variant/30 transition-all duration-300 ease-in-out hidden md:block">
+<div class="flex justify-between items-center px-gutter py-4 max-w-container-max mx-auto">
+<a class="font-section-title text-card-heading font-bold text-on-surface" href="#">Rajib Mahata</a>
+<nav class="flex items-center gap-6 font-body-compact text-body-compact">
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-bright/50 px-3 py-1 rounded" href="#overview">Overview</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-bright/50 px-3 py-1 rounded" href="#architecture">Architecture</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-bright/50 px-3 py-1 rounded" href="#ai">AI</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-bright/50 px-3 py-1 rounded" href="#experience">Experience</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1" href="#rajiblabs">RajibLabs</a>
+</nav>
+<a class="font-body-compact text-body-compact bg-primary-container text-on-primary-container px-6 py-2 rounded-full hover:bg-accent-blue-hover transition-colors" href="#contact">
+                Contact
+            </a>
+</div>
+</header>
+<main class="flex-grow pt-24 md:pt-32 pb-section-gap-lg">
+<!-- Hero Section -->
+<section class="max-w-container-max mx-auto px-gutter py-section-gap-sm md:py-section-gap-lg relative">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+<div class="md:col-span-8 z-10">
+<span class="inline-block px-3 py-1 mb-6 font-tech-chip text-tech-chip bg-surface-inset border border-border-subtle text-tertiary rounded-full uppercase tracking-wider">
+<span class="inline-block w-2 h-2 rounded-full bg-tertiary mr-2 animate-pulse"></span>
+                        Available for Opportunities
+                    </span>
+<h1 class="font-display-hero-mobile md:font-display-hero text-display-hero-mobile md:text-display-hero text-text-primary mb-6">
+                        Architecting Scalable <span class="text-primary">Intelligence</span> &amp; Cloud Ecosystems.
+                    </h1>
+<p class="font-body-large text-body-large text-text-secondary max-w-2xl mb-10">
+                        Senior .NET &amp; Azure Architect specializing in building high-performance enterprise systems, modernizing legacy infrastructure, and integrating robust GenAI and LLM pipelines into production environments.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4">
+<button class="bg-primary-container text-on-primary-container font-body-base text-body-base px-8 py-4 rounded-full font-semibold hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+                            Download CV
+                        </button>
+<button class="bg-transparent border border-border-subtle text-on-surface font-body-base text-body-base px-8 py-4 rounded-full font-semibold hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+                            View Architecture
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- What I Do (Bento Grid) -->
+<section class="max-w-container-max mx-auto px-gutter py-section-gap-sm" id="architecture">
+<div class="mb-12">
+<h2 class="font-section-title text-section-title text-on-surface mb-4">Core Competencies</h2>
+<p class="font-body-base text-body-base text-text-secondary max-w-xl">Leveraging deep technical expertise to deliver resilient, scalable, and intelligent software solutions across the modern stack.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
+<!-- Card 1 -->
+<div class="lg:col-span-8 bg-surface-card border border-border-subtle rounded-xl p-6 md:p-10 hover-lift relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-4xl text-primary mb-6" data-icon="dns">dns</span>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-3">Enterprise Software Architecture</h3>
+<p class="font-body-base text-body-base text-on-surface-variant max-w-lg">
+                            Designing distributed systems, microservices architectures, and event-driven domains ensuring high availability, fault tolerance, and seamless scalability for global platforms.
+                        </p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="lg:col-span-4 bg-surface-card border border-border-subtle rounded-xl p-6 md:p-10 hover-lift relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-tertiary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-4xl text-tertiary mb-6" data-icon="cloud">cloud</span>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-3">.NET &amp; Azure</h3>
+<p class="font-body-base text-body-base text-on-surface-variant">
+                            Deep mastery of C#, .NET 8, and the entire Azure ecosystem (AKS, CosmosDB, Service Bus) for high-throughput backend services.
+                        </p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="lg:col-span-5 bg-surface-card border border-border-subtle rounded-xl p-6 md:p-10 hover-lift relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-4xl text-secondary mb-6" data-icon="smart_toy">smart_toy</span>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-3">AI &amp; GenAI Integration</h3>
+<p class="font-body-base text-body-base text-on-surface-variant">
+                            Orchestrating Large Language Models, building complex RAG pipelines, and deploying autonomous agentic workflows using LangChain and Semantic Kernel.
+                        </p>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="lg:col-span-7 bg-surface-card border border-border-subtle rounded-xl p-6 md:p-10 hover-lift relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary-fixed/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-4xl text-primary-fixed mb-6" data-icon="code_blocks">code_blocks</span>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-3">Product Engineering Leadership</h3>
+<p class="font-body-base text-body-base text-on-surface-variant max-w-lg">
+                            Driving engineering culture from zero-to-one. Translating business requirements into technical blueprints, mentoring senior engineers, and establishing CI/CD and DevOps rigor.
+                        </p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 rounded-t-xl bg-surface-container/95 dark:bg-surface-container/95 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] md:hidden safe-pb">
+<div class="flex justify-around items-center h-16 px-6">
+<a class="flex flex-col items-center gap-1 active:scale-95 transition-transform text-on-surface-variant p-3 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="call">call</span>
+<span class="font-label-caps text-label-caps opacity-0 h-0 group-hover:opacity-100 group-hover:h-auto transition-all text-primary">Call</span>
+</a>
+<a class="flex flex-col items-center gap-1 active:scale-95 transition-transform text-on-surface-variant p-3 group" href="#">
+<span class="material-symbols-outlined group-hover:text-whatsapp transition-colors" data-icon="chat">chat</span>
+<span class="font-label-caps text-label-caps opacity-0 h-0 group-hover:opacity-100 group-hover:h-auto transition-all text-whatsapp">WhatsApp</span>
+</a>
+<a class="flex flex-col items-center gap-1 active:scale-95 transition-transform text-on-surface-variant p-3 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" data-icon="mail">mail</span>
+<span class="font-label-caps text-label-caps opacity-0 h-0 group-hover:opacity-100 group-hover:h-auto transition-all text-primary">Email</span>
+</a>
+</div>
+</nav>
+<!-- Footer -->
+<footer class="w-full py-section-gap-sm px-gutter bg-surface-container-lowest border-t border-outline-variant/10 md:mb-0 mb-20">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 max-w-container-max mx-auto">
+<div class="font-section-title text-body-large text-on-surface text-center md:text-left">
+                © 2024 Rajib Mahata. Senior .NET &amp; Azure Architect.
+            </div>
+<div class="flex flex-wrap justify-center gap-6 font-body-compact text-body-compact text-text-muted transition-opacity duration-200">
+<a class="hover:text-on-surface hover:underline" href="#">LinkedIn</a>
+<a class="hover:text-on-surface hover:underline" href="#">GitHub</a>
+<a class="hover:text-on-surface hover:underline" href="#">StackOverflow</a>
+<a class="hover:text-on-surface hover:underline text-tertiary" href="#">Azure Certified</a>
+</div>
+</div>
+</footer>
+</body></html>

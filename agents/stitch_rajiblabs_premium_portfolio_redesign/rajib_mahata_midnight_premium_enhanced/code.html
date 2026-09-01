@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Rajib Mahata - Portfolio</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary": "#eec04e",
+                      "primary-fixed-dim": "#b5c4ff",
+                      "surface-tint": "#b5c4ff",
+                      "tertiary": "#7bd7c5",
+                      "on-secondary-fixed": "#251a00",
+                      "tertiary-fixed-dim": "#7bd7c5",
+                      "accent-blue-hover": "#2563F4",
+                      "surface-inset": "#152B52",
+                      "primary-fixed": "#dce1ff",
+                      "text-secondary": "#8896B3",
+                      "on-primary-container": "#b4c3ff",
+                      "on-secondary-container": "#362700",
+                      "tertiary-container": "#005d51",
+                      "surface-card": "#0D1F3C",
+                      "inverse-surface": "#dee2f5",
+                      "on-primary-fixed": "#00164e",
+                      "surface": "#0e1320",
+                      "on-secondary-fixed-variant": "#5a4300",
+                      "on-tertiary-fixed": "#00201b",
+                      "primary-container": "#1547be",
+                      "outline-variant": "#434654",
+                      "border-subtle": "#1E2D4A",
+                      "on-tertiary-container": "#7ad6c4",
+                      "on-secondary": "#3f2e00",
+                      "on-tertiary-fixed-variant": "#005046",
+                      "on-tertiary": "#003730",
+                      "accent-gold-hover": "#F0C040",
+                      "on-error-container": "#ffdad6",
+                      "text-muted": "#6A7B9E",
+                      "secondary-fixed": "#ffdf99",
+                      "text-primary": "#F0F4FF",
+                      "secondary-fixed-dim": "#eec04e",
+                      "primary": "#b5c4ff",
+                      "inverse-primary": "#2955cb",
+                      "on-error": "#690005",
+                      "on-background": "#dee2f5",
+                      "surface-container-lowest": "#090e1b",
+                      "tertiary-fixed": "#97f3e1",
+                      "surface-dim": "#0e1320",
+                      "on-primary": "#00287d",
+                      "secondary-container": "#b38b19",
+                      "surface-bright": "#343948",
+                      "background": "#0e1320",
+                      "surface-container-highest": "#303443",
+                      "whatsapp": "#25D366",
+                      "on-surface-variant": "#c4c5d6",
+                      "on-surface": "#dee2f5",
+                      "surface-floating": "#1F3666",
+                      "inverse-on-surface": "#2b303e",
+                      "on-primary-fixed-variant": "#003baf",
+                      "surface-container-high": "#252a38",
+                      "surface-container-low": "#161b29",
+                      "error-container": "#93000a",
+                      "surface-container": "#1a1f2d",
+                      "surface-variant": "#303443",
+                      "outline": "#8e909f",
+                      "error": "#ffb4ab"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "container-max": "1200px",
+                      "margin-desktop": "48px",
+                      "section-gap-lg": "96px",
+                      "grid-unit": "4px",
+                      "margin-mobile": "16px",
+                      "section-gap-sm": "48px"
+              },
+              "fontFamily": {
+                      "label-caps": [
+                              "jetbrainsMono"
+                      ],
+                      "display-hero": [
+                              "Fraunces"
+                      ],
+                      "body-compact": [
+                              "dmSans"
+                      ],
+                      "tech-chip": [
+                              "jetbrainsMono"
+                      ],
+                      "body-large": [
+                              "dmSans"
+                      ],
+                      "body-base": [
+                              "dmSans"
+                      ],
+                      "telemetry-stat": [
+                              "jetbrainsMono"
+                      ],
+                      "display-hero-mobile": [
+                              "Fraunces"
+                      ],
+                      "section-title": [
+                              "Fraunces"
+                      ],
+                      "card-heading": [
+                              "dmSans"
+                      ]
+              },
+              "fontSize": {
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0.10em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-hero": [
+                              "56px",
+                              {
+                                      "lineHeight": "1.05",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-compact": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "tech-chip": [
+                              "11px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-large": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.7",
+                                      "fontWeight": "300"
+                              }
+                      ],
+                      "body-base": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.65",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "telemetry-stat": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-hero-mobile": [
+                              "34px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "section-title": [
+                              "42px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "card-heading": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #080D1A;
+            color: theme('colors.text-primary');
+        }
+        
+        .hero-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(21, 71, 190, 0.15) 0%, rgba(8, 13, 26, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        .glass-card {
+            background: rgba(13, 31, 60, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 0.5px solid rgba(30, 45, 74, 0.8);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 20px rgba(21, 71, 190, 0.2);
+            border-color: rgba(21, 71, 190, 0.5);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #F0F4FF 0%, #8896B3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Nav Hide/Show Logic */
+        .nav-hidden {
+            transform: translateY(-100%);
+        }
+        
+        /* Grid Masonry Approximation */
+        .masonry-grid {
+            columns: 1;
+            column-gap: 24px;
+        }
+        @media (min-width: 768px) {
+            .masonry-grid {
+                columns: 2;
+            }
+        }
+        @media (min-width: 1024px) {
+            .masonry-grid {
+                columns: 3;
+            }
+        }
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col relative overflow-x-hidden selection:bg-primary-container selection:text-white">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/90 dark:bg-surface/90 backdrop-blur-lg border-b border-outline-variant/30 transition-all duration-300 ease-in-out">
+<div class="flex justify-between items-center px-gutter py-4 max-w-container-max mx-auto">
+<a class="font-section-title text-card-heading font-bold text-on-surface" href="#">Rajib Mahata</a>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-body-compact text-body-compact" href="#">Overview</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-compact text-body-compact hover:bg-surface-bright/50 px-2 py-1 rounded" href="#">Architecture</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-compact text-body-compact hover:bg-surface-bright/50 px-2 py-1 rounded" href="#">AI</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-compact text-body-compact hover:bg-surface-bright/50 px-2 py-1 rounded" href="#">Experience</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-compact text-body-compact hover:bg-surface-bright/50 px-2 py-1 rounded" href="#">RajibLabs</a>
+</nav>
+<a class="hidden md:inline-flex bg-primary-container text-white px-6 py-2 rounded-full font-body-compact text-body-compact hover:bg-accent-blue-hover transition-colors items-center gap-2" href="#contact">
+                Contact
+            </a>
+<button class="md:hidden text-on-surface">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</header>
+<main class="flex-grow pt-24 pb-section-gap-lg">
+<!-- Hero Section -->
+<section class="relative min-h-[819px] flex items-center justify-center px-gutter py-section-gap-lg">
+<div class="hero-glow"></div>
+<div class="max-w-container-max mx-auto w-full text-center z-10">
+<div class="inline-flex items-center gap-2 bg-surface-inset px-4 py-1.5 rounded-full border border-border-subtle mb-8">
+<span class="w-2 h-2 rounded-full bg-whatsapp animate-pulse"></span>
+<span class="font-tech-chip text-tech-chip text-text-secondary uppercase tracking-wider">Available for New Projects</span>
+</div>
+<h1 class="font-display-hero-mobile md:font-display-hero text-display-hero-mobile md:text-display-hero text-gradient mb-6 max-w-4xl mx-auto">
+                    Architecting Scalable Intelligence
+                </h1>
+<p class="font-body-large text-body-large text-text-muted max-w-2xl mx-auto mb-12">
+                    Senior .NET &amp; Azure Architect bridging the gap between high-performance backend systems and next-generation AI integrations.
+                </p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+<a class="w-full sm:w-auto bg-primary-container text-white px-8 py-3 rounded-full font-body-base text-body-base hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-2" href="#projects">
+                        View Work <span class="material-symbols-outlined text-sm">arrow_downward</span>
+</a>
+<a class="w-full sm:w-auto border border-border-subtle text-text-primary px-8 py-3 rounded-full font-body-base text-body-base hover:border-primary-container hover:text-primary-container transition-all flex items-center justify-center" href="#about">
+                        About Me
+                    </a>
+</div>
+</div>
+</section>
+<!-- Core Competencies (Bento Grid) -->
+<section class="px-gutter py-section-gap-sm bg-surface-container-lowest/50" id="expertise">
+<div class="max-w-container-max mx-auto">
+<h2 class="font-section-title text-section-title text-on-surface mb-12 text-center">Core Expertise</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card 1 (Spans 2 rows on desktop ideally, but keeping simple for now) -->
+<div class="glass-card rounded-xl p-6 md:col-span-2">
+<div class="w-12 h-12 rounded-lg bg-surface-inset flex items-center justify-center mb-6 border border-border-subtle text-primary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cloud</span>
+</div>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-3">Enterprise Cloud Architecture</h3>
+<p class="font-body-compact text-body-compact text-text-secondary mb-6">
+                            Designing resilient, globally distributed systems on Azure. Utilizing microservices, serverless computing, and advanced networking to ensure 99.99% uptime.
+                        </p>
+<div class="flex flex-wrap gap-2">
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-tertiary px-2 py-1 rounded border border-tertiary/30">Azure Kubernetes</span>
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-tertiary px-2 py-1 rounded border border-tertiary/30">Cosmos DB</span>
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-tertiary px-2 py-1 rounded border border-tertiary/30">API Management</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-card rounded-xl p-6">
+<div class="w-12 h-12 rounded-lg bg-surface-inset flex items-center justify-center mb-6 border border-border-subtle text-primary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-3">.NET Mastery</h3>
+<p class="font-body-compact text-body-compact text-text-secondary mb-6">
+                            High-performance backend development with .NET 8. Focus on low-latency processing and complex business logic.
+                        </p>
+<div class="flex flex-wrap gap-2">
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-primary px-2 py-1 rounded border border-primary/30">C#</span>
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-primary px-2 py-1 rounded border border-primary/30">ASP.NET Core</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-card rounded-xl p-6">
+<div class="w-12 h-12 rounded-lg bg-surface-inset flex items-center justify-center mb-6 border border-border-subtle text-primary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-3">AI Integration</h3>
+<p class="font-body-compact text-body-compact text-text-secondary mb-6">
+                            Embedding LLMs and machine learning models into traditional enterprise workflows.
+                        </p>
+<div class="flex flex-wrap gap-2">
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-secondary px-2 py-1 rounded border border-secondary/30">Semantic Kernel</span>
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-secondary px-2 py-1 rounded border border-secondary/30">OpenAI</span>
+</div>
+</div>
+<!-- Card 4 (Spans 2 columns) -->
+<div class="glass-card rounded-xl p-6 md:col-span-2 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-r from-primary-container/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+<div>
+<h3 class="font-card-heading text-card-heading text-on-surface mb-2">Performance Optimization</h3>
+<p class="font-body-compact text-body-compact text-text-secondary">
+                                    Specialized in refactoring legacy monolithic applications into streamlined, scalable microservices architectures.
+                                </p>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-center">
+<span class="block font-telemetry-stat text-telemetry-stat text-primary-container">40%</span>
+<span class="font-label-caps text-label-caps text-text-muted">Cost Reduction</span>
+</div>
+<div class="w-px h-12 bg-border-subtle"></div>
+<div class="text-center">
+<span class="block font-telemetry-stat text-telemetry-stat text-tertiary">3x</span>
+<span class="font-label-caps text-label-caps text-text-muted">Speed Increase</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Impact & Scale Section -->
+<section class="px-gutter py-12 border-y border-border-subtle bg-surface-container-lowest/30">
+<div class="max-w-container-max mx-auto">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x-0 md:divide-x divide-border-subtle">
+<div class="text-center px-4">
+<div class="font-telemetry-stat text-4xl text-primary-container mb-2">15+</div>
+<div class="font-label-caps text-text-muted">Years Experience</div>
+</div>
+<div class="text-center px-4">
+<div class="font-telemetry-stat text-4xl text-primary-container mb-2">99.99%</div>
+<div class="font-label-caps text-text-muted">Uptime Architected</div>
+</div>
+<div class="text-center px-4">
+<div class="font-telemetry-stat text-4xl text-primary-container mb-2">10M+</div>
+<div class="font-label-caps text-text-muted">Users Supported</div>
+</div>
+<div class="text-center px-4">
+<div class="font-telemetry-stat text-4xl text-primary-container mb-2">Azure</div>
+<div class="font-label-caps text-text-muted">Certified Architect</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Featured Projects Section -->
+<section class="px-gutter py-section-gap-lg bg-surface" id="projects">
+<div class="max-w-container-max mx-auto">
+<h2 class="font-section-title text-section-title text-on-surface mb-12 text-center">Featured Projects</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="glass-card rounded-xl p-8 flex flex-col h-full border border-border-subtle bg-surface-card hover:border-primary-container/50 transition-all">
+<h3 class="font-card-heading text-card-heading text-on-surface mb-4">RajibLabs Platform</h3>
+<p class="font-body-base text-text-secondary mb-6 flex-grow">
+                    A comprehensive microservices platform serving as the backbone for experimental AI integrations and high-throughput data processing.
+                </p>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-primary px-2 py-1 rounded border border-primary/30">.NET 8</span>
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-primary px-2 py-1 rounded border border-primary/30">AKS</span>
+</div>
+<a class="inline-flex items-center gap-2 text-primary-container hover:text-accent-blue-hover font-body-compact transition-colors mt-auto group" href="#">
+                    View Case Study <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+<!-- Card 2 -->
+<div class="glass-card rounded-xl p-8 flex flex-col h-full border border-border-subtle bg-surface-card hover:border-primary-container/50 transition-all">
+<h3 class="font-card-heading text-card-heading text-on-surface mb-4">Enterprise Cloud Migration</h3>
+<p class="font-body-base text-text-secondary mb-6 flex-grow">
+                    Orchestrated the seamless migration of legacy monolithic systems to a resilient, globally distributed cloud architecture with zero downtime.
+                </p>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-tertiary px-2 py-1 rounded border border-tertiary/30">Azure Kubernetes</span>
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-tertiary px-2 py-1 rounded border border-tertiary/30">CosmosDB</span>
+</div>
+<a class="inline-flex items-center gap-2 text-primary-container hover:text-accent-blue-hover font-body-compact transition-colors mt-auto group" href="#">
+                    View Case Study <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+<!-- Card 3 -->
+<div class="glass-card rounded-xl p-8 flex flex-col h-full border border-border-subtle bg-surface-card hover:border-primary-container/50 transition-all">
+<h3 class="font-card-heading text-card-heading text-on-surface mb-4">AI-Powered RAG Pipeline</h3>
+<p class="font-body-base text-text-secondary mb-6 flex-grow">
+                    Designed and implemented a Retrieval-Augmented Generation pipeline embedding enterprise knowledge graphs directly into LLM workflows.
+                </p>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-secondary px-2 py-1 rounded border border-secondary/30">Semantic Kernel</span>
+<span class="font-tech-chip text-tech-chip bg-surface-inset text-secondary px-2 py-1 rounded border border-secondary/30">OpenAI</span>
+</div>
+<a class="inline-flex items-center gap-2 text-primary-container hover:text-accent-blue-hover font-body-compact transition-colors mt-auto group" href="#">
+                    View Case Study <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 rounded-t-xl md:hidden bg-surface-container/95 dark:bg-surface-container/95 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] transition-all duration-300">
+<div class="flex justify-around items-center h-16 pb-safe px-6">
+<a class="text-on-surface-variant p-3 active:scale-95 transition-transform flex flex-col items-center gap-1" href="tel:#">
+<span class="material-symbols-outlined">call</span>
+<span class="font-label-caps text-label-caps">Call</span>
+</a>
+<a class="bg-primary-container text-on-primary-container rounded-full p-3 active:scale-95 transition-transform flex flex-col items-center gap-1" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-caps text-label-caps">WhatsApp</span>
+</a>
+<a class="text-on-surface-variant p-3 active:scale-95 transition-transform flex flex-col items-center gap-1" href="mailto:#">
+<span class="material-symbols-outlined">mail</span>
+<span class="font-label-caps text-label-caps">Email</span>
+</a>
+</div>
+</nav>
+<!-- Footer -->
+<footer class="w-full py-section-gap-sm px-gutter border-t border-outline-variant/10 bg-surface-container-lowest pb-24 md:pb-section-gap-sm">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 max-w-container-max mx-auto transition-opacity duration-200">
+<div class="font-section-title text-body-large text-on-surface">Rajib Mahata</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="text-text-muted hover:text-on-surface hover:underline font-body-compact text-body-compact transition-colors" href="#">LinkedIn</a>
+<a class="text-text-muted hover:text-on-surface hover:underline font-body-compact text-body-compact transition-colors" href="#">GitHub</a>
+<a class="text-text-muted hover:text-on-surface hover:underline font-body-compact text-body-compact transition-colors" href="#">StackOverflow</a>
+<a class="text-text-muted hover:text-on-surface hover:underline font-body-compact text-body-compact transition-colors" href="#">Azure Certified</a>
+</div>
+<div class="text-text-muted font-body-compact text-body-compact">
+                © 2024 Rajib Mahata. Senior .NET &amp; Azure Architect.
+            </div>
+</div>
+</footer>
+<script>
+        // Simple scroll handling for top nav
+        let lastScroll = 0;
+        const header = document.querySelector('header');
+        
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
+            
+            if (currentScroll <= 0) {
+                header.classList.remove('nav-hidden');
+                return;
+            }
+            
+            if (currentScroll > lastScroll && currentScroll > 100) {
+                // Scroll Down
+                header.classList.add('nav-hidden');
+            } else {
+                // Scroll Up
+                header.classList.remove('nav-hidden');
+            }
+            
+            lastScroll = currentScroll;
+        });
+    </script>
+</body></html>
