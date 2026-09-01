@@ -29,6 +29,22 @@ fi
 : "${FTP_PATH:=rajiblabs}"
 : "${SITE_URL:=http://rajibmahata143-001-site1.mtempurl.com/}"
 
+# Normalize FTP_HOST/FTP_PATH (strip ftp://, :21, slashes that cause "URL rejected: Malformed" and "550 The parameter is incorrect")
+FTP_HOST="${FTP_HOST#ftp://}"
+FTP_HOST="${FTP_HOST#ftps://}"
+FTP_HOST="${FTP_HOST%%/*}"
+FTP_HOST="${FTP_HOST%%:*}"
+FTP_PATH="${FTP_PATH#/}"
+FTP_PATH="${FTP_PATH%/}"
+# If FTP_PATH accidentally contains host (e.g. user set FTP_HOST as ftp://.../rajiblabs), fix
+if [[ "$FTP_PATH" == *"win1069"* ]]; then
+  FTP_PATH="rajiblabs"
+  FTP_HOST="win1069.site4now.net"
+fi
+if [[ -z "$FTP_PATH" ]]; then
+  FTP_PATH="site/wwwroot"
+fi
+
 DO_BUILD=false
 if [[ "${1:-}" == "--build" ]]; then
   DO_BUILD=true

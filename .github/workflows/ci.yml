@@ -122,9 +122,20 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASS }}
           FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
+          # Normalize like deploy.sh (strip ftp://, :21, slashes that cause 550/malformed)
+          FTP_HOST="${FTP_HOST#ftp://}"
+          FTP_HOST="${FTP_HOST#ftps://}"
+          FTP_HOST="${FTP_HOST%%/*}"
+          FTP_HOST="${FTP_HOST%%:*}"
+          FTP_PATH="${FTP_PATH#/}"
+          FTP_PATH="${FTP_PATH%/}"
+          if [ -z "$FTP_PATH" ]; then FTP_PATH="site/wwwroot"; fi
           echo "Testing FTP list for $FTP_HOST/$FTP_PATH ..."
-          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls \"$FTP_PATH\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -50 || echo "lftp list failed, trying curl..."
+          echo "Normalized: HOST=$FTP_HOST PATH=$FTP_PATH USER=$FTP_USER"
+          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls \"$FTP_PATH\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -50 || echo "lftp list $FTP_PATH failed, trying root..."
+          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -50 || true
           curl --ftp-pasv --list-only -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/$FTP_PATH/" 2>&1 | head -50 || true
+          curl --ftp-pasv --list-only -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/" 2>&1 | head -50 || true
 
       - name: Deploy via FTP (SmarterASP)
         if: steps.check.outputs.skip == 'false'
