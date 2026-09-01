@@ -8,23 +8,20 @@ interface BeforeInstallPromptEvent extends Event {
 export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('pwa-dismissed') !== null;
+  });
+  const [isStandalone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true
+    );
+  });
 
   useEffect(() => {
-    // Check if already installed / standalone
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      // @ts-ignore iOS
-      window.navigator.standalone === true;
-    setIsStandalone(standalone);
-    if (standalone) return;
-
-    // Check dismiss history (session)
-    if (sessionStorage.getItem('pwa-dismissed')) {
-      setDismissed(true);
-      return;
-    }
+    if (isStandalone || dismissed) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -38,7 +35,7 @@ export default function PWAInstallPrompt() {
     // iOS fallback — show manual install hint after 8s
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     let timer: number | undefined;
-    if (isIOS && !standalone) {
+    if (isIOS && !isStandalone) {
       timer = window.setTimeout(() => setVisible(true), 8000);
     }
 
@@ -46,7 +43,7 @@ export default function PWAInstallPrompt() {
       window.removeEventListener('beforeinstallprompt', handler);
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [isStandalone, dismissed]);
 
   const handleInstall = async () => {
     if (deferredPrompt) {

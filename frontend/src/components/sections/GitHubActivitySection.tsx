@@ -14,7 +14,11 @@ export default function GitHubActivitySection() {
   const heatmapLevels = useMemo(() => {
     const seed = 2026_07_06;
     let s = seed;
-    const rng = () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+    const rng = () => {
+      // eslint-disable-next-line react-hooks/immutability -- intentional local mutation for deterministic RNG
+      s = (s * 16807 + 0) % 2147483647;
+      return s / 2147483647;
+    };
     const cells = 52 * 7;
     return Array.from({ length: cells }, () => {
       const r = rng();
