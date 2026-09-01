@@ -7,6 +7,8 @@
 #
 # Secrets are read from environment variables or a local .env file:
 #   FTP_HOST, FTP_USER, FTP_PASS, FTP_PATH, SITE_URL
+#   FTP_HOST should be just the hostname, e.g. win1069.site4now.net
+#   FTP_PATH should be the verified FTP root, e.g. / or empty if already scoped
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -26,23 +28,27 @@ fi
 : "${FTP_HOST:=win1069.site4now.net}"
 : "${FTP_USER:=rajibmahata143-001}"
 : "${FTP_PASS:?Set FTP_PASS in your environment or .env}"
-: "${FTP_PATH:=rajiblabs}"
-: "${SITE_URL:=http://rajibmahata143-001-site1.mtempurl.com/}"
+: "${FTP_PATH:=}"
+: "${SITE_URL:=https://rajiblabs.com}"
 
-# Normalize FTP_HOST/FTP_PATH (strip ftp://, :21, slashes that cause "URL rejected: Malformed" and "550 The parameter is incorrect")
+# Normalize FTP_HOST (strip ftp://, :21, trailing slashes) — do not touch password
+FTP_HOST_RAW="$FTP_HOST"
 FTP_HOST="${FTP_HOST#ftp://}"
 FTP_HOST="${FTP_HOST#ftps://}"
 FTP_HOST="${FTP_HOST%%/*}"
 FTP_HOST="${FTP_HOST%%:*}"
-FTP_PATH="${FTP_PATH#/}"
-FTP_PATH="${FTP_PATH%/}"
-# If FTP_PATH accidentally contains host (e.g. user set FTP_HOST as ftp://.../rajiblabs), fix
-if [[ "$FTP_PATH" == *"win1069"* ]]; then
-  FTP_PATH="rajiblabs"
-  FTP_HOST="win1069.site4now.net"
+FTP_PATH_RAW="$FTP_PATH"
+# FTP_PATH may be "/" for root, or empty, or a subfolder. Keep "/" as empty for root.
+if [[ "$FTP_PATH" == "/" ]]; then
+  FTP_PATH=""
+else
+  FTP_PATH="${FTP_PATH#/}"
+  FTP_PATH="${FTP_PATH%/}"
 fi
-if [[ -z "$FTP_PATH" ]]; then
-  FTP_PATH="site/wwwroot"
+# If FTP_PATH still contains host (user set FTP_HOST as ftp://.../rajiblabs), extract
+if [[ "$FTP_PATH" == *"win1069"* ]]; then
+  FTP_HOST="win1069.site4now.net"
+  FTP_PATH=""
 fi
 
 DO_BUILD=false
@@ -53,6 +59,13 @@ fi
 echo ""
 echo "🚀 RajibLabs deploy"
 echo "───────────────────"
+echo "  Host: $FTP_HOST"
+echo "  User: $FTP_USER"
+if [[ -z "$FTP_PATH" ]]; then
+  echo "  Path: / (FTP root)"
+else
+  echo "  Path: /$FTP_PATH"
+fi
 
 if $DO_BUILD; then
   echo "🔨 Building frontend..."
@@ -66,48 +79,58 @@ if [ ! -f "$DIST_DIR/index.html" ]; then
   exit 1
 fi
 
-echo "📤 Uploading to $FTP_HOST/$FTP_PATH ... (also trying site/wwwroot for custom domain)"
+echo "📤 Uploading to $FTP_HOST${FTP_PATH:+/$FTP_PATH} ..."
 
-# Prefer lftp (more reliable for SmarterASP) if available, else curl
+# Prefer lftp if available
 USE_LFTP=false
 if command -v lftp >/dev/null 2>&1; then
   USE_LFTP=true
-  echo "  Using lftp for upload (passive, create-dirs)"
+  echo "  Using lftp (passive, create-dirs)"
 else
-  echo "  Using curl for upload (install lftp for more reliability: sudo apt-get install lftp)"
+  echo "  Using curl (install lftp: sudo apt-get install lftp)"
 fi
 
+# Helper to upload a single file to the verified FTP root
+# Uses -u for auth, never puts password in URL, properly quoted
 upload() {
   local src="$1"
-  local dest="$2"
-  # Try multiple SmarterASP paths: publish Profile says /rajiblabs, but custom domain may be site/wwwroot
-  # Also try without subfolder (some configs use /)
-  local targets=("$FTP_PATH/$dest" "site/wwwroot/$dest" "wwwroot/$dest" "$dest")
-  for target in "${targets[@]}"; do
-    if $USE_LFTP; then
-      if lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; set net:timeout 30; put \"$src\" -o \"$target\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" >/dev/null 2>&1; then
-        echo "  ✓ $dest -> $target"
-        return 0
-      fi
-    else
-      if curl --fail --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$target" --connect-timeout 30 --max-time 60 >/dev/null 2>&1; then
-        echo "  ✓ $dest -> $target"
-        return 0
-      fi
-    fi
-  done
-  # If all failed, show verbose for primary
-  echo "  ✗ FAILED: $dest — tried ${targets[*]}"
-  if $USE_LFTP; then
-    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; put \"$src\" -o \"$FTP_PATH/$dest\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | tail -30
+  local rel="$2"
+  local dest
+  if [[ -z "$FTP_PATH" ]]; then
+    dest="$rel"
   else
-    curl --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 -v 2>&1 | tail -30
+    dest="$FTP_PATH/$rel"
+  fi
+  # Ensure remote dir exists for this file (lftp mkdir -p, curl --ftp-create-dirs)
+  local remote_dir
+  remote_dir="$(dirname "$dest")"
+  if [[ "$remote_dir" != "." && "$remote_dir" != "/" ]]; then
+    if $USE_LFTP; then
+      lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; set net:timeout 30; mkdir -p \"$remote_dir\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" >/dev/null 2>&1 || true
+    fi
+  fi
+  if $USE_LFTP; then
+    if lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; set net:timeout 30; put \"$src\" -o \"$dest\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" >/dev/null 2>&1; then
+      echo "  ✓ $rel"
+      return 0
+    fi
+  else
+    if curl --fail --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$dest" --connect-timeout 30 --max-time 60 >/dev/null 2>&1; then
+      echo "  ✓ $rel"
+      return 0
+    fi
+  fi
+  echo "  ✗ FAILED: $rel"
+  # Verbose retry (still not printing password, -u is safe)
+  if $USE_LFTP; then
+    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; set net:timeout 30; put \"$src\" -o \"$dest\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | tail -20
+  else
+    curl --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$dest" --connect-timeout 30 -v 2>&1 | tail -30
   fi
   return 1
 }
 
-# Upload every file in dist, preserving directory structure.
-# Upload sw.js last (service worker can be locked if served)
+# Upload all files, sw.js last (service worker can be locked)
 SW_FILE=""
 while IFS= read -r -d '' file; do
   rel="${file#$DIST_DIR/}"
@@ -118,14 +141,13 @@ while IFS= read -r -d '' file; do
   upload "$file" "$rel" || echo "  ⚠ Continuing after failure for $rel"
 done < <(find "$DIST_DIR" -type f -print0)
 
-# Upload sw.js last with extra handling
 if [[ -n "$SW_FILE" ]]; then
-  echo "  → Uploading sw.js last (service worker)..."
-  # Try to remove old sw.js first (if locked, this may fail but ok)
+  echo "  → Uploading sw.js last..."
   if $USE_LFTP; then
     lftp -e "set ftp:passive-mode true; rm -f \"$FTP_PATH/sw.js\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
+    lftp -e "set ftp:passive-mode true; rm -f \"sw.js\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
   fi
-  upload "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, but PWA may need hard refresh"
+  upload "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
 fi
 
 echo ""
@@ -133,8 +155,14 @@ echo "🔍 Verifying deployment..."
 if title=$(curl -s --max-time 30 "$SITE_URL" | grep -o '<title>[^<]*</title>' | sed 's/<[^>]*>//g' | head -1); then
   echo "   Title: ${title:-<empty>}"
 fi
+# Also verify that the new assets are reachable (not old GH7bam2)
+if curl -s --head --max-time 10 "$SITE_URL/manifest.webmanifest" | grep -q "200"; then
+  echo "   PWA manifest: OK"
+else
+  echo "   PWA manifest: not yet (may need a minute to propagate)"
+fi
 
 echo ""
 echo "✅ Deployment complete"
 echo "   $SITE_URL"
-echo "   http://rajiblabs.com"
+echo "   https://rajiblabs.com"

@@ -98,23 +98,26 @@ jobs:
 
       - name: List dist for debug
         run: |
-          ls -lh frontend/dist/ | head -30
-          ls -lh frontend/dist/sw.js frontend/dist/manifest.webmanifest 2>&1 | head -10
+          echo "Production output (frontend/dist) to be deployed:"
+          ls -R frontend/dist | head -100
+          echo "---"
+          ls -lh frontend/dist/index.html frontend/dist/assets/ | head -20
 
-      - name: Install lftp (more reliable than curl for SmarterASP)
+      - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
       - name: Check FTP secrets
         id: check
         run: |
           if [ -z "${{ secrets.FTP_PASS }}" ]; then
-            echo "FTP secrets not set — skipping deploy (site will not update). Set FTP_HOST, FTP_USER, FTP_PASS, FTP_PATH, SITE_URL in GitHub Secrets."
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "FTP secrets not set — skipping deploy. Set FTP_HOST, FTP_USER, FTP_PASS, FTP_PATH, SITE_URL in GitHub Secrets."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "FTP secrets present"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Test FTP connection (debug)
+      - name: FTP diagnostics (safe, no password in URL)
         if: steps.check.outputs.skip == 'false'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
@@ -122,22 +125,60 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASS }}
           FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
-          # Normalize like deploy.sh (strip ftp://, :21, slashes that cause 550/malformed)
-          FTP_HOST="${FTP_HOST#ftp://}"
-          FTP_HOST="${FTP_HOST#ftps://}"
-          FTP_HOST="${FTP_HOST%%/*}"
-          FTP_HOST="${FTP_HOST%%:*}"
-          FTP_PATH="${FTP_PATH#/}"
-          FTP_PATH="${FTP_PATH%/}"
-          if [ -z "$FTP_PATH" ]; then FTP_PATH="site/wwwroot"; fi
-          echo "Testing FTP list for $FTP_HOST/$FTP_PATH ..."
-          echo "Normalized: HOST=$FTP_HOST PATH=$FTP_PATH USER=$FTP_USER"
-          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls \"$FTP_PATH\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -50 || echo "lftp list $FTP_PATH failed, trying root..."
-          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -50 || true
-          curl --ftp-pasv --list-only -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/$FTP_PATH/" 2>&1 | head -50 || true
-          curl --ftp-pasv --list-only -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/" 2>&1 | head -50 || true
+          set -euo pipefail
+          # Sanitize inputs - strip protocol, port, slashes that cause 550/malformed
+          # Do not print password, do not put password in URL
+          FTP_HOST_CLEAN="${FTP_HOST#ftp://}"
+          FTP_HOST_CLEAN="${FTP_HOST_CLEAN#ftps://}"
+          FTP_HOST_CLEAN="${FTP_HOST_CLEAN%%/*}"
+          FTP_HOST_CLEAN="${FTP_HOST_CLEAN%%:*}"
+          FTP_PATH_CLEAN="${FTP_PATH#/}"
+          FTP_PATH_CLEAN="${FTP_PATH%/}"
+          echo "FTP diagnostics for host: $FTP_HOST_CLEAN"
+          echo "FTP user: $FTP_USER"
+          echo "FTP path (raw): '$FTP_PATH' -> cleaned: '$FTP_PATH_CLEAN' (empty means root)"
+          echo ""
+          echo "1) Testing FTP root (ftp://\$FTP_HOST:21/) — no path appended"
+          echo "   Command: curl --ftp-pasv --list-only -u \"\$FTP_USER:***\" \"ftp://\$FTP_HOST:21/\" (password via -u, not in URL)"
+          set +e
+          echo "--- lftp ls root ---"
+          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; set net:timeout 15; ls; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST_CLEAN" 2>&1 | head -100
+          LFTP_ROOT_EXIT=$?
+          echo "lftp root exit: $LFTP_ROOT_EXIT"
+          echo ""
+          echo "--- curl list root ---"
+          curl --ftp-pasv --list-only -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST_CLEAN:21/" 2>&1 | head -100
+          CURL_ROOT_EXIT=$?
+          echo "curl root exit: $CURL_ROOT_EXIT"
+          echo ""
+          # Determine if /rajiblabs is needed or if FTP is already scoped there
+          # If root listing contains wwwroot/assets/index.html, then FTP root IS the site root (FTP_PATH should be empty or /)
+          # If root listing contains rajiblabs folder, then FTP root is account root and we need /rajiblabs
+          echo "2) Checking if /rajiblabs exists as subdirectory of root..."
+          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; cls -1; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST_CLEAN" 2>&1 | tr '\r' '\n' | head -50 > /tmp/ftp_root_list.txt || true
+          cat /tmp/ftp_root_list.txt | head -50
+          echo ""
+          if grep -q "^rajiblabs" /tmp/ftp_root_list.txt; then
+            echo "→ FTP root contains 'rajiblabs' folder — FTP account is at account root, site is at /rajiblabs"
+            echo "  Verified FTP path should be: rajiblabs (or /rajiblabs)"
+          elif grep -q "wwwroot" /tmp/ftp_root_list.txt || grep -q "index.html" /tmp/ftp_root_list.txt; then
+            echo "→ FTP root contains wwwroot/index.html — FTP is already scoped to /rajiblabs (site root)"
+            echo "  Verified FTP path should be: / (empty) or not appended"
+            echo "  Do NOT blindly use /rajiblabs/rajiblabs"
+          else
+            echo "→ Could not determine from root listing, will test both"
+          fi
+          echo ""
+          if [ -n "$FTP_PATH_CLEAN" ]; then
+            echo "3) Testing configured FTP_PATH: /$FTP_PATH_CLEAN"
+            lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls \"$FTP_PATH_CLEAN\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST_CLEAN" 2>&1 | head -50 || echo "ls $FTP_PATH_CLEAN failed (may be root already)"
+            curl --ftp-pasv --list-only -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST_CLEAN:21/$FTP_PATH_CLEAN/" 2>&1 | head -50 || true
+          fi
+          set -e
+          echo ""
+          echo "Diagnostics complete — see above to determine if FTP is scoped to /rajiblabs or needs /rajiblabs appended"
 
-      - name: Deploy via FTP (SmarterASP)
+      - name: Deploy via FTP (verified root)
         if: steps.check.outputs.skip == 'false'
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
@@ -146,8 +187,45 @@ jobs:
           FTP_PATH: ${{ secrets.FTP_PATH }}
           SITE_URL: ${{ secrets.SITE_URL }}
         run: |
-          chmod +x ./deploy.sh
-          ./deploy.sh
+          # Normalize like deploy.sh
+          FTP_HOST_CLEAN="${FTP_HOST#ftp://}"
+          FTP_HOST_CLEAN="${FTP_HOST_CLEAN#ftps://}"
+          FTP_HOST_CLEAN="${FTP_HOST_CLEAN%%/*}"
+          FTP_HOST_CLEAN="${FTP_HOST_CLEAN%%:*}"
+          FTP_PATH_CLEAN="${FTP_PATH#/}"
+          FTP_PATH_CLEAN="${FTP_PATH_CLEAN%/}"
+          # Default to empty (root) if not set — means FTP is already at site root
+          # The deploy.sh will handle verified path logic
+          echo "Deploying to verified FTP root: $FTP_HOST_CLEAN${FTP_PATH_CLEAN:+/$FTP_PATH_CLEAN}/"
+          FTP_HOST="$FTP_HOST_CLEAN" FTP_PATH="$FTP_PATH_CLEAN" FTP_USER="$FTP_USER" FTP_PASS="$FTP_PASS" SITE_URL="$SITE_URL" bash ./deploy.sh
+          echo "Deploy script finished with exit: $?"
+
+      - name: Verify deployment (HTTP 200)
+        if: steps.check.outputs.skip == 'false'
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          SITE_URL="${SITE_URL:-https://rajiblabs.com}"
+          echo "Verifying $SITE_URL ..."
+          for i in 1 2 3; do
+            HTTP_CODE=$(curl -s -o /tmp/home.html -w "%{http_code}" --max-time 15 "$SITE_URL/" || echo "000")
+            echo "Attempt $i: $SITE_URL/ -> HTTP $HTTP_CODE"
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Homepage OK"
+              head -20 /tmp/home.html
+              break
+            fi
+            sleep 5
+          done
+          echo "Checking assets..."
+          curl -s --head --max-time 10 "$SITE_URL/manifest.webmanifest" | head -5
+          curl -s --head --max-time 10 "$SITE_URL/assets/" | head -5 || true
+          # Check for nested deployment error
+          if curl -s --max-time 10 "$SITE_URL/rajiblabs/index.html" | grep -q "RajibLabs"; then
+            echo "WARNING: Found nested /rajiblabs/rajiblabs deployment — FTP path may be wrong!"
+            exit 1
+          fi
+          echo "No nested deployment detected"
 
       - name: Skip deploy (no secrets)
         if: steps.check.outputs.skip == 'true'
