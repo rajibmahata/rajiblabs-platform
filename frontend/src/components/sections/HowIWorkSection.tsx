@@ -4,47 +4,43 @@ import SectionLabel from '../ui/SectionLabel';
 
 const services = [
   {
-    icon: '🏗️',
-    title: 'Backend Architecture',
-    description: '.NET 8 microservices, CQRS, event-driven systems. Scalable APIs that handle millions of requests. SQL Server, Cosmos DB, Redis — I choose the right tool for the job.',
-    color: 'var(--c-accent-blue)',
-  },
-  {
-    icon: '☁️',
+    icon: 'cloud',
     title: 'Azure Cloud Engineering',
     description: 'App Service, Functions, Logic Apps, Service Bus, Event Grid, Key Vault, Cosmos DB. Production-grade cloud infrastructure with CI/CD pipelines.',
-    color: 'var(--c-accent-teal)',
+    chips: ['Azure Kubernetes', 'Cosmos DB', 'API Management'],
+    color: '#7bd7c5',
+    span: 'lg:col-span-8',
   },
   {
-    icon: '🤖',
+    icon: 'terminal',
+    title: 'Backend Architecture',
+    description: '.NET 8 microservices, CQRS, event-driven systems. Scalable APIs that handle millions of requests.',
+    chips: ['C#', 'ASP.NET Core'],
+    color: '#b5c4ff',
+    span: 'lg:col-span-4',
+  },
+  {
+    icon: 'psychology',
     title: 'AI & LLM Integration',
-    description: 'RAG systems, agentic pipelines, multi-agent workflows. OpenAI, Gemini, DeepSeek integration. Semantic search, vector databases, AI copilot patterns.',
-    color: 'var(--c-accent-gold)',
+    description: 'RAG systems, agentic pipelines, multi-agent workflows. OpenAI, Gemini, DeepSeek integration.',
+    chips: ['Semantic Kernel', 'OpenAI'],
+    color: '#eec04e',
+    span: 'lg:col-span-5',
   },
   {
-    icon: '🚀',
+    icon: 'rocket_launch',
     title: 'SaaS Product Development',
-    description: 'End-to-end product build: auth, payments (Stripe), APIs, frontend, deployment. I ship working products — DocSignerHub is live and generating real interest.',
-    color: 'var(--c-accent-blue)',
+    description: 'End-to-end product build: auth, payments (Stripe), APIs, frontend, deployment. DocSignerHub is live.',
+    chips: ['Stripe', 'React', '.NET 8'],
+    color: '#b5c4ff',
+    span: 'lg:col-span-7',
   },
 ];
 
 const process = [
-  {
-    step: '01',
-    title: 'Understand Your Needs',
-    description: 'We discuss your technical challenges, business goals, and timeline. I ask the right architecture questions upfront to avoid costly rework later.',
-  },
-  {
-    step: '02',
-    title: 'Architect & Build',
-    description: 'Clean architecture from day one. SOLID, CQRS, event-driven where it makes sense. Regular check-ins — you\'re never in the dark about progress.',
-  },
-  {
-    step: '03',
-    title: 'Deliver & Support',
-    description: 'Production-ready code with documentation. CI/CD pipelines, monitoring, and knowledge transfer. I don\'t disappear after delivery.',
-  },
+  { step: '01', title: 'Understand Your Needs', description: 'We discuss your technical challenges, business goals, and timeline. I ask the right architecture questions upfront.' },
+  { step: '02', title: 'Architect & Build', description: 'Clean architecture from day one. SOLID, CQRS, event-driven where it makes sense. Regular check-ins.' },
+  { step: '03', title: 'Deliver & Support', description: 'Production-ready code with documentation. CI/CD pipelines, monitoring, and knowledge transfer.' },
 ];
 
 export default function HowIWorkSection() {
@@ -52,183 +48,63 @@ export default function HowIWorkSection() {
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
 
   return (
-    <section id="services" className="section-pad" ref={sectionRef}>
+    <section id="services" className="section-pad" ref={sectionRef} style={{ background: 'var(--c-surface)' }}>
       <div className="container-site">
         <SectionLabel>WHAT I OFFER</SectionLabel>
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Section header */}
-          <div className="mb-12">
-            <h2 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(28px, 3.5vw, 42px)',
-              fontWeight: 700,
-              color: 'var(--c-text-primary)',
-              lineHeight: 'var(--lh-display)',
-              marginBottom: 12,
-            }}>
-              Services for{' '}
-              <span style={{ color: 'var(--c-accent-blue-l)' }}>business owners</span>
-              {' '}&amp;{' '}
-              <span style={{ color: 'var(--c-accent-teal)' }}>technical teams</span>
-            </h2>
-            <p style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: 16,
-              color: 'var(--c-text-secondary)',
-              lineHeight: 'var(--lh-body)',
-              maxWidth: 540,
-            }}>
-              Whether you need an architect for a complex system, a developer to ship a SaaS MVP, or an AI engineer to integrate LLMs — I deliver production-grade work.
-            </p>
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5 }}>
+          <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
+            <div>
+              <h2 className="font-section-title text-[42px] text-on-surface mb-4" style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, color: '#F0F4FF', lineHeight: 1.1 }}>
+                Services for <span style={{ color: '#b5c4ff' }}>business owners</span> &amp; <span style={{ color: '#7bd7c5' }}>technical teams</span>
+              </h2>
+              <p className="font-body-base text-text-secondary max-w-xl" style={{ fontFamily: 'DM Sans, sans-serif', color: '#8896B3' }}>
+                Whether you need an architect for a complex system, a developer to ship a SaaS MVP, or an AI engineer to integrate LLMs — I deliver production-grade work.
+              </p>
+            </div>
           </div>
 
-          {/* Service Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-16">
+          {/* Bento Grid — stitch */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 mb-16">
             {services.map(card => (
-              <div
-                key={card.title}
-                className="card p-6 group"
-                style={{ transition: 'all 250ms var(--ease-spring)' }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '';
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  <span style={{ fontSize: 32, flexShrink: 0 }}>{card.icon}</span>
-                  <div>
-                    <h3 style={{
-                      fontFamily: 'var(--font-heading)',
-                      fontSize: 17,
-                      fontWeight: 600,
-                      color: 'var(--c-text-primary)',
-                      marginBottom: 8,
-                    }}>
-                      {card.title}
-                    </h3>
-                    <p style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: 14,
-                      color: 'var(--c-text-secondary)',
-                      lineHeight: 'var(--lh-compact)',
-                    }}>
-                      {card.description}
-                    </p>
+              <div key={card.title} className={`${card.span} card-elegant rounded-2xl p-8 md:p-8 relative overflow-hidden group`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10">
+                  <div className="card-icon-wrapper w-14 h-14 rounded-full flex items-center justify-center mb-6 border" style={{ background: 'rgba(255,255,255,0.05)', borderColor: `${card.color}33` }}>
+                    <span className="material-symbols-outlined text-[24px]" style={{ color: card.color }}>{card.icon}</span>
+                  </div>
+                  <h3 className="font-card-heading text-[20px] font-semibold text-on-surface mb-3" style={{ fontFamily: 'DM Sans, sans-serif', color: '#F0F4FF' }}>{card.title}</h3>
+                  <p className="font-body-base text-[16px] text-on-surface-variant mb-6" style={{ fontFamily: 'DM Sans, sans-serif', color: '#8896B3', lineHeight: 1.65 }}>{card.description}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {card.chips.map(chip => (
+                      <span key={chip} className="font-tech-chip text-[11px] bg-surface-inset px-2 py-1 rounded border" style={{ fontFamily: 'JetBrains Mono, monospace', background: '#152B52', borderColor: `${card.color}30`, color: card.color }}>{chip}</span>
+                    ))}
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* How I Work — Process */}
-          <div className="card p-8" style={{
-            background: 'linear-gradient(135deg, var(--c-bg-secondary), var(--c-bg-tertiary))',
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: 40 }}>
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                fontWeight: 500,
-                letterSpacing: 'var(--ls-caps)',
-                textTransform: 'uppercase',
-                color: 'var(--c-accent-gold)',
-                display: 'block',
-                marginBottom: 8,
-              }}>
-                HOW I WORK
-              </span>
-              <h3 style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 28,
-                fontWeight: 700,
-                color: 'var(--c-text-primary)',
-              }}>
-                From conversation to production in three steps
-              </h3>
+          {/* How I Work — stitch card */}
+          <div className="card-elegant rounded-2xl p-8 md:p-12">
+            <div className="text-center mb-10">
+              <span className="font-label-caps text-[11px] tracking-widest uppercase block mb-2" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#eec04e' }}>HOW I WORK</span>
+              <h3 className="font-section-title text-[28px] font-bold text-on-surface" style={{ fontFamily: 'Fraunces, serif', color: '#F0F4FF' }}>From conversation to production in three steps</h3>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {process.map((step, i) => (
                 <div key={step.step} className="text-center relative">
-                  {/* Connector line (desktop) */}
-                  {i < process.length - 1 && (
-                    <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5"
-                      style={{
-                        background: `repeating-linear-gradient(90deg, var(--c-border) 0, var(--c-border) 4px, transparent 4px, transparent 8px)`,
-                      }}
-                    />
-                  )}
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center relative z-10"
-                    style={{
-                      background: 'linear-gradient(135deg, var(--c-accent-blue), var(--c-accent-teal))',
-                      boxShadow: '0 0 24px rgba(21,71,190,0.25)',
-                    }}
-                  >
-                    <span style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 20,
-                      fontWeight: 700,
-                      color: '#fff',
-                    }}>
-                      {step.step}
-                    </span>
+                  {i < process.length - 1 && <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5" style={{ background: 'repeating-linear-gradient(90deg, #1E2D4A 0, #1E2D4A 4px, transparent 4px, transparent 8px)' }} />}
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center relative z-10" style={{ background: 'linear-gradient(135deg, #1547BE, #7bd7c5)', boxShadow: '0 0 24px rgba(21,71,190,0.25)' }}>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 20, fontWeight: 700, color: '#fff' }}>{step.step}</span>
                   </div>
-                  <h4 style={{
-                    fontFamily: 'var(--font-heading)',
-                    fontSize: 18,
-                    fontWeight: 600,
-                    color: 'var(--c-text-primary)',
-                    marginBottom: 8,
-                  }}>
-                    {step.title}
-                  </h4>
-                  <p style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 14,
-                    color: 'var(--c-text-secondary)',
-                    lineHeight: 'var(--lh-compact)',
-                  }}>
-                    {step.description}
-                  </p>
+                  <h4 className="font-card-heading text-[18px] font-semibold text-on-surface mb-2" style={{ fontFamily: 'DM Sans, sans-serif', color: '#F0F4FF' }}>{step.title}</h4>
+                  <p className="font-body-compact text-[14px] text-text-secondary" style={{ fontFamily: 'DM Sans, sans-serif', color: '#8896B3' }}>{step.description}</p>
                 </div>
               ))}
             </div>
-
             <div className="text-center mt-10">
-              <a
-                href="#contact"
-                className="inline-flex items-center px-8 py-3.5 text-[15px] font-medium rounded-md transition-all duration-200"
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontWeight: 500,
-                  backgroundColor: 'var(--c-accent-blue)',
-                  color: '#fff',
-                  borderRadius: 'var(--radius-md)',
-                  textDecoration: 'none',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.backgroundColor = 'var(--c-accent-blue-l)';
-                  e.currentTarget.style.boxShadow = 'var(--shadow-glow-blue)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.backgroundColor = 'var(--c-accent-blue)';
-                  e.currentTarget.style.boxShadow = '';
-                }}
-                onClick={e => {
-                  e.preventDefault();
-                  document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                Start a Conversation →
+              <a href="#contact" onClick={e => { e.preventDefault(); document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' }); }} className="inline-flex items-center px-8 py-3.5 text-[15px] font-medium rounded-full transition-all" style={{ fontFamily: 'DM Sans, sans-serif', background: '#1547be', color: '#fff', borderRadius: '999px' }}>
+                Start a Conversation <span className="material-symbols-outlined text-sm ml-1">arrow_forward</span>
               </a>
             </div>
           </div>

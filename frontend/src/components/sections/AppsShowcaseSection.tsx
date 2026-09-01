@@ -150,9 +150,10 @@ export default function AppsShowcaseSection() {
   const inView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section id="applications" className="section-pad" ref={ref} style={{ background: 'var(--c-bg-secondary)' }}>
-      <div className="container-site">
-        {/* Label like PestFlow */}
+    <section id="applications" className="section-pad relative overflow-hidden" ref={ref} style={{ background: 'var(--c-surface)' }}>
+      <div id="ai" className="absolute -top-20" aria-hidden="true" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" aria-hidden="true" />
+      <div className="container-site relative">
         <SectionLabel>APPLICATIONS BY RAJIBLABS</SectionLabel>
 
         <motion.div
@@ -162,35 +163,19 @@ export default function AppsShowcaseSection() {
         >
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-10">
             <div>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 'clamp(28px, 3.5vw, 42px)',
-                  fontWeight: 700,
-                  color: 'var(--c-text-primary)',
-                  lineHeight: 1.1,
-                }}
-              >
+              <h2 className="font-section-title text-[42px] text-on-surface" style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, color: '#F0F4FF', lineHeight: 1.1 }}>
                 Everything you need
                 <br />
-                <span style={{ color: 'var(--c-text-secondary)', fontWeight: 400 }}>shipped as products.</span>
+                <span style={{ color: '#8896B3', fontWeight: 400 }}>shipped as products.</span>
               </h2>
             </div>
-            <p
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: 16,
-                color: 'var(--c-text-secondary)',
-                lineHeight: 1.6,
-                maxWidth: 460,
-              }}
-            >
+            <p className="font-body-base text-[16px] text-text-secondary max-w-[460px]" style={{ fontFamily: 'DM Sans, sans-serif', color: '#8896B3', lineHeight: 1.6 }}>
               From e-signatures to legal RAG, healthcare PWA to EdTech — each app is a production SaaS, PWA or platform built on .NET, Azure & AI.
             </p>
           </div>
 
-          {/* Grid — PestFlow style: clean cards with icon top */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Stitch swipe-friendly on mobile, bento grid on desktop */}
+          <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar snap-x snap-mandatory -mx-6 px-6 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4 md:overflow-visible md:pb-0">
             {apps.map((app, i) => (
               <motion.a
                 key={app.name}
@@ -200,14 +185,10 @@ export default function AppsShowcaseSection() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={inView ? { opacity: 1, y: 0 } : {}}
                 transition={{ delay: i * 0.06, duration: 0.4 }}
-                className={`group relative flex flex-col p-6 rounded-2xl border text-left transition-all duration-300 ${
-                  app.featured ? 'lg:col-span-2 lg:row-span-1' : ''
+                className={`group relative flex flex-col p-6 rounded-2xl border text-left transition-all duration-300 card-elegant min-w-[280px] snap-center md:min-w-0 ${
+                  app.featured ? 'lg:col-span-2' : ''
                 }`}
-                style={{
-                  background: `linear-gradient(135deg, var(--c-bg-secondary), var(--c-bg-tertiary))`,
-                  borderColor: app.border,
-                  textDecoration: 'none',
-                }}
+                style={{ borderColor: app.border, textDecoration: 'none' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
                   e.currentTarget.style.boxShadow = `0 12px 40px rgba(0,0,0,0.25), 0 0 0 1px ${app.color}18`;
@@ -292,9 +273,10 @@ export default function AppsShowcaseSection() {
                 </div>
               </motion.a>
             ))}
+            <div className="min-w-[1px] md:hidden snap-center" aria-hidden="true" />
           </div>
 
-          {/* Bottom CTA bar — like PestFlow "Ready to..." but app focused */}
+          {/* Bottom CTA — stitch card-elegant */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}

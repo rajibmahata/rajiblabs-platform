@@ -15,7 +15,7 @@ export default function FloatingContact() {
 
   return (
     <div
-      className="fixed z-40 flex flex-col items-end gap-3 pointer-events-none"
+      className="hidden md:flex fixed z-40 flex-col items-end gap-3 pointer-events-none"
       style={{ bottom: 20, right: 20 }}
       aria-label="Quick contact"
     >

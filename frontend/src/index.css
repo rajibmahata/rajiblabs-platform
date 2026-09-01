@@ -1,72 +1,112 @@
 @import "tailwindcss";
 
 /* ══════════════════════════════════════════════════════════════
-   RAJIBLABS DESIGN SYSTEM TOKENS
-   Dark Editorial Precision · v1.0 · Spec May 2026
+   RAJIBLABS DESIGN SYSTEM — Midnight Engineering Premium
+   Dark Editorial Precision · Stitch Premium Portfolio Redesign
+   Source: agents/stitch_rajiblabs_premium_portfolio_redesign/midnight_engineering/DESIGN.md
    ══════════════════════════════════════════════════════════════ */
 
 :root {
   /* ── Theme ── */
   --theme: 'dark';
 
-  /* ── Backgrounds ── */
-  --c-bg-primary:    #080D1A;
-  --c-bg-secondary:  #0D1F3C;
-  --c-bg-tertiary:   #152B52;
-  --c-bg-elevated:   #1F3666;
+  /* ── Backgrounds — Midnight Canvas (stitch) ── */
+  --c-bg-primary:    #0e1320; /* surface / background */
+  --c-bg-primary-deep: #080D1A; /* hero depth */
+  --c-bg-secondary:  #0D1F3C; /* surface-card */
+  --c-bg-tertiary:   #152B52; /* surface-inset */
+  --c-bg-elevated:   #1F3666; /* surface-floating */
+  --c-surface:       #0e1320;
+  --c-surface-dim:   #0e1320;
+  --c-surface-bright: #343948;
+  --c-surface-container-lowest: #090e1b;
+  --c-surface-container-low: #161b29;
+  --c-surface-container: #1a1f2d;
+  --c-surface-container-high: #252a38;
+  --c-surface-container-highest: #303443;
+  --c-surface-variant: #303443;
+  --c-surface-card: #0D1F3C;
+  --c-surface-inset: #152B52;
+  --c-surface-floating: #1F3666;
 
-  /* ── Accents ── */
-  --c-accent-blue:   #1547BE;
-  --c-accent-blue-l: #2563F4;
-  --c-accent-gold:   #C49A2A;
-  --c-accent-gold-l: #F0C040;
-  --c-accent-teal:   #0A7B6C;
-  --c-accent-teal-l: #0FA594;
+  /* ── Accents — Cobalt / Gold / Teal (stitch) ── */
+  --c-accent-blue:   #1547BE; /* primary-container */
+  --c-accent-blue-l: #2563F4; /* accent-blue-hover */
+  --c-accent-gold:   #eec04e; /* secondary (stitch gold) */
+  --c-accent-gold-l: #F0C040; /* accent-gold-hover */
+  --c-accent-gold-dark: #b38b19;
+  --c-accent-teal:   #7bd7c5; /* tertiary */
+  --c-accent-teal-l: #005d51; /* tertiary-container? keep 0FA594 for glow */
+  --c-accent-teal-bright: #0FA594;
+  --c-primary: #b5c4ff;
+  --c-on-primary: #00287d;
+  --c-primary-container: #1547be;
+  --c-secondary: #eec04e;
+  --c-tertiary: #7bd7c5;
+  --c-whatsapp: #25D366;
 
   /* ── Text ── */
-  --c-text-primary:   #F0F4FF;
-  --c-text-secondary: #8896B3;
+  --c-text-primary:   #F0F4FF; /* alias #dee2f5 */
+  --c-text-secondary: #8896B3; /* alias #c4c5d6? keep */
   --c-text-muted:     #6A7B9E;
+  --c-on-surface: #dee2f5;
+  --c-on-surface-variant: #c4c5d6;
+  --c-on-background: #dee2f5;
 
   /* ── Borders ── */
-  --c-border:       #1E2D4A;
+  --c-border:       #1E2D4A; /* border-subtle */
   --c-border-hover: #2A3C5E;
+  --c-border-subtle: #1E2D4A;
+  --c-outline: #8e909f;
+  --c-outline-variant: #434654;
 
   /* ── Typography Families ── */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-heading: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  --font-label-caps: 'JetBrains Mono', monospace;
 
   /* ── Line Heights ── */
-  --lh-display:  1.1;
+  --lh-display:  1.05;
+  --lh-hero-mobile: 1.1;
   --lh-heading:  1.3;
   --lh-body:     1.7;
-  --lh-compact:  1.4;
+  --lh-body-large: 1.7;
+  --lh-compact:  1.5;
+  --lh-telemetry: 1.0;
 
   /* ── Letter Spacing ── */
   --ls-display: -0.03em;
+  --ls-display-mobile: -0.02em;
   --ls-heading: -0.01em;
   --ls-body:     0em;
   --ls-caps:     0.10em;
+  --ls-telemetry: -0.01em;
 
-  /* ── Spacing Scale (4px base) ── */
+  /* ── Spacing Scale (4px base) — stitch grid-unit 4px ── */
   --space-1:  4px;
   --space-2:  8px;
   --space-3:  12px;
   --space-4:  16px;
-  --space-6:  24px;
+  --space-6:  24px; /* gutter */
   --space-8:  32px;
   --space-10: 40px;
-  --space-12: 48px;
+  --space-12: 48px; /* margin-desktop */
   --space-16: 64px;
   --space-20: 80px;
+  --space-section-sm: 48px;
+  --space-section-lg: 96px;
+  --space-gutter: 24px;
+  --space-margin-mobile: 16px;
+  --space-margin-desktop: 48px;
+  --space-container-max: 1200px;
 
-  /* ── Border Radius ── */
-  --radius-sm:   4px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
-  --radius-xl:   20px;
+  /* ── Border Radius — stitch rounded ── */
+  --radius-sm:   0.25rem; /* 4px */
+  --radius-md:   0.5rem;  /* 8px */
+  --radius-lg:   1rem;    /* 16px */
+  --radius-xl:   1.5rem;  /* 24px */
   --radius-full: 9999px;
 
   /* ── Shadows ── */
@@ -74,12 +114,14 @@
   --shadow-md:        0 4px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
   --shadow-lg:        0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
   --shadow-glow-blue: 0 0 24px rgba(21,71,190,0.35);
-  --shadow-glow-teal: 0 0 20px rgba(10,123,108,0.30);
-  --shadow-glow-gold: 0 0 20px rgba(196,154,42,0.25);
+  --shadow-glow-teal: 0 0 20px rgba(123,215,197,0.30);
+  --shadow-glow-gold: 0 0 20px rgba(238,192,78,0.25);
+  --shadow-elegant: 0 20px 40px -10px rgba(0,0,0,0.5), 0 0 20px rgba(21,71,190,0.2);
 
   /* ── Motion ── */
   --ease-out:    cubic-bezier(0.0, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-stitch: cubic-bezier(0.25, 0.8, 0.25, 1);
   --dur-fast:    150ms;
   --dur-base:    250ms;
   --dur-slow:    400ms;
@@ -87,7 +129,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   GLOBAL RESET & BASE
+   GLOBAL RESET & BASE — Midnight Engineering
    ══════════════════════════════════════════════════════════════ */
 
 *, *::before, *::after {
@@ -118,10 +160,9 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* PWA: standalone display adjustments — PestFlow-like native feel */
+/* PWA: standalone display adjustments */
 @media (display-mode: standalone) {
   body {
-    /* Add safe area for iOS standalone */
     padding-top: env(safe-area-inset-top);
   }
 }
@@ -185,11 +226,128 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   UTILITY CLASSES (spec components)
+   STITCH PREMIUM UTILITIES — Midnight Engineering
+   ══════════════════════════════════════════════════════════════ */
+
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+
+/* Hero glow — stitch .hero-glow */
+.hero-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(21, 71, 190, 0.15) 0%, rgba(14, 19, 32, 0) 70%);
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(60px);
+}
+
+/* Ambient mesh — stitch .ambient-mesh */
+.ambient-mesh {
+  background: radial-gradient(circle at 15% 50%, rgba(21, 71, 190, 0.15), transparent 40%),
+              radial-gradient(circle at 85% 30%, rgba(123, 215, 197, 0.1), transparent 40%);
+}
+
+/* Grid pattern — stitch .bg-grid */
+.bg-grid {
+  background-size: 60px 60px;
+  background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+}
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Text gradient — stitch .text-gradient */
+.text-gradient {
+  background: linear-gradient(135deg, #F0F4FF 0%, #8896B3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Nav hide/show — stitch .nav-hidden */
+.nav-hidden {
+  transform: translateY(-100%);
+}
+
+/* Masonry grid — stitch */
+.masonry-grid {
+  columns: 1;
+  column-gap: 24px;
+}
+@media (min-width: 768px) {
+  .masonry-grid {
+    columns: 2;
+  }
+}
+@media (min-width: 1024px) {
+  .masonry-grid {
+    columns: 3;
+  }
+}
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 24px;
+}
+
+/* Hover lift — stitch .hover-lift & .card-elegant */
+.hover-lift {
+  transition: transform 0.3s var(--ease-stitch), box-shadow 0.3s var(--ease-stitch), border-color 0.3s var(--ease-stitch);
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  border-color: var(--c-primary);
+}
+.card-elegant {
+  background: linear-gradient(180deg, rgba(31,54,102,0.4) 0%, rgba(13,31,60,0.6) 100%);
+  border: 1px solid rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.4s var(--ease-stitch);
+}
+.card-elegant:hover {
+  transform: translateY(-4px);
+  border-color: rgba(181,196,255,0.3);
+  box-shadow: var(--shadow-elegant);
+  background: linear-gradient(180deg, rgba(31,54,102,0.6) 0%, rgba(13,31,60,0.8) 100%);
+}
+.card-icon-wrapper {
+  transition: transform 0.3s ease;
+}
+.card-elegant:hover .card-icon-wrapper {
+  transform: scale(1.1);
+}
+
+/* No scrollbar — stitch PWA feel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Subtle glow animation */
+@keyframes subtle-glow {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 244, 0); }
+  50% { box-shadow: 0 0 20px 0 rgba(37, 99, 244, 0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 244, 0); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UTILITY CLASSES — Site
    ══════════════════════════════════════════════════════════════ */
 
 .container-site {
-  max-width: 1200px;
+  max-width: var(--space-container-max);
   padding-inline: clamp(16px, 4vw, 48px);
   margin: 0 auto;
   width: 100%;
@@ -205,7 +363,7 @@ body {
   border-top: 0.5px solid rgba(30, 45, 74, 0.3);
 }
 
-/* Section label — mono gold caps */
+/* Section label — mono gold caps — stitch label-caps */
 .section-label {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -217,7 +375,7 @@ body {
   display: block;
 }
 
-/* Base card — refined with subtle border */
+/* Base card — refined with subtle border — now glass-card */
 .card {
   background: var(--c-bg-secondary);
   border: 0.5px solid rgba(30, 45, 74, 0.5);
@@ -239,13 +397,19 @@ body {
   border-radius: var(--radius-lg);
 }
 
-/* Glass card (terminal, etc.) */
+/* Glass card — stitch premium */
 .glass-card {
-  background: rgba(13, 31, 60, 0.8);
+  background: rgba(13, 31, 60, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--c-border);
+  border: 0.5px solid rgba(30, 45, 74, 0.8);
   border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
+}
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 20px rgba(21, 71, 190, 0.2);
+  border-color: rgba(21, 71, 190, 0.5);
 }
 
 /* ── Animations ── */
@@ -265,8 +429,8 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.3; }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(1.2); }
 }
 
 @keyframes blink {
@@ -287,12 +451,12 @@ body {
 .cursor-blink::after {
   content: '▊';
   animation: blink 1s step-end infinite;
-  color: var(--c-accent-teal-l);
+  color: var(--c-accent-teal);
 }
 
 .pulse-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  animation: pulse 2s ease-in-out infinite;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

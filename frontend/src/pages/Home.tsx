@@ -11,30 +11,32 @@ import GitHubActivitySection from '../components/sections/GitHubActivitySection'
 import HowIWorkSection from '../components/sections/HowIWorkSection';
 import ContactSection from '../components/sections/ContactSection';
 import FloatingContact from '../components/ui/FloatingContact';
+import MobileBottomBar from '../components/layout/MobileBottomBar';
 import PWAInstallPrompt from '../components/pwa/PWAInstallPrompt';
 import PWAUpdatePrompt from '../components/pwa/PWAUpdatePrompt';
 
 export default function Home() {
   const productCount = 8;
-  const companyCount = 3; // Fortune 500 Healthcare, Telecom, Product Studio
+  const companyCount = 3;
 
   return (
     <>
       <GlobalNav />
-      <main id="main-content">
+      <main id="main-content" className="pb-20 md:pb-0">
         <HeroSection productCount={productCount} companyCount={companyCount} />
-        <AppsShowcaseSection />
         <ResultsSection />
         <ProfileSection />
-        <ProductsSection />
-        <WorkInProgressSection />
-        <CompletedProjectsSection />
-        <GitHubActivitySection />
         <HowIWorkSection />
+        <AppsShowcaseSection />
+        <ProductsSection />
+        <CompletedProjectsSection />
+        <WorkInProgressSection />
+        <GitHubActivitySection />
         <ContactSection />
       </main>
       <GlobalFooter />
       <FloatingContact />
+      <MobileBottomBar />
       <PWAInstallPrompt />
       <PWAUpdatePrompt />
     </>

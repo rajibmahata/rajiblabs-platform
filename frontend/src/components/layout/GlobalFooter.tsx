@@ -12,10 +12,11 @@ export default function GlobalFooter() {
 
   return (
     <footer
-      className="border-t"
+      className="w-full border-t pb-24 md:pb-8"
       style={{
-        borderColor: 'var(--c-border)',
-        background: 'var(--c-bg-primary)',
+        borderColor: 'rgba(67,70,84,0.1)',
+        background: '#090e1b',
+        paddingBottom: 'max(3rem, env(safe-area-inset-bottom))',
       }}
     >
       <div className="container-site py-12">
