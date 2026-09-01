@@ -55,10 +55,16 @@ echo "📤 Uploading to $FTP_HOST..."
 upload() {
   local src="$1"
   local dest="$2"
-  if curl -s --fail -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" >/dev/null 2>&1; then
+  # Use --ftp-create-dirs to auto-create subfolders, --ftp-pasv for passive mode (SmarterASP)
+  # Show curl error on failure (remove -s, keep --fail for exit code)
+  if curl --fail --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 --max-time 60 2>&1 | grep -v "^$" | head -20; then
     echo "  ✓ $dest"
   else
-    echo "  ✗ FAILED: $dest"
+    local code=$?
+    echo "  ✗ FAILED: $dest (curl exit $code)"
+    # Retry once with verbose for debugging (show only on failure)
+    echo "    → Retrying $dest with verbose..."
+    curl --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 -v 2>&1 | tail -20
     return 1
   fi
 }
