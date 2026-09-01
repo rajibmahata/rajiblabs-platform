@@ -64,33 +64,28 @@ fi
 upload() {
   local src="$1"
   local dest="$2"
-  local target1="$FTP_PATH/$dest"
-  local target2="site/wwwroot/$dest"
-  # Try primary path first, then fallback to site/wwwroot (custom domain root on SmarterASP)
-  for target in "$target1" "$target2"; do
+  # Try multiple SmarterASP paths: publish Profile says /rajiblabs, but custom domain may be site/wwwroot
+  # Also try without subfolder (some configs use /)
+  local targets=("$FTP_PATH/$dest" "site/wwwroot/$dest" "wwwroot/$dest" "$dest")
+  for target in "${targets[@]}"; do
     if $USE_LFTP; then
-      if lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; put \"$src\" -o \"$target\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" >/dev/null 2>&1; then
-        # Only log once for primary
-        if [[ "$target" == "$target1" ]]; then
-          echo "  ✓ $dest"
-        fi
+      if lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; set net:timeout 30; put \"$src\" -o \"$target\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" >/dev/null 2>&1; then
+        echo "  ✓ $dest -> $target"
         return 0
       fi
     else
       if curl --fail --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$target" --connect-timeout 30 --max-time 60 >/dev/null 2>&1; then
-        if [[ "$target" == "$target1" ]]; then
-          echo "  ✓ $dest"
-        fi
+        echo "  ✓ $dest -> $target"
         return 0
       fi
     fi
   done
-  # If both failed, show verbose for primary
-  echo "  ✗ FAILED: $dest — retry verbose for $target1 ..."
+  # If all failed, show verbose for primary
+  echo "  ✗ FAILED: $dest — tried ${targets[*]}"
   if $USE_LFTP; then
-    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; put \"$src\" -o \"$target1\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | tail -20
+    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; put \"$src\" -o \"$FTP_PATH/$dest\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | tail -30
   else
-    curl --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$target1" --connect-timeout 30 -v 2>&1 | tail -30
+    curl --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 -v 2>&1 | tail -30
   fi
   return 1
 }
