@@ -39,12 +39,12 @@ export default function HeroSection({ productCount = 6, companyCount = 3 }: Hero
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12, duration: 0.6 }}
-          className="font-display-hero-mobile md:font-display-hero text-[34px] md:text-[56px] text-gradient mb-6 max-w-4xl mx-auto"
-          style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, lineHeight: 1.05, letterSpacing: '-0.03em' }}
+          className="font-display-hero-mobile md:font-display-hero text-[42px] md:text-[72px] text-gradient mb-6 max-w-4xl mx-auto"
+          style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em' }}
         >
           Architecting
           <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary italic font-medium" style={{ backgroundImage: 'linear-gradient(135deg, #b5c4ff, #7bd7c5)', WebkitBackgroundClip: 'text' }}>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary italic font-medium" style={{ backgroundImage: 'linear-gradient(135deg, #b5c4ff, #7bd7c5)', WebkitBackgroundClip: 'text', letterSpacing: '-0.03em' }}>
             Scalable Intelligence
           </span>
         </motion.h1>

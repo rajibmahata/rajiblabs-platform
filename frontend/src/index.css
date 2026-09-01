@@ -155,6 +155,10 @@ body {
   line-height: var(--lh-body);
   letter-spacing: var(--ls-body);
   overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   /* PWA: prevent pull-to-refresh bounce on standalone */
   overscroll-behavior-y: contain;
   -webkit-tap-highlight-color: transparent;
@@ -354,7 +358,7 @@ body {
 }
 
 .section-pad {
-  padding-block: clamp(48px, 8vw, 96px);
+  padding-block: clamp(64px, 10vw, 120px);
   position: relative;
 }
 
