@@ -86,10 +86,26 @@ upload() {
 }
 
 # Upload every file in dist, preserving directory structure.
+# Upload sw.js last (service worker can be locked if served)
+SW_FILE=""
 while IFS= read -r -d '' file; do
   rel="${file#$DIST_DIR/}"
-  upload "$file" "$rel"
+  if [[ "$rel" == "sw.js" ]]; then
+    SW_FILE="$file"
+    continue
+  fi
+  upload "$file" "$rel" || echo "  ⚠ Continuing after failure for $rel"
 done < <(find "$DIST_DIR" -type f -print0)
+
+# Upload sw.js last with extra handling
+if [[ -n "$SW_FILE" ]]; then
+  echo "  → Uploading sw.js last (service worker)..."
+  # Try to remove old sw.js first (if locked, this may fail but ok)
+  if $USE_LFTP; then
+    lftp -e "set ftp:passive-mode true; rm -f \"$FTP_PATH/sw.js\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
+  fi
+  upload "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, but PWA may need hard refresh"
+fi
 
 echo ""
 echo "🔍 Verifying deployment..."
