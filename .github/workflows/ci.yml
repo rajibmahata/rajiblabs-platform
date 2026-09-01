@@ -81,3 +81,43 @@ jobs:
           name: backend-publish
           path: backend/RajibLabs.Api/publish
           retention-days: 7
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Check FTP secrets
+        id: check
+        run: |
+          if [ -z "${{ secrets.FTP_PASS }}" ]; then
+            echo "FTP secrets not set — skipping deploy (site will not update). Set FTP_HOST, FTP_USER, FTP_PASS, FTP_PATH, SITE_URL in GitHub Secrets."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy via FTP (SmarterASP)
+        if: steps.check.outputs.skip == 'false'
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+          FTP_PATH: ${{ secrets.FTP_PATH }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: |
+          chmod +x ./deploy.sh
+          ./deploy.sh
+
+      - name: Skip deploy (no secrets)
+        if: steps.check.outputs.skip == 'true'
+        run: echo "Deploy skipped — configure FTP secrets to enable auto-deploy to https://rajiblabs.com"
