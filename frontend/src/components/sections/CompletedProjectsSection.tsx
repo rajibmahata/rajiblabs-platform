@@ -271,7 +271,7 @@ export default function CompletedProjectsSection() {
             <button
               key={tab.key}
               onClick={() => setActiveFilter(tab.key)}
-              className="px-4 py-1.5 rounded-md text-sm transition-all"
+              className="px-4 py-1.5 rounded-full text-sm transition-all"
               style={{
                 fontFamily: 'var(--font-heading)',
                 fontWeight: activeFilter === tab.key ? 600 : 400,
@@ -294,7 +294,7 @@ export default function CompletedProjectsSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
           {filtered.map((project: ProjectDetail) => (
             <ProjectCard

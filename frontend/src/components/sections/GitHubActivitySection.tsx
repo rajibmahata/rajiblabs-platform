@@ -69,7 +69,7 @@ export default function GitHubActivitySection() {
           transition={{ duration: 0.5 }}
         >
           {/* Contribution Heatmap (placeholder) */}
-          <div className="card p-6 mb-8 overflow-x-auto">
+          <div className="card p-8 mb-8 overflow-x-auto">
             <div className="flex items-center justify-between mb-4">
               <span
                 style={{
@@ -127,7 +127,7 @@ export default function GitHubActivitySection() {
           </div>
 
           {/* Stats Row — from API or fallback */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
             {data.stats.map(stat => (
               <div key={stat.label} className="card p-4">
                 <span style={{ fontSize: 20 }}>{stat.icon}</span>
@@ -197,7 +197,7 @@ export default function GitHubActivitySection() {
                       {repo.language}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 ml-auto">
+                  <div className="flex items-center gap-8 ml-auto">
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--c-text-muted)' }}>
                       ★ {repo.stars}
                     </span>

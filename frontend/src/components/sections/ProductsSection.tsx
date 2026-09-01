@@ -72,7 +72,7 @@ export default function ProductsSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8"
         >
           {products.map(product => (
             <div
@@ -143,7 +143,7 @@ export default function ProductsSection() {
                     href={product.liveUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-md transition-all"
+                    className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-full transition-all"
                     style={{
                       fontFamily: 'var(--font-heading)',
                       fontWeight: 500,
@@ -167,7 +167,7 @@ export default function ProductsSection() {
                     href={product.githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-md border transition-all"
+                    className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-full border transition-all"
                     style={{
                       fontFamily: 'var(--font-heading)',
                       fontWeight: 500,
@@ -190,7 +190,7 @@ export default function ProductsSection() {
                 )}
                 {product.status === 'beta' && !product.liveUrl && (
                   <button
-                    className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-md border transition-all"
+                    className="inline-flex items-center px-5 py-2.5 text-sm font-medium rounded-full border transition-all"
                     style={{
                       fontFamily: 'var(--font-heading)',
                       fontWeight: 500,

@@ -250,7 +250,7 @@ export default function ContactSection() {
             <a
               href="/Resume-RajibMahata.pdf"
               download
-              className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-md border transition-all"
+              className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl border transition-all"
               style={{
                 fontFamily: 'var(--font-heading)',
                 fontSize: 14,
@@ -276,7 +276,7 @@ export default function ContactSection() {
 
           {/* RIGHT — Form */}
           <div>
-            <form onSubmit={handleSubmit} className="card p-8 space-y-5"
+            <form onSubmit={handleSubmit} className="card p-8 space-y-6"
               style={{ background: 'var(--c-bg-secondary)' }}
             >
               <div>
@@ -348,7 +348,7 @@ export default function ContactSection() {
               <button
                 type="submit"
                 disabled={status === 'loading' || status === 'success'}
-                className="w-full flex items-center justify-center px-6 py-4 text-[15px] font-medium rounded-md transition-all duration-200 disabled:opacity-50"
+                className="w-full flex items-center justify-center px-6 py-4 text-[15px] font-medium rounded-xl transition-all duration-200 disabled:opacity-50"
                 style={{
                   fontFamily: 'var(--font-heading)',
                   fontWeight: 500,

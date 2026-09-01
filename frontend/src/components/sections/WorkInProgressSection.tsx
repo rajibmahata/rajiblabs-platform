@@ -62,7 +62,7 @@ export default function WorkInProgressSection() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={inView ? { opacity: 1, y: 0 } : {}}
                 transition={{ delay: 0.08 * i, duration: 0.4 }}
-                className="card p-5 group"
+                className="card p-8 group"
                 style={{ transition: 'all 250ms var(--ease-spring)' }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
