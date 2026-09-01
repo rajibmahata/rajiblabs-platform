@@ -96,6 +96,14 @@ jobs:
           name: frontend-dist
           path: frontend/dist
 
+      - name: List dist for debug
+        run: |
+          ls -lh frontend/dist/ | head -30
+          ls -lh frontend/dist/sw.js frontend/dist/manifest.webmanifest 2>&1 | head -10
+
+      - name: Install lftp (more reliable than curl for SmarterASP)
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
       - name: Check FTP secrets
         id: check
         run: |
@@ -105,6 +113,18 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Test FTP connection (debug)
+        if: steps.check.outputs.skip == 'false'
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+          FTP_PATH: ${{ secrets.FTP_PATH }}
+        run: |
+          echo "Testing FTP list for $FTP_HOST/$FTP_PATH ..."
+          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls \"$FTP_PATH\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -50 || echo "lftp list failed, trying curl..."
+          curl --ftp-pasv --list-only -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/$FTP_PATH/" 2>&1 | head -50 || true
 
       - name: Deploy via FTP (SmarterASP)
         if: steps.check.outputs.skip == 'false'

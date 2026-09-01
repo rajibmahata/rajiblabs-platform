@@ -50,22 +50,38 @@ if [ ! -f "$DIST_DIR/index.html" ]; then
   exit 1
 fi
 
-echo "📤 Uploading to $FTP_HOST..."
+echo "📤 Uploading to $FTP_HOST/$FTP_PATH ..."
+
+# Prefer lftp (more reliable for SmarterASP) if available, else curl
+USE_LFTP=false
+if command -v lftp >/dev/null 2>&1; then
+  USE_LFTP=true
+  echo "  Using lftp for upload (passive, create-dirs)"
+else
+  echo "  Using curl for upload (install lftp for more reliability: sudo apt-get install lftp)"
+fi
 
 upload() {
   local src="$1"
   local dest="$2"
-  # Use --ftp-create-dirs to auto-create subfolders, --ftp-pasv for passive mode (SmarterASP)
-  # Show curl error on failure (remove -s, keep --fail for exit code)
-  if curl --fail --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 --max-time 60 2>&1 | grep -v "^$" | head -20; then
-    echo "  ✓ $dest"
+  if $USE_LFTP; then
+    # lftp handles dirs and passive automatically, single connection
+    if lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; put \"$src\" -o \"$FTP_PATH/$dest\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | grep -v "^$" | head -20; then
+      echo "  ✓ $dest"
+      return 0
+    else
+      echo "  ✗ FAILED (lftp): $dest"
+      return 1
+    fi
   else
-    local code=$?
-    echo "  ✗ FAILED: $dest (curl exit $code)"
-    # Retry once with verbose for debugging (show only on failure)
-    echo "    → Retrying $dest with verbose..."
-    curl --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 -v 2>&1 | tail -20
-    return 1
+    if curl --fail --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 --max-time 60 2>&1 | grep -v "^$" | head -20; then
+      echo "  ✓ $dest"
+    else
+      local code=$?
+      echo "  ✗ FAILED (curl $code): $dest — retry verbose..."
+      curl --ftp-pasv --ftp-create-dirs -u "$FTP_USER:$FTP_PASS" -T "$src" "ftp://$FTP_HOST/$FTP_PATH/$dest" --connect-timeout 30 -v 2>&1 | tail -30
+      return 1
+    fi
   fi
 }
 
