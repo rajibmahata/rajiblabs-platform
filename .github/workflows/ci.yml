@@ -161,9 +161,6 @@ jobs:
           # User confirmed /rajiblabs is docroot — hardcode
           echo "→ Hosting panel /rajiblabs is docroot for rajiblabs.com — using /rajiblabs"
           echo "  Verified FTP path should be: rajiblabs"
-          else
-            echo "→ Could not determine from root listing, will test both"
-          fi
           # Ensure we don't create nested
           if grep -q "^index.html" /tmp/ftp_root_list.txt && grep -q "^rajiblabs" /tmp/ftp_root_list.txt; then
             echo "  Do NOT use /rajiblabs/rajiblabs — live is at / (root)"
