@@ -68,7 +68,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
-// ── Ensure DB & seed (handles old DB without new tables) ──
+// ── Ensure DB & seed ──
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LabDbContext>();
@@ -76,16 +76,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         db.Database.EnsureCreated();
-        // Verify new tables exist; if not, recreate DB (safe for SQLite file)
-        bool needsRecreate = false;
-        try { db.AdminUsers.Take(1).ToList(); } catch { needsRecreate = true; }
-        if (needsRecreate)
-        {
-            logger.LogWarning("DB missing new tables — recreating rajiblabs.db");
-            try { db.Database.EnsureDeleted(); } catch { }
-            db.Database.EnsureCreated();
-        }
-        // Ensure any missing tables/columns (idempotent)
+        // Ensure new tables exist (idempotent) — do not delete DB
         var ensureSql = new[]
         {
             @"CREATE TABLE IF NOT EXISTS AdminUsers (Id TEXT PRIMARY KEY, Username TEXT NOT NULL, PasswordHash TEXT NOT NULL, CreatedAt TEXT NOT NULL, LastLoginAt TEXT)",

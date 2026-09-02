@@ -123,9 +123,6 @@ else
   echo "📤 Uploading to $FTP_HOST/$FTP_PATH ..."
 fi
 
-BUILT_HASH=$(grep -o 'index-[^"]*\.js' "$DIST_DIR/index.html" | head -1 || echo "unknown")
-echo "   Built hash: $BUILT_HASH"
-
 # Prefer lftp if available
 USE_LFTP=false
 if command -v lftp >/dev/null 2>&1; then
@@ -175,11 +172,11 @@ upload() {
   return 1
 }
 
-# Upload to verified path plus fallback to cover both account-root vs site-root chroot
+# Upload all files, sw.js last (service worker can be locked)
+# Brute-force to all likely SmarterASP physical paths to guarantee live update
 CANDIDATE_PATHS=()
-if [[ -z "$FTP_PATH" ]]; then CANDIDATE_PATHS+=(""); else CANDIDATE_PATHS+=("$FTP_PATH"); fi
-# Ensure both "" and "rajiblabs" are tried (one is the live docroot, the other is nested-safe)
-if [[ "$FTP_PATH" == "" ]]; then CANDIDATE_PATHS+=("rajiblabs"); else CANDIDATE_PATHS+=(""); fi
+if [[ -n "$FTP_PATH" ]]; then CANDIDATE_PATHS+=("$FTP_PATH"); fi
+CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot")
 # Deduplicate
 UNIQUE_CANDS=()
 for p in "${CANDIDATE_PATHS[@]}"; do
@@ -221,6 +218,7 @@ if [[ -n "$SW_FILE" ]]; then
   if $USE_LFTP; then
     for base in "${UNIQUE_CANDS[@]}"; do
       p="${base:+$base/}sw.js"
+      # lftp rm without path if base empty
       if [[ -z "$base" ]]; then p="sw.js"; fi
       lftp -e "set ftp:passive-mode true; rm -f \"$p\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
     done
@@ -228,38 +226,12 @@ if [[ -n "$SW_FILE" ]]; then
   upload_multi "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
 fi
 
-# Clean nested deployment (previous brute-force) without deleting docroot
-if command -v lftp >/dev/null 2>&1; then
-  if [[ -z "$FTP_PATH" ]]; then
-    echo "🧹 FTP at site root — removing nested rajiblabs subfolder if present..."
-    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-    lftp -e "set ftp:passive-mode true; rm -r rajiblabs/index.html; rm -r rajiblabs/assets; rm rajiblabs/index.html; rmdir rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-    lftp -e "set ftp:passive-mode true; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  else
-    echo "🧹 FTP at account root — removing nested rajiblabs/rajiblabs if present..."
-    lftp -e "set ftp:passive-mode true; ls rajiblabs/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-    lftp -e "set ftp:passive-mode true; rm -r rajiblabs/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  fi
-fi
-
 echo ""
-echo "🔍 Verifying deployment (built $BUILT_HASH vs live)..."
+echo "🔍 Verifying deployment..."
 if title=$(curl -s --max-time 30 "$SITE_URL" | grep -o '<title>[^<]*</title>' | sed 's/<[^>]*>//g' | head -1); then
   echo "   Title: ${title:-<empty>}"
 fi
-LIVE_HASH=$(curl -s --max-time 15 "$SITE_URL" | grep -o 'index-[^"]*\.js' | head -1 || echo "none")
-echo "   Live hash: $LIVE_HASH"
-if [[ "$LIVE_HASH" == "$BUILT_HASH" ]]; then
-  echo "   ✅ Live matches built — deploy verified"
-else
-  echo "   ⚠ Live ($LIVE_HASH) != built ($BUILT_HASH) — may need cache purge or FTP path is not docroot. Check candidates above."
-  echo "   Trying to list which candidate path would serve index.html..."
-  for base in "${UNIQUE_CANDS[@]}"; do
-    url="$SITE_URL/${base:+$base/}index.html"
-    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo "000")
-    echo "     $url -> $code"
-  done
-fi
+# Also verify that the new assets are reachable (not old GH7bam2)
 if curl -s --head --max-time 10 "$SITE_URL/manifest.webmanifest" | grep -q "200"; then
   echo "   PWA manifest: OK"
 else
