@@ -175,11 +175,17 @@ upload() {
   return 1
 }
 
-# Upload all files, sw.js last (service worker can be locked)
-# Brute-force to all likely SmarterASP physical paths to guarantee live update
+# Upload all files — use detected FTP_PATH only (avoid /rajiblabs/rajiblabs nesting)
+# Only brute-force to site/wwwroot/wwwroot when FTP is at account root; never blindly to rajiblabs
 CANDIDATE_PATHS=()
 if [[ -n "$FTP_PATH" ]]; then CANDIDATE_PATHS+=("$FTP_PATH"); fi
-CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot" "htdocs" "public_html" "rajiblabs" "rajiblabs/wwwroot")
+# Only add site/wwwroot/wwwroot as fallback if not already the detected path and if FTP might be at account root
+if [[ "$FTP_PATH" != "site/wwwroot" && "$FTP_PATH" != "wwwroot" ]]; then
+  CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot")
+else
+  # FTP already at site/wwwroot/wwwroot — also ensure root is covered
+  CANDIDATE_PATHS+=("")
+fi
 # Deduplicate
 UNIQUE_CANDS=()
 for p in "${CANDIDATE_PATHS[@]}"; do
@@ -221,12 +227,21 @@ if [[ -n "$SW_FILE" ]]; then
   if $USE_LFTP; then
     for base in "${UNIQUE_CANDS[@]}"; do
       p="${base:+$base/}sw.js"
-      # lftp rm without path if base empty
       if [[ -z "$base" ]]; then p="sw.js"; fi
       lftp -e "set ftp:passive-mode true; rm -f \"$p\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
     done
   fi
   upload_multi "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
+fi
+
+# Clean nested deployment created by previous brute-force when FTP already at site root
+if [[ -z "$FTP_PATH" ]]; then
+  echo "🧹 Removing nested rajiblabs/rajiblabs if present (previous mis-deploy)..."
+  if command -v lftp >/dev/null 2>&1; then
+    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -rf rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+    # Also clean other candidates that may have been mis-created
+    lftp -e "set ftp:passive-mode true; rm -rf site/wwwroot/rajiblabs; rm -rf wwwroot/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  fi
 fi
 
 echo ""
