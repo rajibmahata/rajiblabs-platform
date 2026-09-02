@@ -91,13 +91,6 @@ if command -v lftp >/dev/null 2>&1; then
   # User confirmed hosting panel /rajiblabs is docroot — hardcode to /rajiblabs
   echo "   → Using /rajiblabs as configured (hosting panel docroot)"
   DETECTED="rajiblabs"
-  elif grep -q "^site$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP at site container (contains site/wwwroot) → using site/wwwroot"
-    DETECTED="site/wwwroot"
-  else
-    echo "   → Could not determine, using configured FTP_PATH"
-    DETECTED="$FTP_PATH"
-  fi
   # Respect hosting panel /rajiblabs as docroot — do not correct to /
   if [[ -z "$FTP_PATH" && "$DETECTED" == "rajiblabs" ]]; then
     echo "   → FTP at account root, site at /rajiblabs → using /rajiblabs"
