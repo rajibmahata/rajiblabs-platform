@@ -203,36 +203,59 @@ app.MapPost("/api/unsubscribe", async (SubscriberDto dto, LabDbContext db) =>
     sub.IsActive = false; sub.UnsubscribedAt = DateTime.UtcNow; await db.SaveChangesAsync(); return Results.Ok(new { Message = "Unsubscribed. We'll miss you!" });
 });
 
-// ── Admin Auth ──
+// ── Admin Auth (supports two emails mapping to same admin) ──
 app.MapPost("/api/admin/login", async (AdminLoginDto dto, HttpContext http, LabDbContext db, IConfiguration cfg) =>
 {
-    // Rate limit: 5 attempts per minute per IP (simple in-memory)
-    var username = (cfg["Admin:Username"] ?? cfg["ADMIN_USERNAME"] ?? "admin").Trim();
-    var passwordHash = cfg["Admin:PasswordHash"] ?? cfg["ADMIN_PASSWORD_HASH"] ?? "";
-    var admin = await db.AdminUsers.FirstOrDefaultAsync(u => u.Username == dto.Username);
-    // Fallback to env-configured admin if DB empty
-    if (admin is null && dto.Username == username)
+    var rawEmails = cfg["ADMIN_INITIAL_EMAILS"] ?? cfg["Admin:InitialEmails"] ?? cfg["Admin:Username"] ?? cfg["ADMIN_USERNAME"] ?? "rajibmahata143@gmail.com,rajibmahata143@outlook.com";
+    var allowedEmails = rawEmails.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(e => e.Trim().ToLowerInvariant()).ToHashSet();
+    var inputEmail = (dto.Username ?? "").Trim().ToLowerInvariant();
+    if (!allowedEmails.Contains(inputEmail)) return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
+
+    var initialPassword = cfg["ADMIN_INITIAL_PASSWORD"] ?? cfg["Admin:InitialPassword"] ?? cfg["Admin:Password"] ?? cfg["ADMIN_PASSWORD"] ?? "";
+    var initialHash = cfg["Admin:PasswordHash"] ?? cfg["ADMIN_PASSWORD_HASH"] ?? "";
+    // Primary username is first email lowercased
+    var primaryEmail = allowedEmails.First();
+    var admin = await db.AdminUsers.FirstOrDefaultAsync(u => u.Username.ToLower() == primaryEmail);
+    // Also check legacy lookup by input email
+    if (admin is null) admin = await db.AdminUsers.FirstOrDefaultAsync(u => u.Username.ToLower() == inputEmail);
+    if (admin is null)
     {
-        // If env hash provided, verify against it; else allow default password "Admin@123" hashed on first use
-        if (!string.IsNullOrWhiteSpace(passwordHash))
+        if (string.IsNullOrWhiteSpace(initialPassword) && string.IsNullOrWhiteSpace(initialHash))
+            return Results.Json(new { Error = "Admin not configured" }, statusCode: 500);
+        var hashToVerify = !string.IsNullOrWhiteSpace(initialHash) ? initialHash : "";
+        if (!string.IsNullOrWhiteSpace(hashToVerify))
         {
-            if (!VerifyPassword(dto.Password, passwordHash)) return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
+            if (!VerifyPassword(dto.Password, hashToVerify)) return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
         }
         else
         {
-            var defaultPass = cfg["Admin:Password"] ?? cfg["ADMIN_PASSWORD"] ?? "Admin@123";
-            if (dto.Password != defaultPass) return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
+            if (dto.Password != initialPassword) return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
         }
-        // Create DB user
-        admin = new AdminUser { Username = username, PasswordHash = string.IsNullOrWhiteSpace(passwordHash) ? HashPassword(dto.Password) : passwordHash };
+        var finalHash = !string.IsNullOrWhiteSpace(initialHash) ? initialHash : HashPassword(dto.Password);
+        admin = new AdminUser { Username = primaryEmail, PasswordHash = finalHash };
         db.AdminUsers.Add(admin);
     }
-    if (admin is null) return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
-    if (!VerifyPassword(dto.Password, admin.PasswordHash))
+    else
     {
-        // Also check env hash fallback
-        if (string.IsNullOrWhiteSpace(passwordHash) || !VerifyPassword(dto.Password, passwordHash))
-            return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
+        // Verify against stored hash, fallback to env hash/password if needed
+        if (!VerifyPassword(dto.Password, admin.PasswordHash))
+        {
+            var envHash = initialHash;
+            if (!string.IsNullOrWhiteSpace(envHash) && VerifyPassword(dto.Password, envHash))
+            {
+                // Update stored hash to env hash if mismatch but env proves correct (rotation)
+                admin.PasswordHash = envHash;
+            }
+            else if (!string.IsNullOrWhiteSpace(initialPassword) && dto.Password == initialPassword)
+            {
+                // Allow env plain password as fallback (will re-hash)
+                admin.PasswordHash = HashPassword(dto.Password);
+            }
+            else
+            {
+                return Results.Json(new { Error = "Invalid credentials" }, statusCode: 401);
+            }
+        }
     }
     admin.LastLoginAt = DateTime.UtcNow; await db.SaveChangesAsync();
     var token = CreateJwt(admin.Username);
