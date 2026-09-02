@@ -65,17 +65,18 @@ export default function GlobalNav() {
     <>
       <header
         ref={headerRef}
-        className={`fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-lg border-b border-outline-variant/30 transition-transform duration-300 ease-in-out ${hidden && !menuOpen ? 'nav-hidden' : ''}`}
-        style={{ background: 'rgba(14,19,32,0.9)' }}
+        className={`fixed top-0 w-full z-50 backdrop-blur-xl border-b transition-transform duration-300 ease-in-out ${hidden && !menuOpen ? 'nav-hidden' : ''}`}
+        style={{ background: 'rgba(14,19,32,0.82)', borderColor: 'rgba(30,45,74,0.44)', boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.28)' }}
       >
-        <div className="flex justify-between items-center px-6 py-4 max-w-[1200px] mx-auto h-[72px] pt-safe">
+        <div className="flex justify-between items-center px-6 py-4 max-w-[1280px] mx-auto h-[72px] pt-safe">
           <a
             href="#"
             onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className="font-section-title text-[20px] font-bold text-on-surface no-underline"
-            style={{ fontFamily: 'Fraunces, serif' }}
+            className="font-section-title text-[20px] font-bold tracking-tight text-on-surface no-underline"
+            style={{ fontFamily: 'Fraunces, serif', letterSpacing: '-0.02em' }}
           >
-            Rajib Mahata
+            Rajib<span style={{ color: '#eec04e', fontWeight: 400 }}>Labs</span>
+            <span className="hidden sm:inline ml-2 align-middle text-[11px] font-semibold tracking-widest px-1.5 py-0.5 rounded border" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#8896B3', borderColor: 'rgba(30,45,74,0.8)', letterSpacing: '0.10em' }}>RM</span>
           </a>
 
           <nav className="hidden md:flex items-center gap-8" aria-label="Primary">

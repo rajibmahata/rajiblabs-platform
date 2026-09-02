@@ -63,32 +63,31 @@ export default function ProductsSection() {
 
   return (
     <section className="section-pad" ref={sectionRef} id="products"
-      style={{ background: 'var(--c-bg-secondary)' }}
+      style={{ background: 'linear-gradient(180deg, var(--c-bg-secondary) 0%, #0D1F3C 100%)', borderTop: '0.5px solid rgba(30,45,74,0.28)' }}
     >
       <div className="container-site">
-        <SectionLabel>PRODUCTS BY RAJIBLABS</SectionLabel>
+        <div className="max-w-3xl mb-2">
+          <SectionLabel>PRODUCTS BY RAJIBLABS — SHIPPED & BUILDING</SectionLabel>
+          <h2 className="font-display text-[34px] md:text-[42px] leading-[1.05] tracking-tight mt-3" style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--c-text-primary)' }}>
+            Products, not just projects.
+          </h2>
+          <p className="text-[15px] md:text-[16px] mt-3 leading-relaxed" style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, color: 'var(--c-text-secondary)', lineHeight: 1.7 }}>
+            Enterprise SaaS and AI systems designed for real businesses — audited, white-label ready, and built for scale.
+          </p>
+        </div>
 
-        <motion.div
+          <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8"
+          transition={{ duration: 0.55 }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-7 mt-10"
         >
           {products.map(product => (
             <div
               key={product.name}
-              className={`card p-6 group ${product.featured ? 'lg:col-span-2' : ''}`}
+              className={`card-elegant p-7 md:p-8 group ${product.featured ? 'lg:col-span-2' : ''}`}
               style={{
-                background: `linear-gradient(135deg, var(--c-bg-secondary), var(--c-bg-tertiary))`,
-                transition: 'all 250ms var(--ease-spring)',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = product.featured ? 'var(--shadow-glow-blue)' : 'var(--shadow-lg)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '';
+                transition: 'all 420ms cubic-bezier(0.25, 0.8, 0.25, 1)',
               }}
             >
               <div className="flex justify-between items-start mb-3">

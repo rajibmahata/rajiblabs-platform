@@ -15,49 +15,53 @@ export default function HeroSection({ productCount = 6, companyCount = 3 }: Hero
   return (
     <section
       id="hero"
-      className="relative min-h-[819px] flex items-center justify-center px-6 py-24 md:py-32 overflow-hidden"
+      className="relative min-h-[820px] flex items-center justify-center px-6 py-28 md:py-36 overflow-hidden grain"
       style={{ paddingTop: 72 }}
     >
       <div className="hero-glow" aria-hidden="true" />
-      <div className="absolute inset-0 ambient-mesh opacity-40 pointer-events-none" aria-hidden="true" />
-      <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none" aria-hidden="true" />
+      <div className="absolute inset-0 ambient-mesh opacity-35 pointer-events-none" aria-hidden="true" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.16] pointer-events-none" aria-hidden="true" />
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent pointer-events-none" aria-hidden="true" />
 
       <div className="max-w-[1200px] mx-auto w-full text-center z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, duration: 0.5 }}
-          className="inline-flex items-center gap-2 bg-surface-inset px-4 py-1.5 rounded-full border border-border-subtle mb-8"
+          transition={{ delay: 0.06, duration: 0.55 }}
+          className="inline-flex items-center gap-2.5 bg-surface-inset/80 backdrop-blur px-4 py-2 rounded-full border border-border-subtle mb-8 shadow-sm"
         >
-          <span className="w-2 h-2 rounded-full bg-whatsapp animate-pulse" style={{ background: '#25D366' }} />
-          <span className="font-tech-chip text-[11px] text-text-secondary uppercase tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.10em' }}>
-            Available for New Projects
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-whatsapp opacity-30" style={{ background: '#25D366' }} />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-whatsapp" style={{ background: '#25D366' }} />
+          </span>
+          <span className="font-tech-chip text-[11px] text-text-secondary uppercase tracking-[0.14em]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+            Available for New Projects · Rajib Mahata
           </span>
         </motion.div>
 
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12, duration: 0.6 }}
-          className="font-display-hero-mobile md:font-display-hero text-[42px] md:text-[72px] text-gradient mb-6 max-w-4xl mx-auto"
-          style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em' }}
+          transition={{ delay: 0.14, duration: 0.65 }}
+          className="font-display-hero-mobile md:font-display-hero text-[40px] md:text-[74px] text-gradient mb-7 max-w-4xl mx-auto"
+          style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, lineHeight: 0.98, letterSpacing: '-0.045em' }}
         >
           Architecting
           <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary italic font-medium" style={{ backgroundImage: 'linear-gradient(135deg, #b5c4ff, #7bd7c5)', WebkitBackgroundClip: 'text', letterSpacing: '-0.03em' }}>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-tertiary italic font-medium" style={{ backgroundImage: 'linear-gradient(135deg, #b5c4ff 10%, #7bd7c5 92%)', WebkitBackgroundClip: 'text', letterSpacing: '-0.035em' }}>
             Scalable Intelligence
           </span>
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22, duration: 0.6 }}
-          className="font-body-large text-[18px] text-text-muted max-w-2xl mx-auto mb-10"
-          style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, lineHeight: 1.7, color: '#6A7B9E' }}
+          transition={{ delay: 0.24, duration: 0.6 }}
+          className="font-body-large text-[17px] md:text-[18px] text-text-muted max-w-2xl mx-auto mb-10"
+          style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, lineHeight: 1.75, color: '#8896B3', letterSpacing: '0.01em' }}
         >
-          Senior .NET &amp; Azure Architect bridging the gap between high-performance backend systems and next-generation AI integrations.
-          <span className="hidden md:inline"> 12+ years delivering platforms processing 500K+ daily events — 30% faster, 40% fewer errors.</span>
+          Senior .NET &amp; Azure Architect — bridging high-performance backend systems and next-generation AI.
+          <span className="hidden md:inline"> 12+ years delivering platforms processing 500K+ daily events — 30% faster, 40% fewer errors, 25% higher satisfaction.</span>
         </motion.p>
 
         {/* Primary CTAs — stitch */}
@@ -70,7 +74,7 @@ export default function HeroSection({ productCount = 6, companyCount = 3 }: Hero
           <a
             href="#projects"
             onClick={e => { e.preventDefault(); scrollTo('projects'); }}
-            className="w-full sm:w-auto bg-primary-container text-white px-8 py-3 rounded-full font-body-base hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto bg-primary-container text-white px-8 py-3.5 rounded-full font-body-base hover:bg-accent-blue-hover transition-all flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(21,71,190,0.28)] hover:shadow-[0_12px_32px_rgba(21,71,190,0.36)] hover:-translate-y-px"
             style={{ background: '#1547be', fontFamily: 'DM Sans, sans-serif' }}
           >
             View Work <span className="material-symbols-outlined text-sm">arrow_downward</span>
@@ -78,8 +82,8 @@ export default function HeroSection({ productCount = 6, companyCount = 3 }: Hero
           <a
             href="#about"
             onClick={e => { e.preventDefault(); scrollTo('about'); }}
-            className="w-full sm:w-auto border border-border-subtle text-text-primary px-8 py-3 rounded-full font-body-base hover:border-primary-container hover:text-primary-container transition-all flex items-center justify-center"
-            style={{ borderColor: '#1E2D4A', fontFamily: 'DM Sans, sans-serif' }}
+            className="w-full sm:w-auto border border-border-subtle text-text-primary px-8 py-3.5 rounded-full font-body-base hover:border-primary/30 hover:text-primary transition-all flex items-center justify-center backdrop-blur"
+            style={{ borderColor: 'rgba(30,45,74,0.9)', fontFamily: 'DM Sans, sans-serif', background: 'rgba(255,255,255,0.02)' }}
           >
             About Me
           </a>
