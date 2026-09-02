@@ -201,9 +201,11 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         env:
           SITE_URL: ${{ secrets.SITE_URL }}
+          FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
           SITE_URL="${SITE_URL:-https://rajiblabs.com}"
-          echo "Verifying $SITE_URL ..."
+          FTP_PATH_CLEAN="${FTP_PATH#/}"; FTP_PATH_CLEAN="${FTP_PATH_CLEAN%/}"
+          echo "Verifying $SITE_URL ... (FTP_PATH=/${FTP_PATH_CLEAN:-<root>})"
           for i in 1 2 3; do
             HTTP_CODE=$(curl -s -o /tmp/home.html -w "%{http_code}" --max-time 15 "$SITE_URL/" || echo "000")
             echo "Attempt $i: $SITE_URL/ -> HTTP $HTTP_CODE"
@@ -217,12 +219,21 @@ jobs:
           echo "Checking assets..."
           curl -s --head --max-time 10 "$SITE_URL/manifest.webmanifest" | head -5
           curl -s --head --max-time 10 "$SITE_URL/assets/" | head -5 || true
-          # Check for nested deployment error
-          if curl -s --max-time 10 "$SITE_URL/rajiblabs/index.html" | grep -q "RajibLabs"; then
-            echo "WARNING: Found nested /rajiblabs/rajiblabs deployment — FTP path may be wrong!"
-            exit 1
+          # Check for nested deployment error — only fail if truly double-nested
+          # When FTP_PATH=rajiblabs, /rajiblabs/index.html is the live site at correct subfolder, not nested
+          if [[ "$FTP_PATH_CLEAN" == "rajiblabs" ]]; then
+            if curl -s --max-time 10 "$SITE_URL/rajiblabs/rajiblabs/index.html" | grep -q "RajibLabs"; then
+              echo "WARNING: Found double-nested /rajiblabs/rajiblabs/rajiblabs — FTP path wrong!"
+              exit 1
+            fi
+            echo "No double-nested deployment (FTP_PATH=rajiblabs correct)"
+          else
+            if curl -s --max-time 10 "$SITE_URL/rajiblabs/index.html" | grep -q "RajibLabs"; then
+              echo "WARNING: Found nested /rajiblabs/rajiblabs deployment — FTP path may be wrong!"
+              exit 1
+            fi
+            echo "No nested deployment detected"
           fi
-          echo "No nested deployment detected"
 
       - name: Skip deploy (no secrets)
         if: steps.check.outputs.skip == 'true'
