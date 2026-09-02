@@ -28,7 +28,7 @@ fi
 : "${FTP_HOST:=win1069.site4now.net}"
 : "${FTP_USER:=rajibmahata143-001}"
 : "${FTP_PASS:?Set FTP_PASS in your environment or .env}"
-: "${FTP_PATH:=}"
+: "${FTP_PATH:=rajiblabs}"
 : "${SITE_URL:=https://rajiblabs.com}"
 
 # Normalize FTP_HOST (strip ftp://, :21, trailing slashes) — do not touch password
@@ -88,16 +88,9 @@ if command -v lftp >/dev/null 2>&1; then
   # Debug (no password)
   echo "   FTP root listing (first 20):"
   head -20 "${FTP_ROOT_LIST}.clean" | sed 's/^/     /' || true
-  # Hosting panel shows /rajiblabs is the RajibLabs Project docroot — live https://rajiblabs.com is served from /rajiblabs
-  if grep -q "^rajiblabs$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP at account root (contains rajiblabs folder) — hosting panel /rajiblabs is docroot for rajiblabs.com → using /rajiblabs"
-    DETECTED="rajiblabs"
-  elif grep -q "^index.html$" "${FTP_ROOT_LIST}.clean" && grep -q "^assets$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP root contains index.html + assets → using / (fallback)"
-    DETECTED=""
-  elif grep -q "wwwroot" "${FTP_ROOT_LIST}.clean" && grep -q "^index.html$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP root contains wwwroot/index.html → using /"
-    DETECTED=""
+  # User confirmed hosting panel /rajiblabs is docroot — hardcode to /rajiblabs
+  echo "   → Using /rajiblabs as configured (hosting panel docroot)"
+  DETECTED="rajiblabs"
   elif grep -q "^site$" "${FTP_ROOT_LIST}.clean"; then
     echo "   → FTP at site container (contains site/wwwroot) → using site/wwwroot"
     DETECTED="site/wwwroot"
