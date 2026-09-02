@@ -172,11 +172,10 @@ upload() {
   return 1
 }
 
-# Upload all files, sw.js last (service worker can be locked)
-# Brute-force to all likely SmarterASP physical paths to guarantee live update
+# Upload to verified FTP_PATH only — prevents /rajiblabs/rajiblabs nesting and 403 at root
 CANDIDATE_PATHS=()
-if [[ -n "$FTP_PATH" ]]; then CANDIDATE_PATHS+=("$FTP_PATH"); fi
-CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot")
+if [[ -z "$FTP_PATH" ]]; then CANDIDATE_PATHS+=(""); else CANDIDATE_PATHS+=("$FTP_PATH"); fi
+# Do not brute-force to site/wwwroot/wwwroot when verified path is already known
 # Deduplicate
 UNIQUE_CANDS=()
 for p in "${CANDIDATE_PATHS[@]}"; do
