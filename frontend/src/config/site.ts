@@ -10,10 +10,9 @@ export const siteConfig = {
 
   contact: {
     email: 'rajibmahata143@gmail.com',
-    // Phone with country code — used for tel: and wa.me (no spaces, no + for wa.me)
-    phone: '+91 98765 43210', // <-- Replace with real number
-    phoneRaw: '+919876543210', // E.164 for tel:
-    phoneWa: '919876543210',   // wa.me requires without + and spaces
+    phone: '+91 84202 49020',
+    phoneRaw: '+918420249020',
+    phoneWa: '918420249020',
     whatsappMessage: encodeURIComponent(
       'Hi Rajib, I visited RajibLabs and would like to discuss a project. '
     ),

@@ -248,7 +248,7 @@ export default function ContactSection() {
 
             {/* Resume download link */}
             <a
-              href="/Resume-RajibMahata.pdf"
+              href="/Rajib-Mahata-Resume-2026.pdf"
               download
               className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl border transition-all"
               style={{

@@ -113,7 +113,7 @@ export default function HeroSection({ productCount = 6, companyCount = 3 }: Hero
             <span className="material-symbols-outlined text-[18px]">call</span> {siteConfig.contact.phone}
           </a>
           <a
-            href="/Resume-RajibMahata.pdf"
+            href="/Rajib-Mahata-Resume-2026.pdf"
             download
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border transition-all"
             style={{ borderColor: '#eec04e', color: '#eec04e', fontFamily: 'DM Sans, sans-serif' }}

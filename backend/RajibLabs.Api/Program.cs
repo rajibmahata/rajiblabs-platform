@@ -608,4 +608,32 @@ static void SeedCms(LabDbContext db, IConfiguration cfg)
         db.WebsiteContents.Add(new WebsiteContent { Key = "home_order", Title = "Home Section Order", BodyJson = "[\"hero\",\"overview\",\"about\",\"whatido\",\"expertise\",\"ai\",\"products\",\"architecture\",\"experience\",\"projects\",\"insights\",\"contact\"]" });
         db.SaveChanges();
     }
+    // Seed initial resume from Data/Rajib-Mahata-Resume-2026.pdf if DB empty
+    if (!db.Resumes.Any())
+    {
+        var dataPath = Path.Combine(AppContext.BaseDirectory, "Data", "Rajib-Mahata-Resume-2026.pdf");
+        // Fallback to content root Data
+        if (!File.Exists(dataPath)) dataPath = Path.Combine(Directory.GetCurrentDirectory(), "Data", "Rajib-Mahata-Resume-2026.pdf");
+        if (File.Exists(dataPath))
+        {
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "resumes");
+            Directory.CreateDirectory(uploadsDir);
+            var destName = "Rajib-Mahata-Resume-2026.pdf";
+            var destPath = Path.Combine(uploadsDir, destName);
+            try { File.Copy(dataPath, destPath, overwrite: true); } catch { }
+            var info = new FileInfo(dataPath);
+            var resume = new Resume { FileName = "Rajib-Mahata-Resume-2026.pdf", StoredPath = $"uploads/resumes/{destName}", ContentType = "application/pdf", SizeBytes = info.Length, Version = 1, Status = "published", UploadedAt = DateTime.UtcNow, PublishedAt = DateTime.UtcNow };
+            db.Resumes.Add(resume);
+            db.SaveChanges();
+        }
+    }
+    // Ensure profile has correct phone (centralized +91 84202 49020)
+    var profile = db.Profiles.FirstOrDefault();
+    if (profile != null && string.IsNullOrWhiteSpace(profile.Phone))
+    {
+        profile.Phone = "+91 84202 49020";
+        profile.WhatsApp = "+91 84202 49020";
+        profile.UpdatedAt = DateTime.UtcNow;
+        db.SaveChanges();
+    }
 }

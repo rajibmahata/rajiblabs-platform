@@ -43,7 +43,7 @@ export default function ProfileSection() {
                 ))}
               </div>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                {[{ label: 'LinkedIn', href: 'https://linkedin.com/in/rajib-mahata' }, { label: 'GitHub', href: 'https://github.com/rajibmahata' }, { label: 'Resume (PDF)', href: '/Resume-RajibMahata.pdf', download: true }].map(link => (
+                {[{ label: 'LinkedIn', href: 'https://linkedin.com/in/rajib-mahata' }, { label: 'GitHub', href: 'https://github.com/rajibmahata' }, { label: 'Resume (PDF)', href: '/Rajib-Mahata-Resume-2026.pdf', download: true }].map(link => (
                   <a key={link.label} href={link.href} target={link.href.startsWith('http') ? '_blank' : undefined} rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined} download={link.download ? '' : undefined} className="inline-flex items-center px-4 py-2 rounded-full border text-xs hover:border-primary hover:text-primary transition-all" style={{ fontFamily: 'DM Sans, sans-serif', borderColor: '#1E2D4A', color: '#8896B3', borderRadius: '999px' }}>{link.label}</a>
                 ))}
               </div>

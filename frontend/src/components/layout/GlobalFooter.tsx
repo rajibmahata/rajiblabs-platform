@@ -6,7 +6,7 @@ export default function GlobalFooter() {
   const footerLinks = [
     { label: 'GitHub',    href: siteConfig.social.github },
     { label: 'LinkedIn',  href: siteConfig.social.linkedin },
-    { label: 'Resume',    href: '/Resume-RajibMahata.pdf', download: true },
+    { label: 'Resume',    href: '/Rajib-Mahata-Resume-2026.pdf', download: true },
     { label: 'Email',     href: siteConfig.emailLink },
   ];
 
