@@ -173,6 +173,35 @@ upload() {
 }
 
 # Upload all files, sw.js last (service worker can be locked)
+# Brute-force to all likely SmarterASP physical paths to guarantee live update
+CANDIDATE_PATHS=()
+if [[ -n "$FTP_PATH" ]]; then CANDIDATE_PATHS+=("$FTP_PATH"); fi
+CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot")
+# Deduplicate
+UNIQUE_CANDS=()
+for p in "${CANDIDATE_PATHS[@]}"; do
+  skip=false
+  for q in "${UNIQUE_CANDS[@]}"; do [[ "$p" == "$q" ]] && skip=true && break; done
+  $skip || UNIQUE_CANDS+=("$p")
+done
+
+upload_multi() {
+  local src="$1" rel="$2"
+  local ok=false
+  for base in "${UNIQUE_CANDS[@]}"; do
+    local dest
+    if [[ -z "$base" ]]; then dest="$rel"; else dest="$base/$rel"; fi
+    # Save original FTP_PATH, temporarily override for upload()
+    local saved="$FTP_PATH"
+    FTP_PATH="$base"
+    if upload "$src" "$rel" 2>&1 | sed "s/^/    [$base] /"; then
+      ok=true
+    fi
+    FTP_PATH="$saved"
+  done
+  $ok || echo "  ✗ ALL CANDIDATES FAILED: $rel"
+}
+
 SW_FILE=""
 while IFS= read -r -d '' file; do
   rel="${file#$DIST_DIR/}"
@@ -180,16 +209,21 @@ while IFS= read -r -d '' file; do
     SW_FILE="$file"
     continue
   fi
-  upload "$file" "$rel" || echo "  ⚠ Continuing after failure for $rel"
+  echo "→ $rel"
+  upload_multi "$file" "$rel" || echo "  ⚠ Continuing after failure for $rel"
 done < <(find "$DIST_DIR" -type f -print0)
 
 if [[ -n "$SW_FILE" ]]; then
-  echo "  → Uploading sw.js last..."
+  echo "  → Uploading sw.js last (all candidates)..."
   if $USE_LFTP; then
-    lftp -e "set ftp:passive-mode true; rm -f \"$FTP_PATH/sw.js\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
-    lftp -e "set ftp:passive-mode true; rm -f \"sw.js\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
+    for base in "${UNIQUE_CANDS[@]}"; do
+      p="${base:+$base/}sw.js"
+      # lftp rm without path if base empty
+      if [[ -z "$base" ]]; then p="sw.js"; fi
+      lftp -e "set ftp:passive-mode true; rm -f \"$p\"; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -5 || true
+    done
   fi
-  upload "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
+  upload_multi "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
 fi
 
 echo ""
