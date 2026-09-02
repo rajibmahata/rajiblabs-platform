@@ -237,9 +237,14 @@ fi
 # Clean nested deployment created by previous brute-force (always try, regardless of detected path)
 echo "🧹 Removing nested rajiblabs/rajiblabs if present (previous mis-deploy)..."
 if command -v lftp >/dev/null 2>&1; then
-  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  echo "   Listing rajiblabs before delete:"
+  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -r rajiblabs/index.html; rm -r rajiblabs/assets; rm rajiblabs/index.html; rmdir rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  lftp -e "set ftp:passive-mode true; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
   lftp -e "set ftp:passive-mode true; rm -r site/wwwroot/rajiblabs; rm -r wwwroot/rajiblabs; rm -r htdocs/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  lftp -e "set ftp:passive-mode true; glob -a rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  lftp -e "set ftp:passive-mode true; glob rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  echo "   Verify after delete:"
+  lftp -e "set ftp:passive-mode true; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || echo "   rajiblabs not found (cleaned)"
 fi
 
 echo ""
