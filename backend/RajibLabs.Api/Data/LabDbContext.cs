@@ -13,6 +13,14 @@ public class LabDbContext : DbContext
     public DbSet<Contact> Contacts => Set<Contact>();
     public DbSet<LinkedInCourse> LinkedInCourses => Set<LinkedInCourse>();
     public DbSet<Subscriber> Subscribers => Set<Subscriber>();
+    public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
+    public DbSet<Resume> Resumes => Set<Resume>();
+    public DbSet<ResumeExtraction> ResumeExtractions => Set<ResumeExtraction>();
+    public DbSet<PortfolioProject> PortfolioProjects => Set<PortfolioProject>();
+    public DbSet<GitHubRepository> GitHubRepositories => Set<GitHubRepository>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProjectSyncLog> ProjectSyncLogs => Set<ProjectSyncLog>();
+    public DbSet<WebsiteContent> WebsiteContents => Set<WebsiteContent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,6 +74,50 @@ public class LabDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
             entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<AdminUser>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<Resume>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FileName).HasMaxLength(300);
+            entity.Property(e => e.StoredPath).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<PortfolioProject>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Slug).HasMaxLength(200);
+            entity.HasIndex(e => e.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<GitHubRepository>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.GitHubId).IsUnique();
+            entity.HasIndex(e => e.FullName).IsUnique();
+        });
+
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Slug).HasMaxLength(200);
+            entity.HasIndex(e => e.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<WebsiteContent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Key).IsUnique();
         });
     }
 }

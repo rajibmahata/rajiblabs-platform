@@ -60,6 +60,16 @@ public class Profile
     public string SocialLinksJson { get; set; } = "{}";
     public string CareerJson { get; set; } = "[]"; // JSON array of career entries
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    // Extended CMS fields
+    public string? Headline { get; set; }
+    public string? Location { get; set; }
+    public string? Phone { get; set; }
+    public string? WhatsApp { get; set; }
+    public string? Email { get; set; }
+    public string? LinkedIn { get; set; }
+    public string? GitHub { get; set; }
+    public string? Website { get; set; }
+    public string? ProfileImageUrl { get; set; }
 
     // Frontend-friendly projections
     public List<string> Skills => System.Text.Json.JsonSerializer.Deserialize<List<string>>(SkillsJson) ?? new();

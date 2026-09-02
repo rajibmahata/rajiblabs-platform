@@ -181,3 +181,23 @@ export async function getWorkInProgress(): Promise<WipData> {
     return fallbackWipData;
   }
 }
+
+// ── Admin CMS helper (credentials include for HttpOnly cookie) ──
+const ADMIN_BASE = import.meta.env.VITE_API_BASE ?? "";
+async function adminRequest<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${ADMIN_BASE}${path}`, { credentials: "include", headers: { "Content-Type": "application/json", ...(opts.headers || {}) }, ...opts });
+  if (!res.ok) { const err = await res.text(); throw new Error(err || `${res.status} ${res.statusText}`); }
+  const text = await res.text(); return text ? (JSON.parse(text) as T) : ({} as T);
+}
+export const api = {
+  get: <T>(p: string) => adminRequest<T>(p, { method: "GET" }),
+  post: <T>(p: string, body?: unknown) => adminRequest<T>(p, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  put: <T>(p: string, body: unknown) => adminRequest<T>(p, { method: "PUT", body: JSON.stringify(body) }),
+  patch: <T>(p: string, body: unknown) => adminRequest<T>(p, { method: "PATCH", body: JSON.stringify(body) }),
+  del: <T>(p: string) => adminRequest<T>(p, { method: "DELETE" }),
+  upload: async <T>(p: string, form: FormData): Promise<T> => {
+    const res = await fetch(`${ADMIN_BASE}${p}`, { method: "POST", credentials: "include", body: form });
+    if (!res.ok) throw new Error(await res.text());
+    return (await res.json()) as T;
+  },
+};
