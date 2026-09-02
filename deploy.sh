@@ -175,9 +175,11 @@ upload() {
   return 1
 }
 
-# Upload only to verified FTP_PATH (no brute-force) — prevents overwriting backend web.config and nested
+# Upload to verified path plus fallback to cover both account-root vs site-root chroot
 CANDIDATE_PATHS=()
 if [[ -z "$FTP_PATH" ]]; then CANDIDATE_PATHS+=(""); else CANDIDATE_PATHS+=("$FTP_PATH"); fi
+# Ensure both "" and "rajiblabs" are tried (one is the live docroot, the other is nested-safe)
+if [[ "$FTP_PATH" == "" ]]; then CANDIDATE_PATHS+=("rajiblabs"); else CANDIDATE_PATHS+=(""); fi
 # Deduplicate
 UNIQUE_CANDS=()
 for p in "${CANDIDATE_PATHS[@]}"; do
@@ -226,17 +228,18 @@ if [[ -n "$SW_FILE" ]]; then
   upload_multi "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
 fi
 
-# Clean nested deployment only when FTP already at site root (FTP_PATH == ""), never when at account root
-if [[ -z "$FTP_PATH" ]] && command -v lftp >/dev/null 2>&1; then
-  echo "🧹 Removing nested rajiblabs/rajiblabs if present (previous mis-deploy)..."
-  echo "   Listing rajiblabs before delete:"
-  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -r rajiblabs/index.html; rm -r rajiblabs/assets; rm rajiblabs/index.html; rmdir rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  echo "   Verify after delete:"
-  lftp -e "set ftp:passive-mode true; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || echo "   rajiblabs nested cleaned (not found)"
-else
-  echo "   Skip nested cleanup (FTP at account root, rajiblabs is docroot)"
+# Clean nested deployment (previous brute-force) without deleting docroot
+if command -v lftp >/dev/null 2>&1; then
+  if [[ -z "$FTP_PATH" ]]; then
+    echo "🧹 FTP at site root — removing nested rajiblabs subfolder if present..."
+    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+    lftp -e "set ftp:passive-mode true; rm -r rajiblabs/index.html; rm -r rajiblabs/assets; rm rajiblabs/index.html; rmdir rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+    lftp -e "set ftp:passive-mode true; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  else
+    echo "🧹 FTP at account root — removing nested rajiblabs/rajiblabs if present..."
+    lftp -e "set ftp:passive-mode true; ls rajiblabs/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+    lftp -e "set ftp:passive-mode true; rm -r rajiblabs/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  fi
 fi
 
 echo ""
