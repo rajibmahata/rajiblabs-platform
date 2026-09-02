@@ -175,17 +175,9 @@ upload() {
   return 1
 }
 
-# Upload all files — use detected FTP_PATH only (avoid /rajiblabs/rajiblabs nesting)
-# Only brute-force to site/wwwroot/wwwroot when FTP is at account root; never blindly to rajiblabs
+# Upload only to verified FTP_PATH (no brute-force) — prevents overwriting backend web.config and nested
 CANDIDATE_PATHS=()
-if [[ -n "$FTP_PATH" ]]; then CANDIDATE_PATHS+=("$FTP_PATH"); fi
-# Only add site/wwwroot/wwwroot as fallback if not already the detected path and if FTP might be at account root
-if [[ "$FTP_PATH" != "site/wwwroot" && "$FTP_PATH" != "wwwroot" ]]; then
-  CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot")
-else
-  # FTP already at site/wwwroot/wwwroot — also ensure root is covered
-  CANDIDATE_PATHS+=("")
-fi
+if [[ -z "$FTP_PATH" ]]; then CANDIDATE_PATHS+=(""); else CANDIDATE_PATHS+=("$FTP_PATH"); fi
 # Deduplicate
 UNIQUE_CANDS=()
 for p in "${CANDIDATE_PATHS[@]}"; do
@@ -234,17 +226,17 @@ if [[ -n "$SW_FILE" ]]; then
   upload_multi "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
 fi
 
-# Clean nested deployment created by previous brute-force (always try, regardless of detected path)
-echo "🧹 Removing nested rajiblabs/rajiblabs if present (previous mis-deploy)..."
-if command -v lftp >/dev/null 2>&1; then
+# Clean nested deployment only when FTP already at site root (FTP_PATH == ""), never when at account root
+if [[ -z "$FTP_PATH" ]] && command -v lftp >/dev/null 2>&1; then
+  echo "🧹 Removing nested rajiblabs/rajiblabs if present (previous mis-deploy)..."
   echo "   Listing rajiblabs before delete:"
   lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
   lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -r rajiblabs/index.html; rm -r rajiblabs/assets; rm rajiblabs/index.html; rmdir rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  lftp -e "set ftp:passive-mode true; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  lftp -e "set ftp:passive-mode true; rm -r site/wwwroot/rajiblabs; rm -r wwwroot/rajiblabs; rm -r htdocs/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  lftp -e "set ftp:passive-mode true; glob rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
   echo "   Verify after delete:"
-  lftp -e "set ftp:passive-mode true; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || echo "   rajiblabs not found (cleaned)"
+  lftp -e "set ftp:passive-mode true; ls rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || echo "   rajiblabs nested cleaned (not found)"
+else
+  echo "   Skip nested cleanup (FTP at account root, rajiblabs is docroot)"
 fi
 
 echo ""
