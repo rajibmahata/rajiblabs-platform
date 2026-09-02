@@ -68,37 +68,52 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
-// ── Ensure DB & seed ──
+// ── Ensure DB & seed (handles old DB without new tables) ──
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<LabDbContext>();
-    // EnsureCreated for new installs; for existing DB, ensure new tables exist
-    db.Database.EnsureCreated();
-    try { db.AdminUsers.Take(1).ToList(); } catch { db.Database.EnsureCreated(); }
-    // Create missing tables via raw SQL if EnsureCreated didn't add them (SQLite)
-    var ensureSql = new[]
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
     {
-        @"CREATE TABLE IF NOT EXISTS AdminUsers (Id TEXT PRIMARY KEY, Username TEXT NOT NULL, PasswordHash TEXT NOT NULL, CreatedAt TEXT NOT NULL, LastLoginAt TEXT)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS IX_AdminUsers_Username ON AdminUsers(Username)",
-        @"CREATE TABLE IF NOT EXISTS Resumes (Id TEXT PRIMARY KEY, FileName TEXT, StoredPath TEXT, ContentType TEXT, SizeBytes INTEGER NOT NULL, Version INTEGER NOT NULL, Status TEXT, UploadedAt TEXT NOT NULL, PublishedAt TEXT)",
-        @"CREATE TABLE IF NOT EXISTS ResumeExtractions (Id TEXT PRIMARY KEY, ResumeId TEXT NOT NULL, ExtractedJson TEXT, Status TEXT, CreatedAt TEXT NOT NULL)",
-        @"CREATE TABLE IF NOT EXISTS PortfolioProjects (Id TEXT PRIMARY KEY, Title TEXT NOT NULL, Slug TEXT, ShortDescription TEXT, Description TEXT, Problem TEXT, Solution TEXT, Role TEXT, Architecture TEXT, TechStackJson TEXT, AiCapabilitiesJson TEXT, CloudCapabilitiesJson TEXT, ScreenshotsJson TEXT, DemoUrl TEXT, GitHubUrl TEXT, ProductUrl TEXT, Status TEXT, Featured INTEGER NOT NULL, DisplayOrder INTEGER NOT NULL, CreatedAt TEXT NOT NULL, UpdatedAt TEXT NOT NULL, PublishedAt TEXT, IsManualEdit INTEGER NOT NULL)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS IX_PortfolioProjects_Slug ON PortfolioProjects(Slug)",
-        @"CREATE TABLE IF NOT EXISTS GitHubRepositories (Id TEXT PRIMARY KEY, GitHubId INTEGER NOT NULL, Name TEXT, FullName TEXT, Description TEXT, HtmlUrl TEXT, Language TEXT, TopicsJson TEXT, Stars INTEGER NOT NULL, Forks INTEGER NOT NULL, Readme TEXT, PushedAt TEXT, UpdatedAtGitHub TEXT, IsPrivate INTEGER NOT NULL, DefaultBranch TEXT, Classification TEXT, AiTitle TEXT, AiSummary TEXT, AiProblem TEXT, AiTechStack TEXT, AiConfidence TEXT, SyncStatus TEXT, LastSyncedAt TEXT NOT NULL, IsManuallyEdited INTEGER NOT NULL, PublishedAt TEXT)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS IX_GitHubRepositories_GitHubId ON GitHubRepositories(GitHubId)",
-        @"CREATE TABLE IF NOT EXISTS Products (Id TEXT PRIMARY KEY, Name TEXT NOT NULL, Slug TEXT, Category TEXT, Description TEXT, LogoUrl TEXT, ScreenshotsJson TEXT, FeaturesJson TEXT, TechStackJson TEXT, AiCapabilities TEXT, Architecture TEXT, ProductUrl TEXT, GitHubRepoId TEXT, Status TEXT, Featured INTEGER NOT NULL, DisplayOrder INTEGER NOT NULL, CreatedAt TEXT NOT NULL, UpdatedAt TEXT NOT NULL)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS IX_Products_Slug ON Products(Slug)",
-        @"CREATE TABLE IF NOT EXISTS ProjectSyncLogs (Id TEXT PRIMARY KEY, StartedAt TEXT NOT NULL, FinishedAt TEXT, Found INTEGER NOT NULL, Added INTEGER NOT NULL, Updated INTEGER NOT NULL, Ignored INTEGER NOT NULL, ErrorsJson TEXT)",
-        @"CREATE TABLE IF NOT EXISTS WebsiteContents (Id TEXT PRIMARY KEY, Key TEXT NOT NULL, Title TEXT, BodyJson TEXT, UpdatedAt TEXT NOT NULL)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS IX_WebsiteContents_Key ON WebsiteContents(Key)"
-    };
-    foreach (var sql in ensureSql) try { db.Database.ExecuteSqlRaw(sql); } catch { }
-    // Add extended Profile columns if missing
-    var profileCols = new[] { "Headline", "Location", "Phone", "WhatsApp", "Email", "LinkedIn", "GitHub", "Website", "ProfileImageUrl" };
-    foreach (var col in profileCols) try { db.Database.ExecuteSqlRaw($"ALTER TABLE Profiles ADD COLUMN {col} TEXT"); } catch { }
+        db.Database.EnsureCreated();
+        // Verify new tables exist; if not, recreate DB (safe for SQLite file)
+        bool needsRecreate = false;
+        try { db.AdminUsers.Take(1).ToList(); } catch { needsRecreate = true; }
+        if (needsRecreate)
+        {
+            logger.LogWarning("DB missing new tables — recreating rajiblabs.db");
+            try { db.Database.EnsureDeleted(); } catch { }
+            db.Database.EnsureCreated();
+        }
+        // Ensure any missing tables/columns (idempotent)
+        var ensureSql = new[]
+        {
+            @"CREATE TABLE IF NOT EXISTS AdminUsers (Id TEXT PRIMARY KEY, Username TEXT NOT NULL, PasswordHash TEXT NOT NULL, CreatedAt TEXT NOT NULL, LastLoginAt TEXT)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_AdminUsers_Username ON AdminUsers(Username)",
+            @"CREATE TABLE IF NOT EXISTS Resumes (Id TEXT PRIMARY KEY, FileName TEXT, StoredPath TEXT, ContentType TEXT, SizeBytes INTEGER NOT NULL, Version INTEGER NOT NULL, Status TEXT, UploadedAt TEXT NOT NULL, PublishedAt TEXT)",
+            @"CREATE TABLE IF NOT EXISTS ResumeExtractions (Id TEXT PRIMARY KEY, ResumeId TEXT NOT NULL, ExtractedJson TEXT, Status TEXT, CreatedAt TEXT NOT NULL)",
+            @"CREATE TABLE IF NOT EXISTS PortfolioProjects (Id TEXT PRIMARY KEY, Title TEXT NOT NULL, Slug TEXT, ShortDescription TEXT, Description TEXT, Problem TEXT, Solution TEXT, Role TEXT, Architecture TEXT, TechStackJson TEXT, AiCapabilitiesJson TEXT, CloudCapabilitiesJson TEXT, ScreenshotsJson TEXT, DemoUrl TEXT, GitHubUrl TEXT, ProductUrl TEXT, Status TEXT, Featured INTEGER NOT NULL, DisplayOrder INTEGER NOT NULL, CreatedAt TEXT NOT NULL, UpdatedAt TEXT NOT NULL, PublishedAt TEXT, IsManualEdit INTEGER NOT NULL)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_PortfolioProjects_Slug ON PortfolioProjects(Slug)",
+            @"CREATE TABLE IF NOT EXISTS GitHubRepositories (Id TEXT PRIMARY KEY, GitHubId INTEGER NOT NULL, Name TEXT, FullName TEXT, Description TEXT, HtmlUrl TEXT, Language TEXT, TopicsJson TEXT, Stars INTEGER NOT NULL, Forks INTEGER NOT NULL, Readme TEXT, PushedAt TEXT, UpdatedAtGitHub TEXT, IsPrivate INTEGER NOT NULL, DefaultBranch TEXT, Classification TEXT, AiTitle TEXT, AiSummary TEXT, AiProblem TEXT, AiTechStack TEXT, AiConfidence TEXT, SyncStatus TEXT, LastSyncedAt TEXT NOT NULL, IsManuallyEdited INTEGER NOT NULL, PublishedAt TEXT)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_GitHubRepositories_GitHubId ON GitHubRepositories(GitHubId)",
+            @"CREATE TABLE IF NOT EXISTS Products (Id TEXT PRIMARY KEY, Name TEXT NOT NULL, Slug TEXT, Category TEXT, Description TEXT, LogoUrl TEXT, ScreenshotsJson TEXT, FeaturesJson TEXT, TechStackJson TEXT, AiCapabilities TEXT, Architecture TEXT, ProductUrl TEXT, GitHubRepoId TEXT, Status TEXT, Featured INTEGER NOT NULL, DisplayOrder INTEGER NOT NULL, CreatedAt TEXT NOT NULL, UpdatedAt TEXT NOT NULL)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_Products_Slug ON Products(Slug)",
+            @"CREATE TABLE IF NOT EXISTS ProjectSyncLogs (Id TEXT PRIMARY KEY, StartedAt TEXT NOT NULL, FinishedAt TEXT, Found INTEGER NOT NULL, Added INTEGER NOT NULL, Updated INTEGER NOT NULL, Ignored INTEGER NOT NULL, ErrorsJson TEXT)",
+            @"CREATE TABLE IF NOT EXISTS WebsiteContents (Id TEXT PRIMARY KEY, Key TEXT NOT NULL, Title TEXT, BodyJson TEXT, UpdatedAt TEXT NOT NULL)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_WebsiteContents_Key ON WebsiteContents(Key)"
+        };
+        foreach (var sql in ensureSql) try { db.Database.ExecuteSqlRaw(sql); } catch (Exception ex) { logger.LogWarning(ex, "EnsureSql failed: {sql}", sql); }
+        var profileCols = new[] { "Headline", "Location", "Phone", "WhatsApp", "Email", "LinkedIn", "GitHub", "Website", "ProfileImageUrl" };
+        foreach (var col in profileCols) try { db.Database.ExecuteSqlRaw($"ALTER TABLE Profiles ADD COLUMN {col} TEXT"); } catch { }
 
-    if (!db.Projects.Any()) SeedData(db);
-    SeedCms(db, builder.Configuration);
+        if (!db.Projects.Any()) SeedData(db);
+        SeedCms(db, builder.Configuration);
+    }
+    catch (Exception ex)
+    {
+        var logger2 = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger2.LogError(ex, "DB ensure/seed failed");
+    }
 }
 
 app.UseCors();
