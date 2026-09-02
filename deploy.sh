@@ -195,10 +195,11 @@ upload_multi() {
   for base in "${UNIQUE_CANDS[@]}"; do
     local dest
     if [[ -z "$base" ]]; then dest="$rel"; else dest="$base/$rel"; fi
-    # Save original FTP_PATH, temporarily override for upload()
     local saved="$FTP_PATH"
     FTP_PATH="$base"
-    if upload "$src" "$rel" 2>&1 | sed "s/^/    [$base] /"; then
+    # Use awk to prefix without sed bracket issues
+    if upload "$src" "$rel" 2>&1 | awk -v b="$base" '{print "    [" (b==""?"root":b) "] " $0}'; then
+      # upload returns 0 on success (echo ✓), so check last line
       ok=true
     fi
     FTP_PATH="$saved"
