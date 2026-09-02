@@ -123,6 +123,9 @@ else
   echo "📤 Uploading to $FTP_HOST/$FTP_PATH ..."
 fi
 
+BUILT_HASH=$(grep -o 'index-[^"]*\.js' "$DIST_DIR/index.html" | head -1 || echo "unknown")
+echo "   Built hash: $BUILT_HASH"
+
 # Prefer lftp if available
 USE_LFTP=false
 if command -v lftp >/dev/null 2>&1; then
@@ -176,7 +179,7 @@ upload() {
 # Brute-force to all likely SmarterASP physical paths to guarantee live update
 CANDIDATE_PATHS=()
 if [[ -n "$FTP_PATH" ]]; then CANDIDATE_PATHS+=("$FTP_PATH"); fi
-CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot")
+CANDIDATE_PATHS+=("" "site/wwwroot" "wwwroot" "htdocs" "public_html" "rajiblabs" "rajiblabs/wwwroot")
 # Deduplicate
 UNIQUE_CANDS=()
 for p in "${CANDIDATE_PATHS[@]}"; do
@@ -227,11 +230,23 @@ if [[ -n "$SW_FILE" ]]; then
 fi
 
 echo ""
-echo "🔍 Verifying deployment..."
+echo "🔍 Verifying deployment (built $BUILT_HASH vs live)..."
 if title=$(curl -s --max-time 30 "$SITE_URL" | grep -o '<title>[^<]*</title>' | sed 's/<[^>]*>//g' | head -1); then
   echo "   Title: ${title:-<empty>}"
 fi
-# Also verify that the new assets are reachable (not old GH7bam2)
+LIVE_HASH=$(curl -s --max-time 15 "$SITE_URL" | grep -o 'index-[^"]*\.js' | head -1 || echo "none")
+echo "   Live hash: $LIVE_HASH"
+if [[ "$LIVE_HASH" == "$BUILT_HASH" ]]; then
+  echo "   ✅ Live matches built — deploy verified"
+else
+  echo "   ⚠ Live ($LIVE_HASH) != built ($BUILT_HASH) — may need cache purge or FTP path is not docroot. Check candidates above."
+  echo "   Trying to list which candidate path would serve index.html..."
+  for base in "${UNIQUE_CANDS[@]}"; do
+    url="$SITE_URL/${base:+$base/}index.html"
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo "000")
+    echo "     $url -> $code"
+  done
+fi
 if curl -s --head --max-time 10 "$SITE_URL/manifest.webmanifest" | grep -q "200"; then
   echo "   PWA manifest: OK"
 else
