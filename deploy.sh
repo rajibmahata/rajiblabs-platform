@@ -234,14 +234,12 @@ if [[ -n "$SW_FILE" ]]; then
   upload_multi "$SW_FILE" "sw.js" || echo "  ⚠ sw.js upload failed — site will still work, PWA may need hard refresh"
 fi
 
-# Clean nested deployment created by previous brute-force when FTP already at site root
-if [[ -z "$FTP_PATH" ]]; then
-  echo "🧹 Removing nested rajiblabs/rajiblabs if present (previous mis-deploy)..."
-  if command -v lftp >/dev/null 2>&1; then
-    lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -rf rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-    # Also clean other candidates that may have been mis-created
-    lftp -e "set ftp:passive-mode true; rm -rf site/wwwroot/rajiblabs; rm -rf wwwroot/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
-  fi
+# Clean nested deployment created by previous brute-force (always try, regardless of detected path)
+echo "🧹 Removing nested rajiblabs/rajiblabs if present (previous mis-deploy)..."
+if command -v lftp >/dev/null 2>&1; then
+  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  lftp -e "set ftp:passive-mode true; rm -r site/wwwroot/rajiblabs; rm -r wwwroot/rajiblabs; rm -r htdocs/rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
+  lftp -e "set ftp:passive-mode true; glob -a rm -r rajiblabs; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" 2>&1 | head -20 || true
 fi
 
 echo ""
