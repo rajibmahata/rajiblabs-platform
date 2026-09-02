@@ -88,11 +88,16 @@ if command -v lftp >/dev/null 2>&1; then
   # Debug (no password)
   echo "   FTP root listing (first 20):"
   head -20 "${FTP_ROOT_LIST}.clean" | sed 's/^/     /' || true
-  if grep -q "^rajiblabs$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP at account root (contains rajiblabs folder) → site is at /rajiblabs"
-    DETECTED="rajiblabs"
-  elif grep -q "wwwroot" "${FTP_ROOT_LIST}.clean" || grep -q "^index.html$" "${FTP_ROOT_LIST}.clean" || grep -q "^assets$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP already at site root (/rajiblabs) → using /"
+  # Priority: if root already has index.html/assets, it's the live docroot (account root IS site root) — don't use /rajiblabs
+  if grep -q "^index.html$" "${FTP_ROOT_LIST}.clean" && grep -q "^assets$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP root contains index.html + assets → FTP is already at live docroot (account root is site root) → using /"
+    DETECTED=""
+  elif grep -q "wwwroot" "${FTP_ROOT_LIST}.clean" && grep -q "^index.html$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP root contains wwwroot/index.html → already at site root → using /"
+    DETECTED=""
+  elif grep -q "^rajiblabs$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP at account root (contains rajiblabs folder) but root also has site files → using / (live at root, not /rajiblabs)"
+    # Live is at root per listing (index.html at root), so use / not /rajiblabs
     DETECTED=""
   elif grep -q "^site$" "${FTP_ROOT_LIST}.clean"; then
     echo "   → FTP at site container (contains site/wwwroot) → using site/wwwroot"

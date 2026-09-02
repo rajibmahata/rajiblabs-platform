@@ -158,15 +158,21 @@ jobs:
           lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; cls -1; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST_CLEAN" 2>&1 | tr '\r' '\n' | head -50 > /tmp/ftp_root_list.txt || true
           cat /tmp/ftp_root_list.txt | head -50
           echo ""
-          if grep -q "^rajiblabs" /tmp/ftp_root_list.txt; then
-            echo "→ FTP root contains 'rajiblabs' folder — FTP account is at account root, site is at /rajiblabs"
-            echo "  Verified FTP path should be: rajiblabs (or /rajiblabs)"
-          elif grep -q "wwwroot" /tmp/ftp_root_list.txt || grep -q "index.html" /tmp/ftp_root_list.txt; then
-            echo "→ FTP root contains wwwroot/index.html — FTP is already scoped to /rajiblabs (site root)"
-            echo "  Verified FTP path should be: / (empty) or not appended"
-            echo "  Do NOT blindly use /rajiblabs/rajiblabs"
+          if grep -q "^index.html" /tmp/ftp_root_list.txt && grep -q "^assets" /tmp/ftp_root_list.txt; then
+            echo "→ FTP root contains index.html + assets — FTP is already at live docroot (account root is site root)"
+            echo "  Verified FTP path should be: / (empty)"
+          elif grep -q "wwwroot" /tmp/ftp_root_list.txt && grep -q "index.html" /tmp/ftp_root_list.txt; then
+            echo "→ FTP root contains wwwroot/index.html — already at site root"
+            echo "  Verified FTP path should be: / (empty)"
+          elif grep -q "^rajiblabs" /tmp/ftp_root_list.txt; then
+            echo "→ FTP root contains 'rajiblabs' folder but also has site files at root — live is at root, not /rajiblabs"
+            echo "  Verified FTP path should be: / (empty) — panel /rajiblabs is separate folder, not live docroot"
           else
             echo "→ Could not determine from root listing, will test both"
+          fi
+          # Ensure we don't create nested
+          if grep -q "^index.html" /tmp/ftp_root_list.txt && grep -q "^rajiblabs" /tmp/ftp_root_list.txt; then
+            echo "  Do NOT use /rajiblabs/rajiblabs — live is at / (root)"
           fi
           echo ""
           if [ -n "$FTP_PATH_CLEAN" ]; then
