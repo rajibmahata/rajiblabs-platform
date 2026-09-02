@@ -88,16 +88,15 @@ if command -v lftp >/dev/null 2>&1; then
   # Debug (no password)
   echo "   FTP root listing (first 20):"
   head -20 "${FTP_ROOT_LIST}.clean" | sed 's/^/     /' || true
-  # Priority: if root already has index.html/assets, it's the live docroot (account root IS site root) — don't use /rajiblabs
-  if grep -q "^index.html$" "${FTP_ROOT_LIST}.clean" && grep -q "^assets$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP root contains index.html + assets → FTP is already at live docroot (account root is site root) → using /"
+  # Hosting panel shows /rajiblabs is the RajibLabs Project docroot — live https://rajiblabs.com is served from /rajiblabs
+  if grep -q "^rajiblabs$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP at account root (contains rajiblabs folder) — hosting panel /rajiblabs is docroot for rajiblabs.com → using /rajiblabs"
+    DETECTED="rajiblabs"
+  elif grep -q "^index.html$" "${FTP_ROOT_LIST}.clean" && grep -q "^assets$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP root contains index.html + assets → using / (fallback)"
     DETECTED=""
   elif grep -q "wwwroot" "${FTP_ROOT_LIST}.clean" && grep -q "^index.html$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP root contains wwwroot/index.html → already at site root → using /"
-    DETECTED=""
-  elif grep -q "^rajiblabs$" "${FTP_ROOT_LIST}.clean"; then
-    echo "   → FTP at account root (contains rajiblabs folder) but root also has site files → using / (live at root, not /rajiblabs)"
-    # Live is at root per listing (index.html at root), so use / not /rajiblabs
+    echo "   → FTP root contains wwwroot/index.html → using /"
     DETECTED=""
   elif grep -q "^site$" "${FTP_ROOT_LIST}.clean"; then
     echo "   → FTP at site container (contains site/wwwroot) → using site/wwwroot"
@@ -106,12 +105,9 @@ if command -v lftp >/dev/null 2>&1; then
     echo "   → Could not determine, using configured FTP_PATH"
     DETECTED="$FTP_PATH"
   fi
-  # Correct misconfigured FTP_PATH that would cause nesting
-  if [[ "$FTP_PATH" == "rajiblabs" && "$DETECTED" == "" ]]; then
-    echo "   ⚠ Configured FTP_PATH=rajiblabs but FTP is already at /rajiblabs → correcting to / (avoid nested /rajiblabs/rajiblabs)"
-    FTP_PATH=""
-  elif [[ -z "$FTP_PATH" && "$DETECTED" == "rajiblabs" ]]; then
-    echo "   ⚠ FTP is at account root, need /rajiblabs"
+  # Respect hosting panel /rajiblabs as docroot — do not correct to /
+  if [[ -z "$FTP_PATH" && "$DETECTED" == "rajiblabs" ]]; then
+    echo "   → FTP at account root, site at /rajiblabs → using /rajiblabs"
     FTP_PATH="rajiblabs"
   elif [[ "$DETECTED" == "site/wwwroot" ]]; then
     FTP_PATH="site/wwwroot"
