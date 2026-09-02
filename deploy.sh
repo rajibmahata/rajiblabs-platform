@@ -79,7 +79,49 @@ if [ ! -f "$DIST_DIR/index.html" ]; then
   exit 1
 fi
 
-echo "📤 Uploading to $FTP_HOST${FTP_PATH:+/$FTP_PATH} ..."
+# ── Auto-detect correct FTP base to avoid /rajiblabs/rajiblabs nesting ──
+if command -v lftp >/dev/null 2>&1; then
+  echo "🔍 Detecting FTP root (avoid /rajiblabs/rajiblabs)..."
+  FTP_ROOT_LIST="/tmp/ftp_root_list_$$"
+  lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; set net:timeout 15; cls -1; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" > "$FTP_ROOT_LIST" 2>&1 || true
+  cat "$FTP_ROOT_LIST" 2>&1 | tr -d '\r' | head -30 > "${FTP_ROOT_LIST}.clean"
+  # Debug (no password)
+  echo "   FTP root listing (first 20):"
+  head -20 "${FTP_ROOT_LIST}.clean" | sed 's/^/     /' || true
+  if grep -q "^rajiblabs$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP at account root (contains rajiblabs folder) → site is at /rajiblabs"
+    DETECTED="rajiblabs"
+  elif grep -q "wwwroot" "${FTP_ROOT_LIST}.clean" || grep -q "^index.html$" "${FTP_ROOT_LIST}.clean" || grep -q "^assets$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP already at site root (/rajiblabs) → using /"
+    DETECTED=""
+  elif grep -q "^site$" "${FTP_ROOT_LIST}.clean"; then
+    echo "   → FTP at site container (contains site/wwwroot) → using site/wwwroot"
+    DETECTED="site/wwwroot"
+  else
+    echo "   → Could not determine, using configured FTP_PATH"
+    DETECTED="$FTP_PATH"
+  fi
+  # Correct misconfigured FTP_PATH that would cause nesting
+  if [[ "$FTP_PATH" == "rajiblabs" && "$DETECTED" == "" ]]; then
+    echo "   ⚠ Configured FTP_PATH=rajiblabs but FTP is already at /rajiblabs → correcting to / (avoid nested /rajiblabs/rajiblabs)"
+    FTP_PATH=""
+  elif [[ -z "$FTP_PATH" && "$DETECTED" == "rajiblabs" ]]; then
+    echo "   ⚠ FTP is at account root, need /rajiblabs"
+    FTP_PATH="rajiblabs"
+  elif [[ "$DETECTED" == "site/wwwroot" ]]; then
+    FTP_PATH="site/wwwroot"
+  elif [[ -n "$DETECTED" && "$DETECTED" != "$FTP_PATH" ]]; then
+    echo "   ℹ Using detected path: /$DETECTED (was /$FTP_PATH)"
+    FTP_PATH="$DETECTED"
+  fi
+  rm -f "$FTP_ROOT_LIST" "${FTP_ROOT_LIST}.clean" 2>/dev/null || true
+fi
+
+if [[ -z "$FTP_PATH" ]]; then
+  echo "📤 Uploading to $FTP_HOST/ (site root)"
+else
+  echo "📤 Uploading to $FTP_HOST/$FTP_PATH ..."
+fi
 
 # Prefer lftp if available
 USE_LFTP=false
