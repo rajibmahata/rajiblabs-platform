@@ -79,10 +79,10 @@ export default function ContactSection() {
 
   return (
     <section id="contact" className="section-pad" ref={sectionRef}
-      style={{ background: 'var(--c-bg-primary)' }}
+      style={{ background: 'var(--c-bg-primary)', borderTop: '1px solid rgba(255,255,255,0.04)' }}
     >
       <div className="container-site">
-        <SectionLabel>LET'S CONNECT</SectionLabel>
+        <SectionLabel>LET'S BUILD SOMETHING</SectionLabel>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -94,15 +94,16 @@ export default function ContactSection() {
           <div>
             <h2 style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(28px, 3.5vw, 42px)',
+              fontSize: 'clamp(32px, 4vw, 48px)',
               fontWeight: 700,
               color: 'var(--c-text-primary)',
-              lineHeight: 'var(--lh-display)',
-              marginBottom: 20,
+              lineHeight: 0.98,
+              letterSpacing: '-0.02em',
+              marginBottom: 16,
             }}>
-              Have a project in mind?{' '}
-              <span style={{ color: 'var(--c-text-secondary)', fontWeight: 400 }}>
-                Let's talk.
+              Have a product idea,<br />
+              <span style={{ color: '#8896B3', fontWeight: 400 }}>
+                business problem or engineering challenge?
               </span>
             </h2>
 
@@ -110,12 +111,10 @@ export default function ContactSection() {
               fontFamily: 'var(--font-body)',
               fontSize: 16,
               color: 'var(--c-text-secondary)',
-              lineHeight: 'var(--lh-body)',
+              lineHeight: 1.7,
               marginBottom: 24,
             }}>
-              I work with SaaS founders, agencies, and enterprises who need senior-level architecture and
-              development. Whether it's a greenfield product, a complex integration, or an AI feature —
-              I bring 12+ years of production experience to your project.
+              Senior architect for enterprise platforms, cloud-native systems and AI products — 10+ years shipping SaaS that scales.
             </p>
 
             <div className="flex flex-wrap gap-2 mb-8">

@@ -10,9 +10,12 @@ export const siteConfig = {
 
   contact: {
     email: 'rajibmahata143@gmail.com',
+    email2: 'rajibmahata143@outlook.com',
     phone: '+91 84202 49020',
     phoneRaw: '+918420249020',
     phoneWa: '918420249020',
+    phone2: '+91 91001 84730',
+    phone2Raw: '+919100184730',
     whatsappMessage: encodeURIComponent(
       'Hi Rajib, I visited RajibLabs and would like to discuss a project. '
     ),

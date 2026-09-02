@@ -5,9 +5,7 @@ import ResultsSection from '../components/sections/ResultsSection';
 import ProfileSection from '../components/sections/ProfileSection';
 import AppsShowcaseSection from '../components/sections/AppsShowcaseSection';
 import ProductsSection from '../components/sections/ProductsSection';
-import WorkInProgressSection from '../components/sections/WorkInProgressSection';
 import CompletedProjectsSection from '../components/sections/CompletedProjectsSection';
-import GitHubActivitySection from '../components/sections/GitHubActivitySection';
 import HowIWorkSection from '../components/sections/HowIWorkSection';
 import ContactSection from '../components/sections/ContactSection';
 import FloatingContact from '../components/ui/FloatingContact';
@@ -24,14 +22,12 @@ export default function Home() {
       <GlobalNav />
       <main id="main-content" className="pb-20 md:pb-0">
         <HeroSection productCount={productCount} companyCount={companyCount} />
-        <ResultsSection />
-        <ProfileSection />
         <HowIWorkSection />
-        <AppsShowcaseSection />
-        <ProductsSection />
         <CompletedProjectsSection />
-        <WorkInProgressSection />
-        <GitHubActivitySection />
+        <ProfileSection />
+        <ProductsSection />
+        <AppsShowcaseSection />
+        <ResultsSection />
         <ContactSection />
       </main>
       <GlobalFooter />

@@ -50,17 +50,15 @@ export default function HowIWorkSection() {
   return (
     <section id="services" className="section-pad" ref={sectionRef} style={{ background: 'var(--c-surface)' }}>
       <div className="container-site">
-        <SectionLabel>WHAT I OFFER</SectionLabel>
+        <SectionLabel>WHAT I BUILD</SectionLabel>
         <motion.div initial={{ opacity: 0, y: 30 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5 }}>
-          <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
-            <div>
-              <h2 className="font-section-title text-[42px] text-on-surface mb-4" style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, color: '#F0F4FF', lineHeight: 1.1 }}>
-                Services for <span style={{ color: '#b5c4ff' }}>business owners</span> &amp; <span style={{ color: '#7bd7c5' }}>technical teams</span>
-              </h2>
-              <p className="font-body-base text-text-secondary max-w-xl" style={{ fontFamily: 'DM Sans, sans-serif', color: '#8896B3' }}>
-                Whether you need an architect for a complex system, a developer to ship a SaaS MVP, or an AI engineer to integrate LLMs — I deliver production-grade work.
-              </p>
-            </div>
+          <div className="mb-12 border-b border-white/[0.06] pb-8">
+            <h2 className="font-section-title text-[38px] md:text-[44px] text-on-surface mb-4" style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, color: '#F0F4FF', lineHeight: 1.05, letterSpacing: '-0.02em' }}>
+              Enterprise platforms, AI products, cloud-native systems.
+            </h2>
+            <p className="font-body-base text-text-secondary max-w-2xl" style={{ fontFamily: 'DM Sans, sans-serif', color: '#8896B3', lineHeight: 1.7 }}>
+              Four core capabilities — proven across healthcare, telecom, legal and SaaS. Minimal, scalable, production-grade.
+            </p>
           </div>
 
           {/* Bento Grid — stitch */}
