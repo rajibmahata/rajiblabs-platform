@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rajib Mahata — Senior .NET & Azure Engineer | RajibLabs</title>
+<meta name="description" content="Rajib Mahata builds enterprise software and AI-native products under RajibLabs, an independent software venture studio.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0F1A;
+    --bg-alt:#0E1420;
+    --navy:#1F3864;
+    --blue:#2E75B6;
+    --blue-light:#7FB0E0;
+    --text:#E7ECF4;
+    --text-muted:#8D9AB3;
+    --border:rgba(231,236,244,0.10);
+    --maxw:1120px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    line-height:1.15;
+    letter-spacing:-0.01em;
+  }
+  a{color:inherit;text-decoration:none;}
+  img,svg{display:block;max-width:100%;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px;}
+  section{padding:96px 0;}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--blue-light);outline-offset:3px;}
+
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(11,15,26,0.85);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  nav{
+    display:flex;align-items:center;justify-content:space-between;
+    max-width:var(--maxw);margin:0 auto;padding:20px 32px;
+  }
+  .wordmark{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:-0.01em;}
+  .navlinks{display:flex;gap:32px;align-items:center;}
+  .navlinks a{color:var(--text-muted);font-size:15px;transition:color .15s ease;}
+  .navlinks a:hover{color:var(--text);}
+  .nav-resume{display:flex;align-items:center;gap:6px;}
+  .nav-resume svg{width:14px;height:14px;}
+  .navlinks .contact-link{color:var(--text);border:1px solid var(--border);padding:8px 18px;border-radius:3px;transition:border-color .15s ease,background .15s ease;}
+  .navlinks .contact-link:hover{border-color:var(--blue);background:rgba(46,117,182,0.08);}
+  .menu-btn{display:none;background:none;border:none;color:var(--text);font-size:24px;cursor:pointer;line-height:1;}
+
+  .hero{padding:88px 0 96px;}
+  .hero .wrap{display:grid;grid-template-columns:1.15fr 0.85fr;gap:48px;align-items:center;}
+  .hero h1{font-size:52px;max-width:620px;}
+  .hero p.lede{margin-top:22px;font-size:19px;color:var(--text-muted);max-width:460px;}
+  .hero .actions{margin-top:36px;display:flex;flex-direction:column;align-items:flex-start;gap:16px;}
+  .btn-primary{
+    background:var(--blue);color:#fff;font-size:16px;font-weight:500;
+    padding:14px 28px;border-radius:3px;border:none;cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn-primary:hover{background:#3985CC;}
+  .actions-secondary{display:flex;gap:22px;flex-wrap:wrap;}
+  .actions-secondary .secondary{color:var(--text-muted);font-size:14px;border-bottom:1px solid var(--border);}
+  .actions-secondary .secondary:hover{color:var(--text);border-color:var(--text-muted);}
+
+  .graph-wrap{position:relative;}
+  .glow{position:absolute;inset:-70px;background:radial-gradient(circle at 50% 45%,rgba(46,117,182,0.32),transparent 65%);filter:blur(36px);z-index:0;}
+  .graph{position:relative;z-index:1;width:100%;height:auto;}
+  .graph circle{opacity:0;animation:nodeIn .5s ease forwards;}
+  .graph line{stroke-dasharray:220;stroke-dashoffset:220;animation:lineIn .7s ease forwards;}
+  @keyframes nodeIn{to{opacity:1;}}
+  @keyframes lineIn{to{stroke-dashoffset:0;}}
+  @media (prefers-reduced-motion: reduce){
+    .graph circle,.graph line{animation:none;opacity:1;stroke-dashoffset:0;}
+  }
+
+  .metrics{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:56px 0;}
+  .metrics .wrap{display:flex;}
+  .metric{flex:1;padding:0 32px;border-left:1px solid var(--border);}
+  .metric:first-child{border-left:none;padding-left:0;}
+  .metric .num{font-family:'Space Grotesk',sans-serif;font-size:40px;font-weight:600;color:var(--blue-light);}
+  .metric .label{margin-top:8px;color:var(--text-muted);font-size:15px;max-width:220px;}
+
+  .about .wrap{display:grid;grid-template-columns:200px 1fr;gap:56px;align-items:start;}
+  .avatar{
+    width:140px;height:140px;border-radius:3px;
+    background:linear-gradient(160deg,var(--navy),var(--blue));
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:600;color:#fff;
+  }
+  .about h2{font-size:32px;margin-bottom:20px;}
+  .about p{color:var(--text-muted);max-width:620px;margin-bottom:14px;}
+  .about p strong{color:var(--text);font-weight:500;}
+
+  #experience h2,#skills h2,.work h2,#process h2{font-size:32px;margin-bottom:48px;}
+
+  .timeline{position:relative;padding-left:28px;max-width:640px;}
+  .timeline::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--border);}
+  .timeline-item{position:relative;padding-bottom:40px;}
+  .timeline-item:last-child{padding-bottom:0;}
+  .timeline-item::before{content:'';position:absolute;left:-28px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--blue);border:3px solid var(--bg);}
+  .timeline-item .t-range{font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--blue-light);margin-bottom:6px;}
+  .timeline-item h3{font-size:20px;margin-bottom:4px;}
+  .timeline-item .t-client{font-size:14px;color:var(--text-muted);margin-bottom:10px;}
+  .timeline-item p{color:var(--text-muted);max-width:520px;}
+
+  .skills-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:40px 56px;}
+  .skill-group h3{font-size:16px;margin-bottom:14px;font-weight:600;}
+  .skill-pills{display:flex;flex-wrap:wrap;gap:8px;}
+  .pill{font-size:13px;color:var(--text-muted);border:1px solid var(--border);padding:7px 15px;border-radius:20px;}
+
+  .process-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:36px;}
+  .process-step .p-num{font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--blue-light);margin-bottom:12px;}
+  .process-step h3{font-size:18px;margin-bottom:8px;}
+  .process-step p{color:var(--text-muted);font-size:15px;}
+
+  .work h2{margin-bottom:56px;}
+  .project{
+    display:grid;grid-template-columns:1fr 260px;gap:48px;
+    padding:48px 0;border-top:1px solid var(--border);align-items:center;
+  }
+  .project:last-child{border-bottom:1px solid var(--border);}
+  .project.flip{grid-template-columns:260px 1fr;}
+  .project.flip .p-visual{order:1;}
+  .project.flip .p-body{order:2;}
+  .p-body h3{font-size:24px;margin-bottom:6px;}
+  .p-status{display:inline-block;font-size:13px;color:var(--blue-light);margin-bottom:16px;}
+  .p-body p{color:var(--text-muted);margin-bottom:10px;max-width:560px;}
+  .p-body .p-stack{margin-top:16px;font-size:14px;color:var(--text-muted);}
+  .p-body .p-stack span{color:var(--text);}
+  .p-visual{display:flex;align-items:center;justify-content:center;}
+  .p-visual svg{width:100%;height:auto;}
+
+  .supporting{padding-top:0;}
+  .supporting h3{font-size:20px;margin-bottom:28px;color:var(--text-muted);font-weight:500;}
+  .supp-item{display:grid;grid-template-columns:200px 1fr;gap:24px;padding:20px 0;border-top:1px solid var(--border);}
+  .supp-item:last-child{border-bottom:1px solid var(--border);}
+  .supp-item .s-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;}
+  .supp-item p{color:var(--text-muted);font-size:15px;}
+
+  .contact .wrap{display:grid;grid-template-columns:1fr 1fr;gap:64px;}
+  .contact h2{font-size:32px;margin-bottom:16px;}
+  .contact p.lede{color:var(--text-muted);max-width:420px;margin-bottom:32px;}
+  .contact-details{display:flex;flex-direction:column;gap:10px;font-size:15px;}
+  .contact-details a{color:var(--text-muted);transition:color .15s ease;}
+  .contact-details a:hover{color:var(--blue-light);}
+  form{display:flex;flex-direction:column;gap:16px;}
+  label{font-size:14px;color:var(--text-muted);margin-bottom:6px;display:block;}
+  input,textarea{
+    width:100%;background:var(--bg-alt);border:1px solid var(--border);
+    border-radius:3px;padding:12px 14px;color:var(--text);font-family:inherit;font-size:15px;
+  }
+  input:focus,textarea:focus{outline:none;border-color:var(--blue);}
+  textarea{resize:vertical;min-height:110px;}
+  .btn-primary.submit{align-self:flex-start;margin-top:4px;}
+
+  footer{border-top:1px solid var(--border);padding:48px 0;}
+  footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;}
+  footer .foot-links{display:flex;gap:28px;}
+  footer .foot-links a{color:var(--text-muted);font-size:14px;}
+  footer .foot-links a:hover{color:var(--text);}
+  footer .copy{color:var(--text-muted);font-size:13px;}
+
+  .fab-stack{position:fixed;right:24px;bottom:24px;display:flex;flex-direction:column;gap:12px;z-index:60;}
+  .fab{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(0,0,0,0.4);transition:transform .15s ease;}
+  .fab:hover{transform:translateY(-2px);}
+  .fab.whatsapp{background:#25D366;}
+  .fab.call{background:var(--blue);}
+  .fab svg{width:24px;height:24px;}
+
+  @media (max-width:860px){
+    .hero .wrap{grid-template-columns:1fr;}
+    .hero .graph-wrap{order:-1;max-width:280px;margin:0 auto 24px;}
+    .hero h1{font-size:38px;}
+    .metrics .wrap{flex-direction:column;gap:28px;}
+    .metric{border-left:none;padding-left:0;border-top:1px solid var(--border);padding-top:24px;}
+    .metric:first-child{border-top:none;padding-top:0;}
+    .about .wrap{grid-template-columns:1fr;}
+    .skills-grid{grid-template-columns:1fr;}
+    .process-grid{grid-template-columns:1fr 1fr;}
+    .project,.project.flip{grid-template-columns:1fr;}
+    .project.flip .p-visual{order:2;}
+    .project.flip .p-body{order:1;}
+    .p-visual{max-width:200px;margin:0 auto;}
+    .contact .wrap{grid-template-columns:1fr;}
+    .navlinks{display:none;}
+    .menu-btn{display:block;}
+    section{padding:64px 0;}
+    .fab-stack{right:16px;bottom:16px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav>
+    <a href="#" class="wordmark">RajibLabs</a>
+    <div class="navlinks">
+      <a href="#experience">Experience</a>
+      <a href="#skills">Skills</a>
+      <a href="#work">Work</a>
+      <a href="resume.pdf" download class="nav-resume">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Resume
+      </a>
+      <a href="#contact" class="contact-link">Get in touch</a>
+    </div>
+    <button class="menu-btn" aria-label="Menu">&#9776;</button>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>I build the systems businesses run on.</h1>
+      <p class="lede">Twelve years shipping enterprise software on .NET and Azure. Now building AI-native products under RajibLabs, from first sketch to production.</p>
+      <div class="actions">
+        <a href="#work" class="btn-primary">View the projects</a>
+        <div class="actions-secondary">
+          <a href="resume.pdf" download class="secondary">Download resume</a>
+          <a href="#contact" class="secondary">Or reach out directly</a>
+        </div>
+      </div>
+    </div>
+    <div class="graph-wrap">
+      <div class="glow"></div>
+      <svg class="graph" viewBox="0 0 420 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="210" y1="200" x2="90" y2="100" stroke="#2E75B6" stroke-width="1.5" style="animation-delay:.1s"/>
+        <line x1="210" y1="200" x2="330" y2="90" stroke="#2E75B6" stroke-width="1.5" style="animation-delay:.2s"/>
+        <line x1="210" y1="200" x2="80" y2="290" stroke="#2E75B6" stroke-width="1.5" style="animation-delay:.3s"/>
+        <line x1="210" y1="200" x2="320" y2="310" stroke="#2E75B6" stroke-width="1.5" style="animation-delay:.4s"/>
+        <line x1="210" y1="200" x2="210" y2="60" stroke="#1F3864" stroke-width="1.5" style="animation-delay:.5s"/>
+        <line x1="90" y1="100" x2="210" y2="60" stroke="#1F3864" stroke-width="1.2" style="animation-delay:.6s"/>
+        <line x1="330" y1="90" x2="210" y2="60" stroke="#1F3864" stroke-width="1.2" style="animation-delay:.6s"/>
+        <circle cx="210" cy="200" r="14" fill="#2E75B6" style="animation-delay:.05s"/>
+        <circle cx="90" cy="100" r="7" fill="#7FB0E0" style="animation-delay:.5s"/>
+        <circle cx="330" cy="90" r="7" fill="#7FB0E0" style="animation-delay:.6s"/>
+        <circle cx="80" cy="290" r="7" fill="#7FB0E0" style="animation-delay:.7s"/>
+        <circle cx="320" cy="310" r="7" fill="#7FB0E0" style="animation-delay:.8s"/>
+        <circle cx="210" cy="60" r="6" fill="#1F3864" style="animation-delay:.9s"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<div class="metrics">
+  <div class="wrap">
+    <div class="metric">
+      <div class="num">12+</div>
+      <div class="label">years of enterprise software delivery</div>
+    </div>
+    <div class="metric">
+      <div class="num">6</div>
+      <div class="label">products and platforms built under RajibLabs</div>
+    </div>
+    <div class="metric">
+      <div class="num">.NET / Azure</div>
+      <div class="label">primary engineering focus</div>
+    </div>
+  </div>
+</div>
+
+<section class="about" id="about">
+  <div class="wrap">
+    <div class="avatar">RM</div>
+    <div>
+      <h2>About</h2>
+      <p>Rajib Mahata is a <strong>Senior .NET and Azure Solution Architect</strong> with twelve years of enterprise delivery experience. He currently works at TCS on the Meijer pharmacy account, building the systems behind prescription automation and pharmacy digital transformation.</p>
+      <p>Earlier in his career he worked at Accenture and Keshri Software Solutions. Alongside that work, he runs <strong>RajibLabs</strong>, an independent studio building AI-native products from problem to production.</p>
+      <p>He is based in Kolkata, India.</p>
+    </div>
+  </div>
+</section>
+
+<section id="experience">
+  <div class="wrap">
+    <h2>Experience</h2>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="t-range">Aug 2019 — Present</div>
+        <h3>TCS</h3>
+        <div class="t-client">Assistant Consultant — Meijer pharmacy account</div>
+        <p>Building the systems behind pharmacy digital transformation and prescription automation.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="t-range">Jul 2016 — Feb 2019</div>
+        <h3>Accenture</h3>
+        <div class="t-client">Cincinnati Bell account</div>
+        <p>Enterprise software delivery on the Cincinnati Bell engagement.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="t-range">Mar 2013 — Apr 2016</div>
+        <h3>Keshri Software Solutions</h3>
+        <div class="t-client">Early career</div>
+        <p>Started his career in enterprise software development.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="skills">
+  <div class="wrap">
+    <h2>Skills</h2>
+    <div class="skills-grid">
+      <div class="skill-group">
+        <h3>Backend and architecture</h3>
+        <div class="skill-pills">
+          <span class="pill">C#</span><span class="pill">.NET</span><span class="pill">ASP.NET Core</span><span class="pill">EF Core</span><span class="pill">REST APIs</span><span class="pill">Microservices</span>
+        </div>
+      </div>
+      <div class="skill-group">
+        <h3>Cloud and DevOps</h3>
+        <div class="skill-pills">
+          <span class="pill">Azure</span><span class="pill">Docker</span><span class="pill">Docker Compose</span><span class="pill">CI/CD</span><span class="pill">Azure DevOps</span>
+        </div>
+      </div>
+      <div class="skill-group">
+        <h3>Data and AI</h3>
+        <div class="skill-pills">
+          <span class="pill">SQL Server</span><span class="pill">RAG pipelines</span><span class="pill">LLM integration</span><span class="pill">Vector search</span><span class="pill">Prompt engineering</span>
+        </div>
+      </div>
+      <div class="skill-group">
+        <h3>Frontend</h3>
+        <div class="skill-pills">
+          <span class="pill">React</span><span class="pill">JavaScript</span><span class="pill">Responsive UI</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="work" id="work">
+  <div class="wrap">
+    <h2>Flagship projects</h2>
+
+    <div class="project">
+      <div class="p-body">
+        <h3>HistoriaAI</h3>
+        <span class="p-status">In development</span>
+        <p>Most history education content for Indian students defaults to English or Hindi, leaving Bengali speaking students without a tutor that teaches in their own language.</p>
+        <p>HistoriaAI is a Bengali-first AI tutor that walks K-12 students through Indian and regional history in conversational Bengali, adapting to how each student is progressing.</p>
+        <div class="p-stack">Stack: <span>LLM-based tutoring engine, ASP.NET Core, Azure</span></div>
+      </div>
+      <div class="p-visual">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <rect x="30" y="30" width="140" height="18" fill="none" stroke="#2E75B6" stroke-width="1.5"/>
+          <rect x="30" y="60" width="100" height="10" fill="none" stroke="#7FB0E0" stroke-width="1.2"/>
+          <rect x="30" y="82" width="120" height="10" fill="none" stroke="#7FB0E0" stroke-width="1.2"/>
+          <rect x="30" y="104" width="80" height="10" fill="none" stroke="#7FB0E0" stroke-width="1.2"/>
+          <circle cx="150" cy="150" r="24" fill="none" stroke="#1F3864" stroke-width="1.5"/>
+          <path d="M142 150 L148 156 L160 142" stroke="#2E75B6" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="project flip">
+      <div class="p-body">
+        <h3>ReturnGuard AI</h3>
+        <span class="p-status">In development</span>
+        <p>Retailers selling across multiple channels struggle to catch fraudulent or abusive return patterns before they eat into margin.</p>
+        <p>ReturnGuard AI is a copilot that watches return activity across channels and flags patterns that look like fraud or abuse, so a human reviewer can decide fast.</p>
+        <div class="p-stack">Stack: <span>.NET backend, Azure, rules plus ML scoring</span></div>
+      </div>
+      <div class="p-visual">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40 40 L100 40 L160 90 L100 160 L40 160 Z" fill="none" stroke="#1F3864" stroke-width="1.5"/>
+          <circle cx="70" cy="70" r="5" fill="#7FB0E0"/>
+          <circle cx="110" cy="90" r="5" fill="#7FB0E0"/>
+          <circle cx="80" cy="130" r="9" fill="none" stroke="#2E75B6" stroke-width="2"/>
+          <line x1="86" y1="124" x2="120" y2="90" stroke="#2E75B6" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="project">
+      <div class="p-body">
+        <h3>LexVault</h3>
+        <span class="p-status">In development</span>
+        <p>Legal teams need to search and reason over large volumes of case documents without losing precision or missing context.</p>
+        <p>LexVault retrieves legal documents through a dual-pipeline design: one pipeline optimized for precise clause lookup, and one for broader contextual reasoning.</p>
+        <div class="p-stack">Stack: <span>RAG pipeline, ASP.NET Core, Azure, vector search</span></div>
+      </div>
+      <div class="p-visual">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <rect x="55" y="35" width="70" height="90" rx="2" fill="none" stroke="#1F3864" stroke-width="1.5"/>
+          <rect x="70" y="50" width="70" height="90" rx="2" fill="none" stroke="#2E75B6" stroke-width="1.5"/>
+          <line x1="82" y1="66" x2="126" y2="66" stroke="#7FB0E0" stroke-width="1.2"/>
+          <line x1="82" y1="80" x2="126" y2="80" stroke="#7FB0E0" stroke-width="1.2"/>
+          <line x1="82" y1="94" x2="110" y2="94" stroke="#7FB0E0" stroke-width="1.2"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="project flip">
+      <div class="p-body">
+        <h3>InboxPilot</h3>
+        <span class="p-status">In development</span>
+        <p>Support and sales inboxes drown teams in email that needs to be triaged, tagged, and routed before anyone can act on it.</p>
+        <p>InboxPilot is a multi-tenant SaaS product that triages incoming email automatically. It started as a proposal for a single client and grew into its own product.</p>
+        <div class="p-stack">Stack: <span>ASP.NET Core, EF Core, Docker Compose</span></div>
+      </div>
+      <div class="p-visual">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <path d="M40 70 L100 110 L160 70" fill="none" stroke="#2E75B6" stroke-width="1.5"/>
+          <rect x="40" y="70" width="120" height="70" fill="none" stroke="#1F3864" stroke-width="1.5"/>
+          <circle cx="100" cy="110" r="4" fill="#7FB0E0"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="supporting">
+      <h3>Also built</h3>
+      <div class="supp-item">
+        <div class="s-name">FSCMS</div>
+        <p>Migrated a Windows Forms legal case management desktop application to the web, preserving existing workflows for firm staff.</p>
+      </div>
+      <div class="supp-item">
+        <div class="s-name">PestFlow</div>
+        <p>Multi-tenant platform for pest control companies, handling GST-registered company onboarding and emailed customer quotations with online or cash payment.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="process">
+  <div class="wrap">
+    <h2>How engagements work</h2>
+    <div class="process-grid">
+      <div class="process-step">
+        <div class="p-num">1</div>
+        <h3>Discover</h3>
+        <p>Understand the business problem before writing any code.</p>
+      </div>
+      <div class="process-step">
+        <div class="p-num">2</div>
+        <h3>Design</h3>
+        <p>Sketch the approach and lay out the technical architecture.</p>
+      </div>
+      <div class="process-step">
+        <div class="p-num">3</div>
+        <h3>Build</h3>
+        <p>Implement in focused iterations, with working software early.</p>
+      </div>
+      <div class="process-step">
+        <div class="p-num">4</div>
+        <h3>Deliver</h3>
+        <p>Ship, gather feedback, and iterate to close.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="wrap">
+    <div>
+      <h2>Start a conversation</h2>
+      <p class="lede">Reach out about a project, a technical problem, or a potential collaboration.</p>
+      <div class="contact-details">
+        <a href="mailto:rajibmahata143@gmail.com">rajibmahata143@gmail.com</a>
+        <a href="tel:+918420249020">+91 84202 49020</a>
+        <a href="https://wa.me/918420249020" target="_blank" rel="noopener">WhatsApp: +91 84202 49020</a>
+        <a href="https://github.com/rajibmahata" target="_blank" rel="noopener">github.com/rajibmahata</a>
+      </div>
+    </div>
+    <form action="mailto:rajibmahata143@gmail.com" method="get" enctype="text/plain">
+      <div>
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div>
+        <label for="message">Message</label>
+        <textarea id="message" name="message" required></textarea>
+      </div>
+      <button type="submit" class="btn-primary submit">Send message</button>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="wordmark">RajibLabs</span>
+    <div class="foot-links">
+      <a href="#experience">Experience</a>
+      <a href="#skills">Skills</a>
+      <a href="#work">Work</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <span class="copy">Kolkata, India — copyright 2026 RajibLabs</span>
+  </div>
+</footer>
+
+<div class="fab-stack">
+  <a href="https://wa.me/918420249020" target="_blank" rel="noopener" class="fab whatsapp" aria-label="Chat on WhatsApp">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3C7.03 3 3 7.03 3 12c0 1.77.5 3.42 1.37 4.83L3 21l4.3-1.34A8.94 8.94 0 0 0 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9Z" stroke="#fff" stroke-width="1.4"/>
+      <path d="M8.5 8.7c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .6.4.2.5.7 1.6.7 1.8.1.1.1.3 0 .4-.1.2-.2.3-.3.4-.1.1-.3.3-.4.4-.1.1-.3.3-.1.6.2.3.9 1.4 1.9 2.3 1.3 1.1 2.3 1.5 2.7 1.6.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.8.3.1.5.2.5.3.1.2.1.9-.2 1.7-.3.8-1.6 1.5-2.3 1.6-.6.1-1.3.2-4.2-.9-3.5-1.4-5.7-4.9-5.9-5.2-.2-.3-1.4-1.8-1.4-3.5 0-1.6.9-2.4 1.2-2.7Z" fill="#fff"/>
+    </svg>
+  </a>
+  <a href="tel:+918420249020" class="fab call" aria-label="Call">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6.6 10.8c1.4 2.7 3.6 4.9 6.3 6.3l2.1-2.1c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1v3.4c0 .6-.4 1-1 1C10.6 20.8 3.2 13.4 3.2 4.5c0-.6.4-1 1-1H7.6c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.3 1L6.6 10.8Z" fill="#fff"/>
+    </svg>
+  </a>
+</div>
+
+<script>
+  var menuBtn = document.querySelector('.menu-btn');
+  var navlinks = document.querySelector('.navlinks');
+  menuBtn.addEventListener('click', function(){
+    var open = navlinks.style.display === 'flex';
+    navlinks.style.display = open ? 'none' : 'flex';
+    navlinks.style.flexDirection = 'column';
+    navlinks.style.position = 'absolute';
+    navlinks.style.top = '64px';
+    navlinks.style.right = '32px';
+    navlinks.style.background = '#0E1420';
+    navlinks.style.border = '1px solid rgba(231,236,244,0.10)';
+    navlinks.style.borderRadius = '4px';
+    navlinks.style.padding = '20px';
+    navlinks.style.gap = '16px';
+  });
+</script>
+
+</body>
+</html>
