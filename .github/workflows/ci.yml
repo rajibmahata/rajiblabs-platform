@@ -247,21 +247,22 @@ jobs:
           echo "Checking assets..."
           curl -s --head --max-time 10 "$SITE_URL/manifest.webmanifest" | head -5
           curl -s --head --max-time 10 "$SITE_URL/assets/" | head -5 || true
-          # Check for nested deployment error — only fail if truly double-nested
-          # When FTP_PATH=rajiblabs, /rajiblabs/index.html is the live site at correct subfolder, not nested
-          if [[ "$FTP_PATH_CLEAN" == "rajiblabs" ]]; then
-            if curl -s --max-time 10 "$SITE_URL/rajiblabs/rajiblabs/index.html" | grep -q "RajibLabs"; then
-              echo "WARNING: Found double-nested /rajiblabs/rajiblabs/rajiblabs — FTP path wrong!"
-              exit 1
-            fi
-            echo "No double-nested deployment (FTP_PATH=rajiblabs correct)"
+          # Freshness: live HTML must reference the just-built asset bundle
+          BUILT_HASH=$(grep -o "index-[A-Za-z0-9_.-]*\.js" frontend/dist/index.html | head -1 || echo "")
+          echo "Built bundle: $BUILT_HASH"
+          if [ -n "$BUILT_HASH" ] && grep -q "$BUILT_HASH" /tmp/home.html; then
+            echo "Freshness OK — live site serves the new build"
           else
-            if curl -s --max-time 10 "$SITE_URL/rajiblabs/index.html" | grep -q "RajibLabs"; then
-              echo "WARNING: Found nested /rajiblabs/rajiblabs deployment — FTP path may be wrong!"
-              exit 1
-            fi
-            echo "No nested deployment detected"
+            echo "WARNING: live site does not reference $BUILT_HASH yet (CDN/propagation delay?)"
           fi
+          # Nested check: SPA fallback returns index.html (200) for unknown paths,
+          # so only fail when nested content DIFFERS from / (a real stale nested copy)
+          curl -s --max-time 10 "$SITE_URL/rajiblabs/rajiblabs/index.html" -o /tmp/nested.html || true
+          if grep -q "RajibLabs" /tmp/nested.html 2>/dev/null && ! cmp -s /tmp/home.html /tmp/nested.html; then
+            echo "WARNING: Found stale nested /rajiblabs/rajiblabs deployment — FTP path may be wrong!"
+            exit 1
+          fi
+          echo "No stale nested deployment (identical body = SPA fallback, expected)"
 
       - name: Skip deploy (no secrets)
         if: steps.check.outputs.skip == 'true'
