@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://localhost:5000'
+      // FastAPI backend (native `uvicorn app.main:app` runs on :8000;
+      // Docker maps it to :8090 — see docker-compose.yml)
+      '/api': 'http://localhost:8000'
     }
   },
   build: {

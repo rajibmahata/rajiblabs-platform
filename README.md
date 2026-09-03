@@ -1,12 +1,12 @@
 # Rajib Labs Platform
 
-> AI-powered portfolio & software lab. Built with React + .NET 8. Managed by OpenClaw agents.
+> AI-powered portfolio & software lab. Built with React + FastAPI + MongoDB.
 
 ## Architecture
 
 ```
 rajiblabs-platform/
-├── frontend/          # React + TypeScript + Tailwind CSS (Vite)
+├── frontend/                # React + TypeScript + Tailwind CSS (Vite)
 │   └── src/
 │       ├── components/
 │       │   ├── layout/       # GlobalNav, GlobalFooter, Layout
@@ -15,24 +15,32 @@ rajiblabs-platform/
 │       │   ├── sections/     # HeroSection, ProfileSection, ProductsSection,
 │       │   │                   GitHubActivitySection, ContactSection, etc.
 │       │   └── ui/           # Button, StatusBadge, TechChip, CommitRow, etc.
-│       ├── pages/            # Home, Projects
+│       ├── pages/            # Home, Projects, admin/*
 │       ├── services/         # api.ts, fallbackData.ts
 │       └── types/            # TypeScript interfaces
-├── backend/           # .NET 8 Minimal API + SQLite
-│   └── RajibLabs.Api/
-│       ├── Models/           # Project, Activity, Profile, DTOs
-│       ├── Data/             # EF Core DbContext
-│       └── Program.cs        # Minimal API endpoints
+├── rajiblabs-ai-backend/    # FastAPI + MongoDB (the API)
+│   ├── app/routers/         # public, admin_auth, admin_projects, github,
+│   │                          ai, agent, chat, resume, legacy, health
+│   │                          (legacy = Site API v1, same paths/shapes
+│   │                           as the retired .NET backend)
+│   ├── app/services/        # github_service, openai_service, quality, notify
+│   └── scripts/             # create_admin.py, migrate_sqlite_to_mongo.py
 └── ARCHITECTURE.md     # Full architecture doc (in rajiblabs/)
 ```
 
 ## Quick Start
 
-### Backend
+### Full stack (recommended)
+```cmd
+run-docker.bat
+:: Frontend http://localhost:5010, API http://localhost:8090, Mongo :27017
+```
+
+### API only
 ```bash
-cd backend/RajibLabs.Api
-dotnet run
-# Runs on http://localhost:5000
+cd rajiblabs-ai-backend
+cp .env.example .env   # fill ADMIN_INITIAL_PASSWORD + secrets
+docker compose up -d   # mongo + api (api on :8000 natively, :8090 via root compose)
 ```
 
 ### Frontend
@@ -40,32 +48,37 @@ dotnet run
 cd frontend
 npm install
 npm run dev
-# Runs on http://localhost:5173
+# Runs on http://localhost:5173 (/api proxied to FastAPI, see vite.config.ts)
 ```
 
-## API Endpoints
+## API Endpoints (FastAPI + MongoDB)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/projects` | — | List all projects |
-| GET | `/api/projects/{id}` | — | Single project by ID |
-| PATCH | `/api/projects/{id}` | API Key | Update project (agent) |
-| GET | `/api/activity?limit=` | — | Activity feed (optional limit) |
-| POST | `/api/activity` | API Key | Log new activity (agent) |
+| GET | `/health` | — | Health check (db/github/openai status) |
+| GET | `/api/public/projects` | — | Published projects |
+| GET | `/api/public/projects/{slug}` | — | Single project |
+| POST | `/api/public/chat` | rate-limit | AI chat widget |
+| POST | `/api/public/leads` | rate-limit | Lead / quote capture |
+| GET | `/api/projects` | — | Projects (site format) |
+| GET | `/api/activity?limit=` | — | Activity feed |
 | GET | `/api/profile` | — | Professional profile |
-| GET | `/api/health` | — | Health check |
+| POST | `/api/contact` | — | Contact form → lead + notification |
+| POST | `/api/subscribe` | — | Newsletter subscribe |
+| GET | `/api/learning` | — | Learning/courses |
+| GET | `/api/portfolio` | — | Published portfolio |
+| GET | `/api/products` | — | Published products |
+| POST | `/api/admin/auth/login` | rate-limit | Dual-email admin login (JWT cookies) |
+
+### API Docs (Swagger)
+
+- FastAPI (Mongo CMS/AI/admin): `/docs` (Swagger UI), `/redoc`, `/openapi.json` — non-production only. JWT via Authorize button (`POST /api/admin/auth/login`).
 
 ### Authentication
 
-Write endpoints (`POST`, `PATCH`) require an API key passed via the `X-Api-Key` header. Configure in `appsettings.json`:
+Admin endpoints require the dual-email admin login (`ADMIN_EMAILS` + `ADMIN_INITIAL_PASSWORD` from env, `ADMIN_INITIAL_PASSWORD` never committed). Login issues HttpOnly Secure SameSite cookies (`rlabs_access` 15m, `rlabs_refresh` 7d); login is rate-limited (5/min/IP). Public `GET /api/public/*` endpoints require no authentication; chat/lead POSTs are rate-limited.
 
-```json
-{
-  "ApiKey": "rajiblabs-agent-key-change-me"
-}
-```
-
-Read endpoints (`GET`) are public and require no authentication.
+Read endpoints (`GET /api/public/*`) are public and require no authentication.
 
 ## Deployment
 

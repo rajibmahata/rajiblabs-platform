@@ -82,7 +82,13 @@ async def chat(body: ChatMessageIn, request: Request):
                 reply = (r.choices[0].message.content or "").strip() or await _knowledge_answer(body.message)
             else:
                 reply = await _knowledge_answer(body.message)
-        except Exception:
+        except Exception as e:
+            try:
+                from app.services.notify import log_error
+                await log_error("chat", "Chat AI reply failed, fallback served", str(e)[:2000],
+                                level="warning")
+            except Exception:
+                pass
             reply = "I'm temporarily unable to answer. Please contact Rajib directly: rajibmahata143@gmail.com / +91 84202 49020."
     await db["customer_messages"].insert_one({
         "conversation_id": str(sess["_id"]), "role": "assistant", "content": reply, "created_at": utcnow()})

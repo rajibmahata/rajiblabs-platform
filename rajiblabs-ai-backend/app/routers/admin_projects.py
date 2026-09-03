@@ -9,23 +9,6 @@ from app.services.notify import audit, notify
 router = APIRouter(prefix="/api/admin")
 
 
-@router.get("/dashboard")
-async def dashboard(email: str = Depends(require_admin)):
-    db = get_db()
-    return {
-        "projects": await db["projects"].count_documents({}),
-        "featured": await db["projects"].count_documents({"featured": True, "published": True}),
-        "products": await db["projects"].count_documents({"category": "product", "published": True}),
-        "skills": await db["skills"].count_documents({}),
-        "repos": await db["github_repositories"].count_documents({}),
-        "leads_new": await db["customer_leads"].count_documents({"status": "new"}),
-        "unread": await db["notifications"].count_documents({"is_read": False}),
-        "last_sync": await db["github_sync_runs"].find_one(sort=[("started_at", -1)]),
-        "last_agent": await db["agent_runs"].find_one(sort=[("started_at", -1)]),
-        "github": "connected" if (await db["github_repositories"].count_documents({})) >= 0 else "unknown",
-    }
-
-
 def _slug(name: str, given: str | None) -> str:
     import re
     if given:

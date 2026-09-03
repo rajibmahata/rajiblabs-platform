@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════════════════════
+#  RajibLabs Platform — full stack via Docker (used by run-docker.bat)
+#
+#  Services:
+#    frontend   React PWA (nginx)          http://localhost:5010
+#    ai-api     FastAPI + Mongo (all API)  http://localhost:8090  (/api/*, /health)
+#    mongo      MongoDB 7 for ai-api       localhost:27017
+#
+#  Single backend: FastAPI serves every /api/* route (see frontend/nginx.conf).
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: rajiblabs-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  ai-api:
+    build: ./rajiblabs-ai-backend
+    container_name: rajiblabs-ai-api
+    restart: unless-stopped
+    ports:
+      - "8090:8000"
+    env_file:
+      - ./rajiblabs-ai-backend/.env
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/rajiblabs
+    volumes:
+      - ./rajiblabs-ai-backend/data:/app/data
+    depends_on:
+      - mongo
+
+  frontend:
+    build: ./frontend
+    container_name: rajiblabs-frontend
+    restart: unless-stopped
+    ports:
+      - "5010:80"
+    depends_on:
+      - ai-api
+
+volumes:
+  mongo_data:

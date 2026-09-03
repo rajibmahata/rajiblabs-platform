@@ -4,9 +4,6 @@ frontend/node_modules/
 
 # Build output
 frontend/dist/
-backend/RajibLabs.Api/bin/
-backend/RajibLabs.Api/obj/
-backend/RajibLabs.Api/publish/
 
 # IDE
 .idea/
@@ -34,6 +31,9 @@ deploy/
 # Python cache
 __pycache__/
 *.pyc
+
+# Runtime uploads (seed PDF itself is tracked under rajiblabs-ai-backend/data/)
+rajiblabs-ai-backend/data/uploads/
 
 # Backup files
 *.bak

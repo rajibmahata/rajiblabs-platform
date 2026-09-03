@@ -9,6 +9,7 @@ import GitHubManage from "./pages/admin/GitHubManage";
 import ProductsManage from "./pages/admin/ProductsManage";
 import ProfileManage from "./pages/admin/ProfileManage";
 import ContentManage from "./pages/admin/ContentManage";
+import LogsManage from "./pages/admin/LogsManage";
 import Settings from "./pages/admin/Settings";
 import AdminLayout from "./components/admin/AdminLayout";
 import ProtectedRoute from "./components/admin/ProtectedRoute";
@@ -103,6 +104,7 @@ export default function App() {
           <Route path="products" element={<ProductsManage />} />
           <Route path="profile" element={<ProfileManage />} />
           <Route path="content" element={<ContentManage />} />
+          <Route path="logs" element={<LogsManage />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

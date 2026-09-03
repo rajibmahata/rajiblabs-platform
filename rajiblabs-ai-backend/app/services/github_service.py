@@ -90,4 +90,9 @@ async def sync_now() -> dict:
     except Exception as e:
         await db["github_sync_runs"].update_one({"_id": run_id}, {"$set": {
             "status": "failed", "finished_at": utcnow(), "errors": [str(e)]}})
+        try:
+            from app.services.notify import log_error
+            await log_error("github_sync", "GitHub sync failed", str(e)[:2000])
+        except Exception:
+            pass
         raise

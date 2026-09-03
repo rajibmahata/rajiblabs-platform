@@ -24,11 +24,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -56,37 +51,11 @@ jobs:
           test -f dist/offline.html
           echo "PWA OK"
 
-      - name: Restore backend
-        working-directory: backend/RajibLabs.Api
-        run: dotnet restore
-
-      - name: Build backend
-        working-directory: backend/RajibLabs.Api
-        run: dotnet build --no-restore -c Release
-
-      - name: Publish backend
-        working-directory: backend/RajibLabs.Api
-        run: dotnet publish -c Release -o publish
-
-      - name: Copy frontend to backend wwwroot (for unified deploy)
-        run: |
-          rm -rf backend/RajibLabs.Api/publish/wwwroot
-          cp -r frontend/dist backend/RajibLabs.Api/publish/wwwroot
-          ls -lh backend/RajibLabs.Api/publish/wwwroot/index.html
-          echo "Unified wwwroot ready"
-
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: frontend/dist
-          retention-days: 7
-
-      - name: Upload backend artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-publish
-          path: backend/RajibLabs.Api/publish
           retention-days: 7
 
   deploy:
@@ -102,12 +71,6 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist
-
-      - name: Download backend publish
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-publish
-          path: backend/RajibLabs.Api/publish
 
       - name: List dist for debug
         run: |
@@ -209,21 +172,6 @@ jobs:
           echo "Deploying to verified FTP root: $FTP_HOST_CLEAN${FTP_PATH_CLEAN:+/$FTP_PATH_CLEAN}/"
           FTP_HOST="$FTP_HOST_CLEAN" FTP_PATH="$FTP_PATH_CLEAN" FTP_USER="$FTP_USER" FTP_PASS="$FTP_PASS" SITE_URL="$SITE_URL" bash ./deploy.sh
           echo "Deploy script finished with exit: $?"
-
-      - name: Deploy backend to /rajiblabs (unified)
-        if: steps.check.outputs.skip == 'false'
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASS }}
-          FTP_PATH: ${{ secrets.FTP_PATH }}
-        run: |
-          FTP_HOST_CLEAN="${FTP_HOST#ftp://}"; FTP_HOST_CLEAN="${FTP_HOST_CLEAN#ftps://}"; FTP_HOST_CLEAN="${FTP_HOST_CLEAN%%/*}"; FTP_HOST_CLEAN="${FTP_HOST_CLEAN%%:*}"
-          FTP_PATH_CLEAN="${FTP_PATH#/}"; FTP_PATH_CLEAN="${FTP_PATH_CLEAN%/}"
-          FTP_PATH_CLEAN="${FTP_PATH_CLEAN:-rajiblabs}"
-          echo "Deploying backend (with frontend wwwroot) to $FTP_HOST_CLEAN/$FTP_PATH_CLEAN ..."
-          lftp -e "set ftp:passive-mode true; set ftp:ssl-allow no; mirror -R --parallel=2 --exclude-glob=.git* --exclude-glob=*.db backend/RajibLabs.Api/publish /$FTP_PATH_CLEAN; bye" -u "$FTP_USER,$FTP_PASS" "$FTP_HOST_CLEAN" 2>&1 | tail -50
-          echo "Backend deploy done"
 
       - name: Verify deployment (HTTP 200)
         if: steps.check.outputs.skip == 'false'

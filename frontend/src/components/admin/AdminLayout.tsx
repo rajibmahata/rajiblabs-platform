@@ -10,6 +10,7 @@ const nav = [
   { to: "/admin/products", label: "Products" },
   { to: "/admin/profile", label: "Professional Profile" },
   { to: "/admin/content", label: "Website Content" },
+  { to: "/admin/logs", label: "System Logs" },
   { to: "/admin/settings", label: "Settings" },
 ];
 

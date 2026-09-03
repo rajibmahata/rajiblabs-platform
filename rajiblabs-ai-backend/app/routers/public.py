@@ -79,6 +79,7 @@ async def resume():
         return {"active": False}
     d = oid_str(d)
     d.pop("stored_path", None)
+    d.pop("path", None)  # legacy field, never expose disk paths
     return {**d, "download_url": "/api/public/resume/download"}
 
 
@@ -86,8 +87,14 @@ async def resume():
 async def resume_download():
     from fastapi import HTTPException
     from fastapi.responses import FileResponse
+    from pathlib import Path
     db = get_db()
     d = await db["resumes"].find_one({"active": True}, sort=[("version", -1)])
     if not d:
         raise HTTPException(404, "No active resume")
-    return FileResponse(d["stored_path"], filename=d["filename"], media_type="application/pdf")
+    # Canonical field is stored_path; fall back to legacy path for old docs.
+    stored = d.get("stored_path") or d.get("path")
+    if not stored or not Path(stored).is_file():
+        raise HTTPException(404, "Resume file missing")
+    return FileResponse(stored, filename=d.get("filename") or d.get("file_name") or "resume.pdf",
+                        media_type="application/pdf")

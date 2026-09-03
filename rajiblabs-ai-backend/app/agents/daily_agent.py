@@ -3,7 +3,7 @@ import logging
 from app.config import get_settings
 from app.database import get_db, utcnow
 from app.services import github_service, openai_service, quality
-from app.services.notify import notify
+from app.services.notify import log_error, notify
 
 log = logging.getLogger("rajiblabs")
 
@@ -52,4 +52,8 @@ async def run_daily_agent(triggered_by: str = "scheduler") -> dict:
         await db["agent_runs"].update_one({"_id": rid}, {"$set": {
             "status": "failed", "finished_at": utcnow(), "errors": [str(e)]}})
         await notify("AGENT_FAILURE", "Daily agent failed", str(e)[:500])
+        try:
+            await log_error("daily_agent", "Daily agent failed", str(e)[:2000])
+        except Exception:
+            pass
         return {"error": str(e)}

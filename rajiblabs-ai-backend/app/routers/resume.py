@@ -30,9 +30,9 @@ async def upload(file: UploadFile = File(...), email: str = Depends(require_admi
     (updir / safe).write_bytes(data)
     db = get_db()
     count = await db["resumes"].count_documents({})
-    doc = {"filename": file.filename, "path": str(updir / safe),
+    doc = {"filename": file.filename, "stored_path": str(updir / safe),
            "content_type": file.content_type or ALLOWED.get(ext, "application/octet-stream"),
-           "size": len(data), "version": count + 1, "active": True,
+           "size_bytes": len(data), "version": count + 1, "active": True,
            "uploaded_at": utcnow()}
     await db["resumes"].update_many({}, {"$set": {"active": False}})
     res = await db["resumes"].insert_one(doc)
@@ -47,6 +47,7 @@ async def list_resumes(email: str = Depends(require_admin)):
     out = []
     async for d in cur:
         d = oid_str(d)
-        d.pop("path", None)
+        d.pop("stored_path", None)
+        d.pop("path", None)  # legacy field, never expose disk paths
         out.append(d)
     return out

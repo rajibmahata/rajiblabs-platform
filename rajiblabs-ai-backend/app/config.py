@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     max_image_mb: int = 5
     max_resume_mb: int = 10
 
+    # Failure logs (admin-visible, auto-expire)
+    log_retention_days: int = 5
+
+    # Agent API key (X-Api-Key for /api/activity POST + /api/projects PATCH).
+    # Empty = unchecked, same as the legacy .NET RequireApiKey behavior.
+    api_key: str = ""
+
     # SMTP (optional)
     smtp_host: str = ""
     smtp_port: int = 587
