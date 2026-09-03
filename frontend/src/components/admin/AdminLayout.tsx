@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { logout } from "../../services/auth";
 
@@ -14,6 +15,17 @@ const nav = [
 
 export default function AdminLayout() {
   const nav2 = useNavigate();
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+    const prev = meta?.content ?? null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "robots";
+      document.head.appendChild(meta);
+    }
+    meta.content = "noindex, nofollow";
+    return () => { if (meta) meta.content = prev ?? "index, follow"; };
+  }, []);
   return (
     <div className="min-h-screen flex" style={{ background: "var(--c-bg-primary)", color: "var(--c-text-primary)" }}>
       <aside className="w-64 shrink-0 border-r hidden md:flex flex-col" style={{ background: "#090e1b", borderColor: "var(--c-border)" }}>

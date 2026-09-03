@@ -201,3 +201,38 @@ export const api = {
     return (await res.json()) as T;
   },
 };
+
+// ── New FastAPI public CMS (published only) with graceful fallback ──
+export interface CmsProject {
+  id?: string; slug: string; name: string; category: string;
+  short_description?: string; full_description?: string;
+  problem?: string; solution?: string; business_value?: string;
+  features?: string[]; architecture?: string; technologies?: string[];
+  github_url?: string | null; live_url?: string | null; demo_url?: string | null;
+  video_url?: string | null; featured_image?: string | null; gallery?: string[];
+  featured?: boolean; published?: boolean; status?: string;
+}
+async function publicGet<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${ADMIN_BASE}${path}`);
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch { return null; }
+}
+export const getCmsProjects = () => publicGet<CmsProject[]>("/api/public/projects");
+export const getCmsProject = (slug: string) => publicGet<CmsProject>(`/api/public/projects/${slug}`);
+export async function sendChat(message: string, session_token?: string, extra?: { name?: string; email?: string; phone?: string }) {
+  const res = await fetch(`${ADMIN_BASE}/api/public/chat`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, session_token, ...extra }),
+  });
+  if (!res.ok) throw new Error("Chat unavailable");
+  return res.json() as Promise<{ reply: string; session_token: string }>;
+}
+export async function submitLead(lead: { name: string; email: string; phone: string; description: string; product?: string }) {
+  const res = await fetch(`${ADMIN_BASE}/api/public/leads`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(lead),
+  });
+  if (!res.ok) throw new Error("Lead submission failed");
+  return res.json();
+}

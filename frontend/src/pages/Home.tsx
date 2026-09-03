@@ -12,6 +12,7 @@ import FloatingContact from '../components/ui/FloatingContact';
 import MobileBottomBar from '../components/layout/MobileBottomBar';
 import PWAInstallPrompt from '../components/pwa/PWAInstallPrompt';
 import PWAUpdatePrompt from '../components/pwa/PWAUpdatePrompt';
+import ChatWidget from '../components/ChatWidget';
 
 export default function Home() {
   const productCount = 8;
@@ -32,6 +33,7 @@ export default function Home() {
       </main>
       <GlobalFooter />
       <FloatingContact />
+      <ChatWidget />
       <MobileBottomBar />
       <PWAInstallPrompt />
       <PWAUpdatePrompt />
