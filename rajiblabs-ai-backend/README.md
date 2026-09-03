@@ -35,7 +35,7 @@ Migrate legacy SQLite (one-shot; `backend/` was removed — extract `rajiblabs.d
 
 ## GitHub / OpenAI
 
-`GITHUB_OWNER=rajibmahata`, `GITHUB_TOKEN` server-only. `POST /api/admin/github/sync` (manual) + daily 02:00 Asia/Kolkata. Manual edits/`locked_fields` never overwritten. `OPENAI_MODEL=gpt-5-nano`, fallback `gpt-5.6-luna`; compact prompts (README≤2000 chars), hash dedup, `AI_AUTO_PUBLISH=false` default, threshold 85.
+`GITHUB_OWNER=rajibmahata`, `GITHUB_TOKEN` server-only. `POST /api/admin/github/sync` (manual) + daily 02:00 Asia/Kolkata. Manual edits/`locked_fields` never overwritten. `OPENAI_MODEL=gpt-4o-mini`, fallback `gpt-5.6-luna`; compact prompts (README≤2000 chars), hash dedup, `AI_AUTO_PUBLISH=false` default, threshold 85.
 
 ## Scheduler / agent / QA
 

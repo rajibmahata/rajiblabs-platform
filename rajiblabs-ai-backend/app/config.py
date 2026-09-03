@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # OpenAI (server-only)
     openai_api_key: str = ""
-    openai_model: str = "gpt-5-nano"
+    openai_model: str = "gpt-4o-mini"
     openai_fallback_model: str = "gpt-5.6-luna"
     openai_enabled: bool = True
     openai_max_retries: int = 3
