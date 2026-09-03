@@ -49,7 +49,7 @@ Frontend reads `VITE_*` at build time via `import.meta.env`.
 | Variable | Required | Dev | Prod | Notes |
 |---|---|---|---|---|
 | `OPENAI_API_KEY` | For AI features | _(empty)_ | `sk-proj-...` | From https://platform.openai.com/api-keys. App runs with heuristics when empty |
-| `OPENAI_MODEL` | No | `gpt-4o-mini` | `gpt-4o-mini` | Primary model — operator's choice, low-cost (see §7) |
+| `OPENAI_MODEL` | No | `gpt-5-nano` | `gpt-5-nano` | Primary model — cheapest OpenAI text model (see §7) |
 | `OPENAI_FALLBACK_MODEL` | No | `gpt-5.6-luna` | `gpt-5.6-luna` | Higher-quality fallback for manual high-value regeneration |
 | `OPENAI_ENABLED` | No | `true` | `true` | Master kill-switch. `false` = heuristics everywhere, zero spend |
 | `OPENAI_MAX_RETRIES` | No | `3` | `3` | Exponential backoff; no infinite loops |
@@ -108,17 +108,17 @@ Per current OpenAI Platform pricing, ranked by cost:
 
 | Model | Input / 1M | Output / 1M | Verdict |
 |---|---|---|---|
-| `gpt-5-nano` | $0.05 | $0.40 | Absolute cheapest; switch here for minimum spend |
+| **`gpt-5-nano`** ✅ primary | **$0.05** | **$0.40** | Cheapest text model. Classification, extraction, summaries, chat |
 | `gpt-4.1-nano` | $0.10 | $0.40 | Runner-up; 1M context if needed |
-| **`gpt-4o-mini`** ✅ primary | **$0.15** | **$0.60** | Operator's choice. Proven, widely supported, cheap enough |
+| `gpt-4o-mini` | $0.15 | $0.60 | Legacy; more expensive |
 | **`gpt-5.6-luna`** ✅ fallback | **$0.20** | **$1.20** | Current-gen cheap lane, better quality for manual high-value regen |
 | `gpt-5-mini` and up | $0.25+ | $2.00+ | Not needed for this site's workloads |
 
-The repo defaults (`OPENAI_MODEL=gpt-4o-mini`, `OPENAI_FALLBACK_MODEL=gpt-5.6-luna`) match the operator's choice. To cut spend further, set `OPENAI_MODEL=gpt-5-nano` ($0.05/$0.40) — no code change needed, it's env-only.
+The repo defaults (`OPENAI_MODEL=gpt-5-nano`, `OPENAI_FALLBACK_MODEL=gpt-5.6-luna`) are already optimal — **no code change needed**.
 
-**What it costs on rajiblabs.com with `gpt-4o-mini`** (app caps: chat 250 output tokens, AI jobs 700):
-- Chat reply (~1K in + 250 out): ≈ **$0.0003 → ~3,300 chats per $1**
-- AI content job (~3K in + 700 out): ≈ **$0.00087 → ~1,150 jobs per $1**
+**What it costs on rajiblabs.com** (app caps: chat 250 output tokens, AI jobs 700):
+- Chat reply (~1K in + 250 out): ≈ **$0.00015 → ~6,600 chats per $1**
+- AI content job (~3K in + 700 out): ≈ **$0.00043 → ~2,300 jobs per $1**
 
 Further savings already built in: hash dedup (unchanged content never re-runs), compact prompts (README ≤2000 chars), one summary per day (not per commit), `AI_AUTO_PUBLISH=false` (no runaway loops). A $5 credit covers thousands of interactions.
 
