@@ -69,15 +69,21 @@ export default function PWAInstallPrompt() {
 
   const isIOSPrompt = !deferredPrompt;
 
+  const features = [
+    { icon: 'wifi_off', label: 'Offline' },
+    { icon: 'bolt', label: 'Fast' },
+    { icon: 'add_to_home_screen', label: 'Home screen' },
+  ];
+
   return (
     <div
-      className="fixed z-40 left-4 right-4 sm:left-auto sm:right-6 bottom-6 sm:max-w-sm overflow-hidden"
+      className="fixed z-40 left-4 right-4 sm:left-auto sm:right-6 bottom-36 md:bottom-24 sm:max-w-sm overflow-hidden"
       style={{
-        background: 'rgba(255, 255, 255, 0.85)',
+        background: 'rgba(255, 255, 255, 0.88)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         border: '1px solid rgba(15, 18, 34, 0.08)',
-        borderRadius: 18,
+        borderRadius: 20,
         boxShadow: '0 20px 60px rgba(15, 18, 34, 0.12), 0 0 40px rgba(124, 58, 237, 0.08)',
         animation: 'slideUp 0.4s cubic-bezier(0,0,0.2,1)',
       }}
@@ -85,7 +91,7 @@ export default function PWAInstallPrompt() {
       aria-label="Install app"
     >
       <div className="p-5">
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <div
             className="w-12 h-12 flex items-center justify-center flex-shrink-0"
             style={{
@@ -97,17 +103,34 @@ export default function PWAInstallPrompt() {
             <span style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: '#fff' }}>R</span>
           </div>
           <div className="flex-1 min-w-0">
-            <h4
-              style={{
-                fontFamily: "'Sora', sans-serif",
-                fontSize: 15,
-                fontWeight: 700,
-                color: '#0f1222',
-                lineHeight: 1.3,
-              }}
-            >
-              Install RajibLabs App
-            </h4>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4
+                style={{
+                  fontFamily: "'Sora', sans-serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: '#0f1222',
+                  lineHeight: 1.3,
+                }}
+              >
+                Install RajibLabs App
+              </h4>
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10,
+                  fontWeight: 500,
+                  color: '#7c3aed',
+                  background: '#ede9fe',
+                  border: '1px solid rgba(124, 58, 237, 0.2)',
+                  padding: '2px 8px',
+                  borderRadius: 100,
+                  letterSpacing: '0.06em',
+                }}
+              >
+                PWA
+              </span>
+            </div>
             <p
               style={{
                 fontFamily: "'Inter', sans-serif",
@@ -118,8 +141,8 @@ export default function PWAInstallPrompt() {
               }}
             >
               {isIOSPrompt
-                ? 'Tap Share → Add to Home Screen for offline access & faster loading.'
-                : 'Install for offline access, faster loading & home-screen launch.'}
+                ? 'Tap Share → Add to Home Screen for the full app experience.'
+                : 'Get the full app experience on any device.'}
             </p>
           </div>
           <button
@@ -136,6 +159,29 @@ export default function PWAInstallPrompt() {
         </div>
 
         <div className="flex gap-2 mt-4">
+          {features.map((f) => (
+            <div
+              key={f.label}
+              className="flex-1 flex items-center justify-center gap-1.5"
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10,
+                fontWeight: 500,
+                color: '#4b5065',
+                background: '#f7f8fc',
+                border: '1px solid rgba(15, 18, 34, 0.08)',
+                padding: '7px 4px',
+                borderRadius: 10,
+                letterSpacing: '0.02em',
+              }}
+            >
+              <i className="material-symbols-outlined" style={{ fontSize: 15, color: '#7c3aed' }}>{f.icon}</i>
+              {f.label}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2 mt-3">
           <button
             onClick={handleInstall}
             className="flex-1 py-2.5 font-medium text-sm transition-all"
@@ -185,7 +231,7 @@ export default function PWAInstallPrompt() {
             letterSpacing: '0.04em',
           }}
         >
-          Works on Android, iOS, Windows & macOS · Offline-ready
+          Android · iOS · Windows · macOS
         </p>
       </div>
 
