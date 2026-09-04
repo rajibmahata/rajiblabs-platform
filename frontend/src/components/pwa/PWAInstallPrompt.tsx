@@ -71,11 +71,14 @@ export default function PWAInstallPrompt() {
 
   return (
     <div
-      className="fixed z-40 left-4 right-4 sm:left-auto sm:right-6 bottom-6 sm:max-w-sm rounded-2xl border shadow-2xl overflow-hidden"
+      className="fixed z-40 left-4 right-4 sm:left-auto sm:right-6 bottom-6 sm:max-w-sm overflow-hidden"
       style={{
-        background: 'var(--c-bg-secondary)',
-        borderColor: 'var(--c-border)',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(37,99,244,0.08)',
+        background: 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(15, 18, 34, 0.08)',
+        borderRadius: 18,
+        boxShadow: '0 20px 60px rgba(15, 18, 34, 0.12), 0 0 40px rgba(124, 58, 237, 0.08)',
         animation: 'slideUp 0.4s cubic-bezier(0,0,0.2,1)',
       }}
       role="dialog"
@@ -84,21 +87,22 @@ export default function PWAInstallPrompt() {
       <div className="p-5">
         <div className="flex gap-4">
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+            className="w-12 h-12 flex items-center justify-center flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, var(--c-accent-blue), var(--c-accent-teal))',
-              boxShadow: '0 4px 16px rgba(21,71,190,0.3)',
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
+              boxShadow: '0 8px 20px rgba(124, 58, 237, 0.35)',
             }}
           >
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: '#fff' }}>R</span>
+            <span style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: '#fff' }}>R</span>
           </div>
           <div className="flex-1 min-w-0">
             <h4
               style={{
-                fontFamily: 'var(--font-heading)',
+                fontFamily: "'Sora', sans-serif",
                 fontSize: 15,
-                fontWeight: 600,
-                color: 'var(--c-text-primary)',
+                fontWeight: 700,
+                color: '#0f1222',
                 lineHeight: 1.3,
               }}
             >
@@ -106,9 +110,9 @@ export default function PWAInstallPrompt() {
             </h4>
             <p
               style={{
-                fontFamily: 'var(--font-body)',
+                fontFamily: "'Inter', sans-serif",
                 fontSize: 13,
-                color: 'var(--c-text-secondary)',
+                color: '#4b5065',
                 lineHeight: 1.5,
                 marginTop: 4,
               }}
@@ -121,7 +125,7 @@ export default function PWAInstallPrompt() {
           <button
             onClick={handleDismiss}
             className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-            style={{ color: 'var(--c-text-muted)', background: 'var(--c-bg-tertiary)' }}
+            style={{ color: '#8a8fa8', background: '#eef0f9' }}
             aria-label="Dismiss"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -134,29 +138,37 @@ export default function PWAInstallPrompt() {
         <div className="flex gap-2 mt-4">
           <button
             onClick={handleInstall}
-            className="flex-1 py-2.5 rounded-lg font-medium text-sm transition-all"
+            className="flex-1 py-2.5 font-medium text-sm transition-all"
             style={{
-              background: 'var(--c-accent-blue)',
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
+              boxShadow: '0 8px 24px rgba(124, 58, 237, 0.35)',
               color: '#fff',
-              fontFamily: 'var(--font-heading)',
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'var(--c-accent-blue-l)';
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = 'translateY(-2px)';
+              el.style.boxShadow = '0 12px 32px rgba(124, 58, 237, 0.45)';
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'var(--c-accent-blue)';
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = 'translateY(0)';
+              el.style.boxShadow = '0 8px 24px rgba(124, 58, 237, 0.35)';
             }}
           >
             {isIOSPrompt ? 'Got it' : 'Install App'}
           </button>
           <button
             onClick={handleDismiss}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2.5 text-sm font-medium transition-colors"
             style={{
+              borderRadius: 14,
               background: 'transparent',
-              color: 'var(--c-text-secondary)',
-              border: '1px solid var(--c-border)',
-              fontFamily: 'var(--font-heading)',
+              color: '#4b5065',
+              border: '1px solid rgba(15, 18, 34, 0.08)',
+              fontFamily: "'Inter', sans-serif",
             }}
           >
             Later
@@ -165,9 +177,9 @@ export default function PWAInstallPrompt() {
 
         <p
           style={{
-            fontFamily: 'var(--font-mono)',
+            fontFamily: "'JetBrains Mono', monospace",
             fontSize: 10,
-            color: 'var(--c-text-muted)',
+            color: '#8a8fa8',
             textAlign: 'center',
             marginTop: 10,
             letterSpacing: '0.04em',
