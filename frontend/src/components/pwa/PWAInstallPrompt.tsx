@@ -69,173 +69,116 @@ export default function PWAInstallPrompt() {
 
   const isIOSPrompt = !deferredPrompt;
 
-  const features = [
-    { icon: 'wifi_off', label: 'Offline' },
-    { icon: 'bolt', label: 'Fast' },
-    { icon: 'add_to_home_screen', label: 'Home screen' },
-  ];
-
   return (
     <div
-      className="fixed z-40 left-4 right-4 sm:left-auto sm:right-6 bottom-36 md:bottom-24 sm:max-w-sm overflow-hidden"
+      className="fixed z-40 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md"
       style={{
-        background: 'rgba(255, 255, 255, 0.88)',
+        top: 88,
+        background: 'rgba(255, 255, 255, 0.9)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         border: '1px solid rgba(15, 18, 34, 0.08)',
-        borderRadius: 20,
-        boxShadow: '0 20px 60px rgba(15, 18, 34, 0.12), 0 0 40px rgba(124, 58, 237, 0.08)',
-        animation: 'slideUp 0.4s cubic-bezier(0,0,0.2,1)',
+        borderRadius: 16,
+        boxShadow: '0 8px 30px rgba(15, 18, 34, 0.08), 0 0 30px rgba(124, 58, 237, 0.06)',
+        animation: 'slideDown 0.4s cubic-bezier(0,0,0.2,1)',
       }}
       role="dialog"
       aria-label="Install app"
     >
-      <div className="p-5">
-        <div className="flex gap-3">
-          <div
-            className="w-12 h-12 flex items-center justify-center flex-shrink-0"
-            style={{
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
-              boxShadow: '0 8px 20px rgba(124, 58, 237, 0.35)',
-            }}
-          >
-            <span style={{ fontFamily: "'Sora', sans-serif", fontSize: 22, fontWeight: 700, color: '#fff' }}>R</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4
-                style={{
-                  fontFamily: "'Sora', sans-serif",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: '#0f1222',
-                  lineHeight: 1.3,
-                }}
-              >
-                Install RajibLabs App
-              </h4>
-              <span
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 10,
-                  fontWeight: 500,
-                  color: '#7c3aed',
-                  background: '#ede9fe',
-                  border: '1px solid rgba(124, 58, 237, 0.2)',
-                  padding: '2px 8px',
-                  borderRadius: 100,
-                  letterSpacing: '0.06em',
-                }}
-              >
-                PWA
-              </span>
-            </div>
-            <p
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: 13,
-                color: '#4b5065',
-                lineHeight: 1.5,
-                marginTop: 4,
-              }}
-            >
-              {isIOSPrompt
-                ? 'Tap Share → Add to Home Screen for the full app experience.'
-                : 'Get the full app experience on any device.'}
-            </p>
-          </div>
-          <button
-            onClick={handleDismiss}
-            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-            style={{ color: '#8a8fa8', background: '#eef0f9' }}
-            aria-label="Dismiss"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex gap-2 mt-4">
-          {features.map((f) => (
-            <div
-              key={f.label}
-              className="flex-1 flex items-center justify-center gap-1.5"
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10,
-                fontWeight: 500,
-                color: '#4b5065',
-                background: '#f7f8fc',
-                border: '1px solid rgba(15, 18, 34, 0.08)',
-                padding: '7px 4px',
-                borderRadius: 10,
-                letterSpacing: '0.02em',
-              }}
-            >
-              <i className="material-symbols-outlined" style={{ fontSize: 15, color: '#7c3aed' }}>{f.icon}</i>
-              {f.label}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={handleInstall}
-            className="flex-1 py-2.5 font-medium text-sm transition-all"
-            style={{
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
-              boxShadow: '0 8px 24px rgba(124, 58, 237, 0.35)',
-              color: '#fff',
-              fontFamily: "'Inter', sans-serif",
-              fontWeight: 600,
-            }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.transform = 'translateY(-2px)';
-              el.style.boxShadow = '0 12px 32px rgba(124, 58, 237, 0.45)';
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.transform = 'translateY(0)';
-              el.style.boxShadow = '0 8px 24px rgba(124, 58, 237, 0.35)';
-            }}
-          >
-            {isIOSPrompt ? 'Got it' : 'Install App'}
-          </button>
-          <button
-            onClick={handleDismiss}
-            className="px-4 py-2.5 text-sm font-medium transition-colors"
-            style={{
-              borderRadius: 14,
-              background: 'transparent',
-              color: '#4b5065',
-              border: '1px solid rgba(15, 18, 34, 0.08)',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            Later
-          </button>
-        </div>
-
-        <p
+      <div className="flex items-center gap-3" style={{ padding: '12px 12px 12px 14px' }}>
+        <div
+          className="w-10 h-10 flex items-center justify-center flex-shrink-0"
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 10,
-            color: '#8a8fa8',
-            textAlign: 'center',
-            marginTop: 10,
-            letterSpacing: '0.04em',
+            borderRadius: 12,
+            background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
+            boxShadow: '0 8px 20px rgba(124, 58, 237, 0.35)',
           }}
         >
-          Android · iOS · Windows · macOS
-        </p>
+          <span style={{ fontFamily: "'Sora', sans-serif", fontSize: 18, fontWeight: 700, color: '#fff' }}>R</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              style={{
+                fontFamily: "'Sora', sans-serif",
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#0f1222',
+                lineHeight: 1.3,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              Install RajibLabs App
+            </span>
+            <span
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9,
+                fontWeight: 500,
+                color: '#7c3aed',
+                background: '#ede9fe',
+                border: '1px solid rgba(124, 58, 237, 0.2)',
+                padding: '1px 7px',
+                borderRadius: 100,
+                letterSpacing: '0.06em',
+                flexShrink: 0,
+              }}
+            >
+              PWA
+            </span>
+          </div>
+          <p
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: 12,
+              color: '#4b5065',
+              lineHeight: 1.4,
+              marginTop: 2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {isIOSPrompt ? 'Share → Add to Home Screen' : 'Offline access · Faster loading'}
+          </p>
+        </div>
+        <button
+          onClick={handleInstall}
+          className="text-sm transition-all flex-shrink-0"
+          style={{
+            borderRadius: 10,
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #7c3aed, #06b6d4)',
+            boxShadow: '0 8px 20px rgba(124, 58, 237, 0.35)',
+            color: '#fff',
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 600,
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 12px 28px rgba(124, 58, 237, 0.45)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 20px rgba(124, 58, 237, 0.35)';
+          }}
+        >
+          {isIOSPrompt ? 'Got it' : 'Install'}
+        </button>
+        <button
+          onClick={handleDismiss}
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+          style={{ color: '#8a8fa8', background: '#eef0f9' }}
+          aria-label="Dismiss"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
       </div>
 
-      <style>{`@keyframes slideUp { from { opacity:0; transform: translateY(16px)} to {opacity:1; transform:translateY(0)}}`}</style>
+      <style>{`@keyframes slideDown { from { opacity:0; transform: translateY(-16px)} to {opacity:1; transform:translateY(0)}}`}</style>
     </div>
   );
 }
