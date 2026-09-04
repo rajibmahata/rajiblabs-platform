@@ -46,7 +46,7 @@ function useNeuralCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(139, 92, 246, 0.6)";
+        ctx.fillStyle = "rgba(124, 58, 237, 0.35)";
         ctx.fill();
         if (mouse.x !== null && mouse.y !== null && !isMobile) {
           const dist = Math.hypot(mouse.x - p.x, mouse.y - p.y);
@@ -54,7 +54,7 @@ function useNeuralCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(mouse.x, mouse.y);
-            ctx.strokeStyle = `rgba(34, 211, 238, ${0.25 * (1 - dist / 180)})`;
+            ctx.strokeStyle = `rgba(6, 182, 212, ${0.3 * (1 - dist / 180)})`;
             ctx.lineWidth = 1;
             ctx.stroke();
           }
@@ -67,7 +67,7 @@ function useNeuralCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(139, 92, 246, ${0.14 * (1 - dist / 120)})`;
+            ctx.strokeStyle = `rgba(124, 58, 237, ${0.12 * (1 - dist / 120)})`;
             ctx.lineWidth = 1;
             ctx.stroke();
           }
