@@ -37,8 +37,8 @@ export default function Home() {
         <RlzExperience />
         <RlzContact />
         <RlzFooter />
+        <ChatWidget />
       </main>
-      <ChatWidget />
       <MobileBottomBar />
       <PWAInstallPrompt />
       <PWAUpdatePrompt />

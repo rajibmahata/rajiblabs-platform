@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { sendChat } from "../services/api";
 
+// NOTE: rendered INSIDE <main class="rlz"> (see Home.tsx) so every
+// .rlz-* class below resolves to the homepage design tokens.
+const QUICK_REPLIES = ["What do you build?", "Show projects", "Contact details"];
+
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<{ role: string; text: string }[]>([
@@ -13,11 +17,11 @@ export default function ChatWidget() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [msgs, open]);
+  }, [msgs, open ]);
 
-  const send = async () => {
-    if (!input.trim() || busy) return;
-    const text = input.trim();
+  const sendText = async (raw: string) => {
+    const text = raw.trim();
+    if (!text || busy) return;
     setInput("");
     setMsgs((m) => [...m, { role: "user", text }]);
     setBusy(true);
@@ -35,137 +39,54 @@ export default function ChatWidget() {
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex flex-col items-end gap-3">
       {open && (
-        <div
-          className="w-80 max-w-[calc(100vw-2rem)] overflow-hidden"
-          style={{
-            background: "rgba(255, 255, 255, 0.88)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid rgba(15, 18, 34, 0.08)",
-            borderRadius: 20,
-            boxShadow: "0 20px 60px rgba(15, 18, 34, 0.12), 0 0 40px rgba(124, 58, 237, 0.08)",
-            animation: "rlzChatUp 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-          role="dialog"
-          aria-label="Talk to RajibLabs"
-        >
-          <div
-            className="px-4 py-3 flex items-center gap-3"
-            style={{ borderBottom: "1px solid rgba(15, 18, 34, 0.08)", background: "rgba(255,255,255,0.5)" }}
-          >
-            <span
-              className="w-9 h-9 grid place-items-center flex-shrink-0"
-              style={{
-                borderRadius: 12,
-                background: "linear-gradient(135deg, #7c3aed, #06b6d4)",
-                boxShadow: "0 8px 20px rgba(124, 58, 237, 0.35)",
-                color: "#fff",
-              }}
-            >
-              <i className="material-symbols-outlined" style={{ fontSize: "1.15rem" }}>smart_toy</i>
+        <div className="rlz-chat-panel" role="dialog" aria-label="Talk to RajibLabs">
+          <div className="rlz-chat-head">
+            <span className="rlz-bento-icon rlz-icon-violet">
+              <i className="material-symbols-outlined">smart_toy</i>
             </span>
             <div className="flex-1 min-w-0">
-              <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: 14, color: "#0f1222", lineHeight: 1.2 }}>
-                Talk to RajibLabs
-              </div>
-              <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: "#059669", fontWeight: 500 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-                Online — replies instantly
-              </div>
+              <p className="rlz-chat-title">Talk to RajibLabs</p>
+              <span className="rlz-chat-status"><span className="rlz-live-dot" /> Online — replies instantly</span>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="w-7 h-7 rounded-full grid place-items-center flex-shrink-0"
-              style={{ color: "#8a8fa8", background: "#eef0f9" }}
-              aria-label="Close chat"
-            >
-              <i className="material-symbols-outlined" style={{ fontSize: 16 }}>close</i>
+            <button className="rlz-chat-close" onClick={() => setOpen(false)} aria-label="Close chat">
+              <i className="material-symbols-outlined">close</i>
             </button>
           </div>
 
-          <div ref={scrollRef} className="h-64 overflow-y-auto p-3 space-y-2 text-sm">
+          <div ref={scrollRef} className="rlz-chat-log">
             {msgs.map((m, i) => (
               <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-                <span
-                  className="inline-block px-3 py-2"
-                  style={{
-                    borderRadius: 14,
-                    maxWidth: "85%",
-                    wordBreak: "break-word",
-                    fontFamily: "'Inter', sans-serif",
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                    background: m.role === "user"
-                      ? "linear-gradient(135deg, #7c3aed, #06b6d4)"
-                      : "#eef0f9",
-                    color: m.role === "user" ? "#fff" : "#0f1222",
-                    boxShadow: m.role === "user" ? "0 4px 14px rgba(124, 58, 237, 0.3)" : "none",
-                  }}
-                >
-                  {m.text}
-                </span>
+                <span className={`rlz-chat-msg ${m.role === "user" ? "rlz-chat-user" : "rlz-chat-ai"}`}>{m.text}</span>
               </div>
             ))}
             {busy && (
               <div className="text-left">
-                <span
-                  className="inline-block px-3 py-2"
-                  style={{ borderRadius: 14, background: "#eef0f9", color: "#8a8fa8", fontSize: 13 }}
-                >
-                  typing…
-                </span>
+                <span className="rlz-chat-msg rlz-chat-typing">typing…</span>
               </div>
             )}
           </div>
 
-          <div className="flex gap-2 p-3" style={{ borderTop: "1px solid rgba(15, 18, 34, 0.08)" }}>
+          <div className="rlz-chat-quick">
+            {QUICK_REPLIES.map((q) => (
+              <button key={q} className="rlz-chip" onClick={() => void sendText(q)} disabled={busy}>
+                {q}
+              </button>
+            ))}
+          </div>
+
+          <div className="rlz-chat-bar">
             <input
-              value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Ask about projects…"
-              className="flex-1 px-3 py-2.5 text-sm"
-              style={{
-                borderRadius: 12,
-                background: "#f7f8fc",
-                border: "1px solid rgba(15, 18, 34, 0.08)",
-                color: "#0f1222",
-                fontFamily: "'Inter', sans-serif",
-                outline: "none",
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(124, 58, 237, 0.45)"; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(15, 18, 34, 0.08)"; }}
-              aria-label="Chat message"
+              value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void sendText(input)}
+              placeholder="Ask about projects…" className="rlz-chat-input" aria-label="Chat message"
             />
-            <button
-              onClick={send} disabled={busy}
-              className="w-11 grid place-items-center flex-shrink-0 transition-all disabled:opacity-50"
-              style={{
-                borderRadius: 12,
-                background: "linear-gradient(135deg, #7c3aed, #06b6d4)",
-                boxShadow: "0 8px 20px rgba(124, 58, 237, 0.35)",
-                color: "#fff",
-              }}
-              aria-label="Send"
-            >
-              <i className="material-symbols-outlined" style={{ fontSize: 20 }}>send</i>
+            <button className="rlz-chat-send" onClick={() => void sendText(input)} disabled={busy} aria-label="Send">
+              <i className="material-symbols-outlined">send</i>
             </button>
           </div>
-          <style>{`@keyframes rlzChatUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
         </div>
       )}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-14 h-14 grid place-items-center transition-all"
-        style={{
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #7c3aed, #06b6d4)",
-          boxShadow: "0 12px 40px rgba(124, 58, 237, 0.4)",
-          color: "#fff",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
-        aria-label={open ? "Close chat" : "Talk to RajibLabs"}
-      >
-        <i className="material-symbols-outlined" style={{ fontSize: 26 }}>{open ? "close" : "forum"}</i>
+      <button className="rlz-chat-launcher" onClick={() => setOpen((o) => !o)} aria-label={open ? "Close chat" : "Talk to RajibLabs"}>
+        <i className="material-symbols-outlined">{open ? "close" : "forum"}</i>
       </button>
     </div>
   );
