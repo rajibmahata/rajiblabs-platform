@@ -2,6 +2,29 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Transfer-based VPS deploy (no git on server)
+
+### Changed
+- `deploy-vps.yml` rebuilt: `build-frontend` (npm ci/lint/tsc/build, Node 20) +
+  `test-backend` (pytest on 3.12 + mongo service) gate `deploy-vps`; the deploy job
+  ships the exact commit via `git archive` tarball → `releases/<sha>/` → validate →
+  `rsync --delete` → `app/` → secrets → `deploy-vps.sh` → prune (fixed: keeps newest
+  2 SHA pairs, `uniq`-free dedupe verified by test). No `.git`, no secrets in transit.
+- `deploy-vps.sh`: rollback reference uses `DEPLOY_SHA` (no git assumption).
+- New `deploy/rollback-vps.sh [<sha>]`: re-syncs a kept release + `.release`, reruns
+  the full deploy (build/health/smoke). Validated: YAML parses, both scripts `sh -n`
+  clean, prune + rollback-pick logic tested locally.
+
+## [Unreleased] — VPS checkout bootstrap (fix `not a git repository` CI failure)
+
+### Fixed
+- `deploy-vps.yml` failed at `git pull` when `/opt/rajiblabs/app` wasn't a checkout.
+  The SSH block now inspects first: lists the dir, detects nested `.git` below it,
+  refuses (no deletions) on non-empty non-repo content, clones `main` only into a
+  missing/empty dir, then verifies toplevel + `main` branch + `rajiblabs-platform`
+  remote + `deploy/deploy-vps.sh` presence before pulling. Logic tested for all four
+  cases locally. PasteControl untouched (RajibLabs paths only).
+
 ## [Unreleased] — Full Products + Portfolio CMS
 
 ### Added — backend (`legacy.py`, `main.py`, `database.py`, `rag_ingest.py`)

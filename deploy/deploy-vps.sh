@@ -77,8 +77,9 @@ if command -v ss >/dev/null 2>&1; then
 fi
 
 # ── 4. Build + start (data volumes are bind mounts — always preserved) ──
-echo "Current images (rollback reference — git SHA + these IDs restore the prior build):"
-git -C "$APP_DIR" rev-parse --short HEAD 2>/dev/null || true
+# Rollback reference: revision being deployed + current image IDs (the prior
+# build is restored via sh deploy/rollback-vps.sh [<sha>] — no git needed).
+echo "Deploying revision: ${DEPLOY_SHA:-unknown} (see $APP_DIR/.release after success)"
 docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' rajiblabs-ai-api rajiblabs-frontend 2>/dev/null || true
 docker compose -p rajiblabs -f "$COMPOSE" --env-file "$ENV_FILE" up -d --build
 
