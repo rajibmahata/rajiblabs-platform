@@ -2,6 +2,15 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Fix CI lint failures blocking frontend build
+
+### Fixed
+- `npm run lint` (CI `build` job gate) failed with 3 `react-hooks/set-state-in-effect`
+  errors in `AgentsManage.tsx` / `LogsManage.tsx` — same defect class as the earlier
+  Workbench fix. LogsManage restructured (pagination resets in event handlers, single
+  debounced load effect); AgentsManage mount-fetch carries an explicit disable comment.
+- Verified: `npm run lint` exit 0, `tsc` + `vite build` clean, backend 199 passed.
+
 ## [Unreleased] — Fix homepage neural canvas (full-page, not hero-only)
 
 ### Fixed

@@ -183,6 +183,10 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   usual cause is an API shape assumption (see by_level above).
 - Font Awesome is bundled via npm (`@fortawesome/fontawesome-free` imported in
   `admin.css`) — do NOT re-add CDN links (tracking-prevention warnings, offline breakage).
+- Effects must never call setState synchronously (`react-hooks/set-state-in-effect`
+  fails CI lint): reset pagination/filters in event handlers with a single debounced
+  load effect; mount-only fetches carry an explicit disable comment. Progress timers
+  stop via explicit `stop()` in request `finally`, never in an effect.
 - Workbench `_overlap_terms` needs boundary-aware matching for short tech tokens
   (`.NET`, `AI`, `AWS`); plain word-set overlap silently drops them.
 - Workbench `generate_artifacts` MUST NOT reference undefined names in the brief
