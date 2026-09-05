@@ -9,6 +9,12 @@ import GitHubManage from "./pages/admin/GitHubManage";
 import ProductsManage from "./pages/admin/ProductsManage";
 import ProfileManage from "./pages/admin/ProfileManage";
 import ContentManage from "./pages/admin/ContentManage";
+import LeadsManage from "./pages/admin/LeadsManage";
+import KnowledgeManage from "./pages/admin/KnowledgeManage";
+import LanguagesManage from "./pages/admin/LanguagesManage";
+import TranslationsManage from "./pages/admin/TranslationsManage";
+import AgentsManage from "./pages/admin/AgentsManage";
+import Workbench from "./pages/admin/Workbench";
 import LogsManage from "./pages/admin/LogsManage";
 import Settings from "./pages/admin/Settings";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -104,6 +110,13 @@ export default function App() {
           <Route path="products" element={<ProductsManage />} />
           <Route path="profile" element={<ProfileManage />} />
           <Route path="content" element={<ContentManage />} />
+          <Route path="leads" element={<LeadsManage />} />
+          <Route path="knowledge" element={<KnowledgeManage />} />
+          <Route path="agents" element={<AgentsManage />} />
+          <Route path="ai-workbench" element={<Workbench />} />
+          <Route path="ai-workbench/history" element={<Workbench initialView="history" />} />
+          <Route path="languages" element={<LanguagesManage />} />
+          <Route path="translations" element={<TranslationsManage />} />
           <Route path="logs" element={<LogsManage />} />
           <Route path="settings" element={<Settings />} />
         </Route>

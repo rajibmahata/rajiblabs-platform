@@ -1,6 +1,8 @@
 import { siteConfig } from "../config/site";
+import { useLang } from "../i18n/langContext";
 
 export default function RlzFooter() {
+  const { t } = useLang();
   return (
     <footer className="rlz-footer">
       <div className="rlz-container rlz-footer-inner">
@@ -10,7 +12,7 @@ export default function RlzFooter() {
           </span>
           Rajib<span><em>Labs</em></span>
         </a>
-        <p>© 2026 RajibLabs — Architecting the intelligent future.</p>
+        <p>{t("footer.rights", { year: new Date().getFullYear() })}</p>
         <div className="rlz-footer-social">
           <a href={siteConfig.social.github} target="_blank" rel="noopener noreferrer" aria-label="GitHub">
             <i className="material-symbols-outlined">code</i>

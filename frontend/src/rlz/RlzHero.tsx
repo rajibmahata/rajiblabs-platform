@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { siteConfig } from "../config/site";
-import { HERO_STATS, TYPING_PHRASES } from "./data";
+import { HERO_STATS } from "./data";
+import { useLang } from "../i18n/langContext";
 
 function useNeuralCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
   useEffect(() => {
@@ -86,17 +87,17 @@ function useNeuralCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
   }, [canvasRef]);
 }
 
-function useTyping(textRef: React.RefObject<HTMLSpanElement | null>) {
+function useTyping(textRef: React.RefObject<HTMLSpanElement | null>, phrases: string[]) {
   useEffect(() => {
     const el = textRef.current;
-    if (!el) return;
+    if (!el || !phrases.length) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.textContent = TYPING_PHRASES[0];
+      el.textContent = phrases[0];
       return;
     }
     let phraseIdx = 0, charIdx = 0, deleting = false, timer = 0;
     const loop = () => {
-      const current = TYPING_PHRASES[phraseIdx];
+      const current = phrases[phraseIdx % phrases.length];
       if (el) el.textContent = current.slice(0, charIdx);
       if (!deleting && charIdx < current.length) {
         charIdx++;
@@ -109,13 +110,13 @@ function useTyping(textRef: React.RefObject<HTMLSpanElement | null>) {
         timer = window.setTimeout(loop, 1800);
       } else {
         deleting = false;
-        phraseIdx = (phraseIdx + 1) % TYPING_PHRASES.length;
+        phraseIdx = (phraseIdx + 1) % phrases.length;
         timer = window.setTimeout(loop, 400);
       }
     };
     timer = window.setTimeout(loop, 500);
     return () => window.clearTimeout(timer);
-  }, [textRef]);
+  }, [textRef, phrases]);
 }
 
 function useCounters(scopeRef: React.RefObject<HTMLElement | null>) {
@@ -152,11 +153,13 @@ function useCounters(scopeRef: React.RefObject<HTMLElement | null>) {
 }
 
 export default function RlzHero({ scopeRef }: { scopeRef: React.RefObject<HTMLElement | null> }) {
+  const { t, tArr } = useLang();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const typingRef = useRef<HTMLSpanElement | null>(null);
   useNeuralCanvas(canvasRef);
-  useTyping(typingRef);
+  useTyping(typingRef, tArr("hero.typing"));
   useCounters(scopeRef);
+  const statLabels = [t("hero.statYears"), t("hero.statRepos"), t("hero.statProducts")];
 
   return (
     <section className="rlz-hero rlz-section" id="home" style={{ paddingTop: 160, paddingBottom: 80 }}>
@@ -166,32 +169,32 @@ export default function RlzHero({ scopeRef }: { scopeRef: React.RefObject<HTMLEl
           <div>
             <div className="rlz-hero-badge rlz-reveal">
               <span className="rlz-pulse-dot" />
-              Available for enterprise AI &amp; architecture projects
+              {t("hero.badge")}
             </div>
             <h1 className="rlz-reveal rlz-reveal-d1">
-              Architecting the<br />
-              <span className="rlz-grad-text">Intelligent Future</span><br />
-              of Software.
+              {t("hero.titleA")}<br />
+              <span className="rlz-grad-text">{t("hero.titleB")}</span><br />
+              {t("hero.titleC")}
             </h1>
             <p className="rlz-hero-sub rlz-reveal rlz-reveal-d2">
-              I design AI-native systems and enterprise-grade architectures — turning complex business problems into elegant, scalable, intelligent solutions.
+              {t("hero.subtitle")}
             </p>
             <div className="rlz-typing-line rlz-reveal rlz-reveal-d2" aria-hidden="true">
               <span className="rlz-prompt">&gt;_</span> <span ref={typingRef} /> <span className="rlz-cursor" />
             </div>
             <div className="rlz-hero-actions rlz-reveal rlz-reveal-d3">
               <a href="#projects" className="rlz-btn rlz-btn-primary">
-                Explore Projects <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>arrow_forward</i>
+                {t("hero.explore")} <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>arrow_forward</i>
               </a>
               <a href="/Rajib-Mahata-Resume-2026.pdf" download className="rlz-btn rlz-btn-ghost">
-                <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>download</i> Download Resume
+                <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>download</i> {t("hero.resume")}
               </a>
             </div>
             <div className="rlz-hero-stats rlz-reveal rlz-reveal-d4">
-              {HERO_STATS.map((s) => (
+              {HERO_STATS.map((s, i) => (
                 <div className="rlz-stat" key={s.label}>
                   <h3><span className="rlz-counter" data-target={s.value}>0</span>{s.suffix}</h3>
-                  <p>{s.label}</p>
+                  <p>{statLabels[i] ?? s.label}</p>
                 </div>
               ))}
             </div>

@@ -31,11 +31,32 @@ class Settings(BaseSettings):
     # OpenAI (server-only)
     openai_api_key: str = ""
     openai_model: str = "gpt-5-nano"
+    # One-shot fallback when the primary model 404s (unknown/inaccessible).
+    # gpt-5.6-luna is real (GPT-5.6 cheap tier, $0.20/$1.20) — higher quality
+    # than nano for the fallback path. Override via env if needed.
     openai_fallback_model: str = "gpt-5.6-luna"
     openai_enabled: bool = True
     openai_max_retries: int = 3
     ai_auto_publish: bool = False
     ai_quality_threshold: int = 85
+
+    # Lead-assistant AI provider (server-only, never exposed to React).
+    # ai_provider: "openai" | "deepseek". ai_model empty = provider default
+    # (openai_model for OpenAI). Fallback chain + retries keep chat resilient.
+    ai_provider: str = "openai"
+    ai_model: str = ""
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-chat"
+    ai_fallback_enabled: bool = True
+
+    # AI provider abstraction for the lead assistant (server-only).
+    # ai_provider: "openai" | "deepseek". ai_model empty = provider default
+    # (openai_model for OpenAI). Fallback chain + retries keep chat resilient.
+    ai_provider: str = "openai"
+    ai_model: str = ""
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-chat"
+    ai_fallback_enabled: bool = True
 
     # GitHub (server-only)
     github_owner: str = "rajibmahata"
@@ -62,11 +83,29 @@ class Settings(BaseSettings):
     max_resume_mb: int = 10
 
     # Failure logs (admin-visible, auto-expire)
-    log_retention_days: int = 5
+    log_retention_days: int = 7
 
     # Agent API key (X-Api-Key for /api/activity POST + /api/projects PATCH).
     # Empty = unchecked, same as the legacy .NET RequireApiKey behavior.
     api_key: str = ""
+
+    # RAG knowledge system (Qdrant vector search; MongoDB stays source of truth)
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+    qdrant_collection: str = "rajiblabs_knowledge"
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_version: str = "v1"
+    embedding_dim: int = 1536
+    rag_enabled: bool = True
+    rag_top_k: int = 5
+    rag_min_score: float = 0.35
+    rag_cache_ttl_seconds: int = 3600
+    rag_chunk_size: int = 1200
+    rag_chunk_overlap: int = 150
+    github_rag_repos: str = ""  # comma-separated allowlist; empty = all public
+    github_rag_max_files: int = 40
+    github_rag_max_bytes: int = 200000
 
     # SMTP (optional)
     smtp_host: str = ""

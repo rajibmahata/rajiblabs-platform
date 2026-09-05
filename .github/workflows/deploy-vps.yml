@@ -1,0 +1,79 @@
+# RajibLabs — VPS deploy (169.58.165.10, shared box with PestFlow)
+#
+# Trigger: every push/merge to main (+ manual "Run workflow").
+# Flow: SSH into the VPS → git pull /opt/rajiblabs/app → sh deploy/deploy-vps.sh
+# (build, health-gate, edge smoke tests). PestFlow untouched: disjoint ports
+# (:8080 vs :80/:443), names, networks, /opt paths — see CHANGELOG POCs.
+#
+# Required repo secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (+ optional VPS_SSH_PORT).
+# One-time server setup: clone this repo to /opt/rajiblabs/app and create
+# /opt/rajiblabs/config/.env from deploy/dotenv.production.example.
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-vps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check VPS secrets
+        id: check
+        run: |
+          if [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "VPS secrets not set — skipping. Set VPS_HOST, VPS_USER, VPS_SSH_KEY in GitHub Secrets."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to VPS over SSH
+        if: steps.check.outputs.skip == 'false'
+        uses: appleboy/ssh-action@v1
+        # App secrets: set these in GitHub Secrets and each deploy syncs the
+        # non-empty ones into /opt/rajiblabs/config/.env (server file stays
+        # as fallback for anything left empty here). Values never print in logs.
+        env:
+          APP_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          APP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
+          APP_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          APP_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 30m
+          envs: APP_OPENAI_API_KEY,APP_GITHUB_TOKEN,APP_ADMIN_INITIAL_PASSWORD,APP_SECRET_KEY,APP_JWT_SECRET
+          script: |
+            set -eu
+            cd /opt/rajiblabs/app
+            git pull --ff-only
+            # Sync GitHub-Secret values into the server env file (non-empty win).
+            upsert() { # upsert <FILE> <KEY> <VALUE>
+              [ -n "${3:-}" ] || return 0
+              [ -s "$1" ] && [ -n "$(tail -c 1 "$1")" ] && echo >> "$1"
+              esc=$(printf '%s' "$3" | sed "s/'/'\\\\''/g")
+              grep -v "^$2=" "$1" > "$1.tmp" || true
+              printf "%s='%s'\n" "$2" "$esc" >> "$1.tmp"
+              mv "$1.tmp" "$1"
+            }
+            ENV_FILE=/opt/rajiblabs/config/.env
+            touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
+            upsert "$ENV_FILE" OPENAI_API_KEY "$APP_OPENAI_API_KEY"
+            upsert "$ENV_FILE" GITHUB_TOKEN "$APP_GITHUB_TOKEN"
+            upsert "$ENV_FILE" ADMIN_INITIAL_PASSWORD "$APP_ADMIN_INITIAL_PASSWORD"
+            upsert "$ENV_FILE" SECRET_KEY "$APP_SECRET_KEY"
+            upsert "$ENV_FILE" JWT_SECRET "$APP_JWT_SECRET"
+            if [ -n "$APP_OPENAI_API_KEY" ]; then echo "  - OPENAI_API_KEY: from GitHub Secrets (AI enabled)"; else echo "  - OPENAI_API_KEY: server value kept (fallback mode if empty)"; fi
+            sh deploy/deploy-vps.sh
+
+      - name: Skip notice (no secrets)
+        if: steps.check.outputs.skip == 'true'
+        run: echo "VPS deploy skipped — configure VPS_HOST, VPS_USER, VPS_SSH_KEY to enable."

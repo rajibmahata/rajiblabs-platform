@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-
-const LINKS = [
-  { href: "#expertise", label: "Expertise" },
-  { href: "#architecture", label: "Architecture" },
-  { href: "#projects", label: "Projects" },
-  { href: "#experience", label: "Experience" },
-];
+import { useLang } from "../i18n/langContext";
+import LanguageSelector from "../i18n/LanguageSelector";
 
 export default function RlzNav() {
+  const { t } = useLang();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const LINKS = [
+    { href: "#expertise", label: t("nav.expertise") },
+    { href: "#architecture", label: t("nav.architecture") },
+    { href: "#projects", label: t("nav.projects") },
+    { href: "#experience", label: t("nav.experience") },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -32,14 +34,15 @@ export default function RlzNav() {
         ))}
         <li>
           <a href="#contact" className="rlz-nav-cta" onClick={() => setOpen(false)}>
-            Let&apos;s Talk <i className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>arrow_forward</i>
+            {t("nav.letsTalk")} <i className="material-symbols-outlined" style={{ fontSize: "0.85rem" }}>arrow_forward</i>
           </a>
         </li>
       </ul>
+      <LanguageSelector />
       <button
         className="rlz-hamburger"
         onClick={() => setOpen((o) => !o)}
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label={open ? t("nav.closeMenu") : t("nav.menu")}
         aria-expanded={open}
       >
         <i className="material-symbols-outlined">{open ? "close" : "menu"}</i>

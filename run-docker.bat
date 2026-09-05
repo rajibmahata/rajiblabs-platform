@@ -29,6 +29,7 @@ title RajibLabs Platform - Docker
 pushd "%~dp0"
 set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
+if not defined TEMP set "TEMP=%ROOT%"
 
 set "ENV_FILE=%ROOT%\rajiblabs-ai-backend\.env"
 set "ENV_EXAMPLE=%ROOT%\rajiblabs-ai-backend\.env.example"
@@ -62,8 +63,8 @@ echo.
 :: -------------------- Prerequisite Checks -----------------------------------
 echo [1/4] Checking prerequisites...
 
-where docker >nul 2>nul
-if %errorlevel% neq 0 (
+where docker >nul
+if "%errorlevel%" neq "0" (
   color 0C
   echo   [ERROR] Docker not found. Install Docker Desktop from https://www.docker.com/products/docker-desktop/
   pause
@@ -72,8 +73,8 @@ if %errorlevel% neq 0 (
 for /f "tokens=*" %%v in ('docker --version') do set DOCKER_VER=%%v
 echo   - %DOCKER_VER% OK
 
-docker info >nul 2>nul
-if %errorlevel% neq 0 (
+docker info >nul
+if "%errorlevel%" neq "0" (
   color 0C
   echo   [ERROR] Docker daemon is not running. Start Docker Desktop and wait until it is green, then retry.
   pause
@@ -81,10 +82,10 @@ if %errorlevel% neq 0 (
 )
 echo   - Docker daemon running.
 
-docker compose version >nul 2>nul
-if %errorlevel% neq 0 (
+docker compose version >nul
+if "%errorlevel%" neq "0" (
   color 0C
-  echo   [ERROR] 'docker compose' (v2 plugin) not found. Update Docker Desktop.
+  echo   [ERROR] 'docker compose' (v2 plugin^) not found. Update Docker Desktop.
   pause
   exit /b 1
 )
@@ -130,7 +131,7 @@ echo.
 
 echo [3/4] Building images + starting stack (this takes a few minutes on 1st run)...
 docker compose up -d --build
-if %errorlevel% neq 0 (
+if "%errorlevel%" neq "0" (
   color 0C
   echo   [ERROR] 'docker compose up' failed. See errors above.
   echo   Tip: run 'run-docker.bat logs' to inspect, or Docker Desktop -^> Containers.
@@ -144,20 +145,20 @@ goto :wait_healthy
 :rebuild
 echo [2/4] .env check...
 if not exist "%ENV_FILE%" (
-  copy "%ENV_EXAMPLE%" "%ENV_FILE%" >nul 2>nul
-  echo   - Created .env from .env.example (fill secrets!).
+  copy "%ENV_EXAMPLE%" "%ENV_FILE%" >nul
+  echo   - Created .env from .env.example (fill secrets!^).
 )
 echo.
 echo [3/4] Force rebuilding all images (no cache)...
 docker compose build --no-cache
-if %errorlevel% neq 0 (
+if "%errorlevel%" neq "0" (
   color 0C
   echo   [ERROR] Rebuild failed.
   pause
   exit /b 1
 )
 docker compose up -d
-if %errorlevel% neq 0 (
+if "%errorlevel%" neq "0" (
   color 0C
   echo   [ERROR] 'docker compose up' failed.
   pause
@@ -172,13 +173,14 @@ echo [4/4] Waiting for services to become healthy (max ~90s)...
 set "READY=0"
 for /L %%i in (1,1,18) do (
   curl -s -o nul -w "%%{http_code}" --max-time 3 http://localhost:5010/ > "%TEMP%\rl_health.txt" 2>nul
-  set /p CODE=<"%TEMP%\rl_health.txt" 2>nul
+  set "CODE="
+  if exist "%TEMP%\rl_health.txt" set /p CODE=<"%TEMP%\rl_health.txt"
   if "!CODE!"=="200" (
     set "READY=1"
     echo   - Frontend is UP after ~%%i x 5s.
     goto :healthy_done
   )
-  echo   - waiting... (%%i/18)
+  echo   - waiting... (%%i/18^)
   timeout /t 5 /nobreak >nul
 )
 :healthy_done
@@ -222,7 +224,7 @@ exit /b 0
 :down
 echo [2/2] Stopping stack (containers removed, mongo_data volume KEPT)...
 docker compose down
-if %errorlevel% neq 0 (
+if "%errorlevel%" neq "0" (
   color 0C
   echo   [ERROR] 'docker compose down' failed.
   pause

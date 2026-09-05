@@ -204,3 +204,131 @@ async def test_legacy_validation_no_db():
                      "/api/admin/resumes", "/api/admin/github/repos"):
             r = await c.get(path)
             assert r.status_code == 401, path
+
+
+# ── System Logs: scrub, query builder, retention, cleanup ──
+
+def test_scrub_redacts_secrets():
+    from app.services.notify import scrub_text
+    assert scrub_text("login failed for password=hunter2 ok") == \
+        "login failed for password=*** ok"
+    assert "sk-" not in scrub_text("openai key sk-abc123XYZ789 failed")
+    assert "***token***" in scrub_text("key sk-abc123XYZ789 failed")
+    assert "ghp_" not in scrub_text("token ghp_abcdefgh12345678 here")
+    assert scrub_text("auth Bearer abcDEF123._-xyz") == "auth Bearer ***"
+    out = scrub_text("connect mongodb://admin:s3cret@host:27017/db now")
+    assert "s3cret" not in out and "***@" in out
+    clean = "plain failure with no secrets, retry in 5s"
+    assert scrub_text(clean) == clean
+
+
+def test_normalize_level():
+    from app.services.notify import normalize_level
+    assert normalize_level("info") == "info"
+    assert normalize_level("warning") == "warning"
+    assert normalize_level("error") == "error"
+    assert normalize_level("CRITICAL") == "error"
+    assert normalize_level("") == "error"
+
+
+def test_retention_cutoff_days():
+    from datetime import datetime, timezone
+    from app.services.notify import retention_cutoff
+    now = datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc)
+    assert (now - retention_cutoff(7, now)).days == 7
+    assert retention_cutoff(0, now) < now  # clamped to >= 1 day
+
+
+def test_build_log_query_window_always_applied():
+    from datetime import datetime, timezone
+    from app.routers.admin_logs import build_log_query
+    w = datetime(2026, 8, 28, tzinfo=timezone.utc)
+    assert build_log_query(window_start=w) == {"created_at": {"$gte": w}}
+    assert "created_at" not in build_log_query()  # no window → no cutoff
+    q = build_log_query(level="bogus", window_start=w)
+    assert "level" not in q and q["created_at"] == {"$gte": w}
+
+
+def test_build_log_query_filters():
+    from datetime import datetime, timezone
+    from app.routers.admin_logs import build_log_query
+    w = datetime(2026, 8, 28, tzinfo=timezone.utc)
+    frm = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    to = datetime(2026, 9, 3, tzinfo=timezone.utc)
+    q = build_log_query(q="mongo (timeout)", level="error", source="daily_agent",
+                        date_from=frm, date_to=to, window_start=w)
+    assert q["level"] == "error" and q["source"] == "daily_agent"
+    # date_from wins over the older window cutoff; date_to caps the range
+    assert q["created_at"] == {"$gte": frm, "$lte": to}
+    ors = q["$or"]
+    assert {list(o)[0] for o in ors} == {"message", "source", "logger", "path", "details"}
+    msg_rx = next(o["message"]["$regex"] for o in ors if "message" in o)
+    assert "\\(" in msg_rx and "(timeout)" not in msg_rx  # escaped, not raw
+
+
+@pytest.mark.asyncio
+async def test_admin_log_detail_requires_auth():
+    from app.main import create_app
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get("/api/admin/logs/507f1f77bcf86cd799439011")
+        assert r.status_code == 401
+
+
+async def _live_db():
+    """Real Mongo if reachable, else skip (same pattern as existing tests)."""
+    try:
+        from app.database import get_db
+        db = get_db()
+        await db.command("ping")
+        return db
+    except Exception:
+        pytest.skip("MongoDB not running locally")
+
+
+@pytest.mark.asyncio
+async def test_log_filtering_details_retention_live():
+    import uuid
+    from datetime import timedelta
+    from app.database import utcnow
+    from app.routers.admin_logs import build_log_query
+    from app.services.notify import log_error, purge_old_logs
+    db = await _live_db()
+    marker = f"e2e-{uuid.uuid4().hex[:8]}"
+    await log_error("e2e_source", f"boom {marker}", "traceback line",
+                    level="info", logger="e2e.module", path="/api/e2e")
+    await db["error_logs"].insert_one({
+        "level": "error", "source": "e2e_old", "message": "ancient",
+        "details": "", "created_at": utcnow() - timedelta(days=8)})
+    try:
+        # search finds the fresh entry with its extended fields
+        q = build_log_query(q=marker)
+        found = [d async for d in db["error_logs"].find(q)]
+        assert len(found) == 1
+        assert found[0]["logger"] == "e2e.module" and found[0]["path"] == "/api/e2e"
+        # window excludes the 8-day-old entry even without other filters
+        from app.services.notify import retention_cutoff
+        recent = [d async for d in db["error_logs"].find(
+            build_log_query(window_start=retention_cutoff(7)))]
+        assert all(d["source"] != "e2e_old" for d in recent)
+        # scheduled sweep deletes only the expired entry
+        deleted = await purge_old_logs(db, days=7)
+        assert deleted >= 1
+        assert await db["error_logs"].count_documents({"source": "e2e_old"}) == 0
+        assert await db["error_logs"].count_documents({"source": "e2e_source"}) == 1
+    finally:
+        await db["error_logs"].delete_many({"source": {"$in": ["e2e_source", "e2e_old"]}})
+
+
+@pytest.mark.asyncio
+async def test_log_error_scrubs_secrets_live():
+    from app.services.notify import log_error
+    db = await _live_db()
+    await log_error("e2e_scrub", "call failed", "password=hunter2 token sk-abc123XYZ789",
+                    level="error")
+    try:
+        d = await db["error_logs"].find_one({"source": "e2e_scrub"})
+        assert d is not None and "hunter2" not in d["details"]
+        assert "sk-abc123XYZ789" not in d["details"]
+    finally:
+        await db["error_logs"].delete_many({"source": "e2e_scrub"})

@@ -42,7 +42,8 @@ async def generate_project_content(name: str, readme: str, meta: dict, existing:
         try:
             from app.services.notify import log_error
             await log_error("openai_content", f"OpenAI enrichment failed for {name}, fallback used",
-                            str(e)[:2000], level="warning")
+                            str(e)[:2000], level="warning",
+                            logger="app.services.openai_service")
         except Exception:
             pass
         desc = (meta.get("description") or f"{name} — repository by rajibmahata").strip()

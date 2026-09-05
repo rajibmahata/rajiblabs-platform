@@ -546,19 +546,28 @@ class ProductLegacyIn(BaseModel):
 
 
 @router.get("/api/products")
-async def products_list():
+async def products_list(lang: str | None = None):
+    from app.services.translation_service import TranslationService
     db = get_db()
     cur = db["products"].find(
         {"status": {"$in": ["published", "featured"]}}).sort("display_order", 1)
-    return [product_out(d) async for d in cur]
+    out = []
+    async for d in cur:
+        if lang:
+            d, _ = await TranslationService.localize_doc("products", d, lang, db)
+        out.append(product_out(d))
+    return out
 
 
 @router.get("/api/products/{slug}")
-async def product_detail(slug: str):
+async def product_detail(slug: str, lang: str | None = None):
+    from app.services.translation_service import TranslationService
     db = get_db()
     d = await db["products"].find_one({"slug": slug})
     if not d:
         raise HTTPException(404, {"error": "Not found"})
+    if lang:
+        d, _ = await TranslationService.localize_doc("products", d, lang, db)
     return product_out(d)
 
 
@@ -749,7 +758,8 @@ async def github_sync(email: str = Depends(require_admin)):
             {"_id": res.inserted_id},
             {"$set": {"finished_at": utcnow(), "errors": [str(e)]}})
         try:
-            await log_error("github_sync_legacy", "GitHub sync failed", str(e)[:2000])
+            await log_error("github_sync_legacy", "GitHub sync failed", str(e)[:2000],
+                                logger="app.routers.legacy", path="/api/admin/github/sync")
         except Exception:
             pass
         raise HTTPException(500, {"error": str(e)})

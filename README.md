@@ -82,7 +82,17 @@ Read endpoints (`GET /api/public/*`) are public and require no authentication.
 
 ## Deployment
 
-This project uses the same FTP deployment flow as the OpenClaw setup.
+Frontend `dist/` deploys via FTP (`deploy.sh`, SmarterASP). The API runs on the
+VPS (169.58.165.10, shared with PestFlow — our edge is host `:8080`, PestFlow keeps
+`:80/:443`; see POCs in `CHANGELOG.md`) via `docker-compose.production.yml`
+(private network, Mongo + Qdrant internal, state in `/opt/rajiblabs`):
+- One-command deploy on the VPS: `sh deploy/deploy-vps.sh`; setup + secrets in the
+  compose header and `deploy/dotenv.production.example`.
+- Auto-deploy from GitHub: `.github/workflows/deploy-vps.yml` runs on every merge to
+  `main` (manual dispatch also available). Repo secrets: `VPS_HOST`, `VPS_USER`,
+  `VPS_SSH_KEY` (SSH), plus `OPENAI_API_KEY`, `GITHUB_TOKEN`,
+  `ADMIN_INITIAL_PASSWORD`, `SECRET_KEY`, `JWT_SECRET` — non-empty values sync into
+  `/opt/rajiblabs/config/.env` each deploy (server file stays fallback).
 
 Run from the repo root:
 

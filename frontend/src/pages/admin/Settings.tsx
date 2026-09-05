@@ -1,14 +1,27 @@
+import { PageHead, Panel } from "../../components/admin/ui";
+
+const ROWS: [string, string][] = [
+  ["Admin credentials", "Set ADMIN_INITIAL_PASSWORD (and admin emails) in the backend .env. First login creates the DB user."],
+  ["JWT", "SECRET_KEY / JWT_SECRET (32+ chars). Token in HttpOnly cookie rlabs_access."],
+  ["GitHub", "GITHUB_TOKEN + GITHUB_OWNER=rajibmahata — server-only, never exposed to the browser."],
+  ["AI", "OPENAI_API_KEY (chat model gpt-5-nano) + optional DEEPSEEK_API_KEY fallback. AI_PROVIDER selects the primary."],
+  ["RAG / Qdrant", "QDRANT_URL (docker service qdrant:6333). MongoDB stays source of truth; vectors re-index automatically."],
+  ["Uploads", "10MB, PDF/DOCX only, safe filenames, not directly enumerable."],
+  ["Deploy", "frontend/dist via FTP; MongoDB data persists in the mongo_data volume — back up before major deploys."],
+];
+
 export default function Settings() {
   return (
     <div>
-      <h1 className="text-xl font-bold" style={{ fontFamily: "Fraunces, serif" }}>Settings</h1>
-      <div className="mt-4 p-4 rounded-xl border text-sm leading-relaxed" style={{ background: "var(--c-bg-secondary)", borderColor: "var(--c-border)", color: "var(--c-text-secondary)" }}>
-        <p><strong style={{ color: "var(--c-text-primary)" }}>Admin credentials:</strong> Set <code>Admin__Username</code>, <code>Admin__Password</code> or <code>Admin__PasswordHash</code> (BCrypt) in environment / <code>appsettings.json</code>. First login creates DB user.</p>
-        <p className="mt-2"><strong style={{ color: "var(--c-text-primary)" }}>JWT:</strong> <code>Jwt__Key</code> (32+ chars) and <code>Jwt__Issuer</code>. Token in HttpOnly cookie <code>rlabs_token</code>.</p>
-        <p className="mt-2"><strong style={{ color: "var(--c-text-primary)" }}>GitHub:</strong> <code>GITHUB_TOKEN</code> (or <code>GitHub:Token</code>) + <code>GITHUB_OWNER=rajibmahata</code> — server-only, never exposed to browser.</p>
-        <p className="mt-2"><strong style={{ color: "var(--c-text-primary)" }}>Uploads:</strong> <code>wwwroot/uploads/resumes</code> — 10MB, PDF/DOCX only, safe filenames, not directly enumerable.</p>
-        <p className="mt-2"><strong style={{ color: "var(--c-text-primary)" }}>Deploy:</strong> <code>frontend/dist</code> via FTP; <code>rajiblabs.db</code> is SQLite file — exclude from FTP delete, backup before deploy.</p>
-      </div>
+      <PageHead title="Settings" desc="Environment & platform configuration reference." />
+      <Panel title="Configuration" sub="Values live in rajiblabs-ai-backend/.env (see .env.example)">
+        {ROWS.map(([k, v]) => (
+          <div className="rla-status-row" key={k}>
+            <span className="rla-status-icon" style={{ background: "var(--rla-violet-soft)", color: "var(--rla-violet)" }}><i className="fas fa-gear" /></span>
+            <div><div className="rla-st-name">{k}</div><div className="rla-st-sub">{v}</div></div>
+          </div>
+        ))}
+      </Panel>
     </div>
   );
 }

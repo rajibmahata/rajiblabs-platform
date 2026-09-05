@@ -1,0 +1,207 @@
+# RajibLabs — Production Docker Compose (VPS 169.58.165.10, SHARED with PestFlow)
+#
+# PestFlow (pestflow-gateway) already owns host ports 80/443 on this box,
+# so RajibLabs does NOT publish :80. Two-phase edge:
+#   Phase 1 (now, no DNS change): rajiblabs-gateway on host :8080
+#             → site live at http://169.58.165.10:8080 immediately.
+#   Phase 2 (rajiblabs.com → 169.58.165.10): append
+#             deploy/nginx/rajiblabs-behind-pestflow.conf to PestFlow's
+#             /opt/pestflow/config/nginx/gateway.conf (certbot cert first),
+#             reload pestflow-gateway, then restrict :8080 to localhost.
+#
+# Design (mirrors PestFlow's production compose):
+#   - MongoDB is bound to 127.0.0.1:27017 for host tooling only.
+#     (No clash: PestFlow uses SQL Server :1433; both qdrants stay internal
+#     on their own private networks.)
+#   - The API reaches MongoDB/Qdrant through the private `rajiblabs-internal`
+#     network as `mongo:27017` / `qdrant:6333`.
+#   - The gateway additionally joins the EXTERNAL `pestflow-internal`
+#     network so PestFlow's gateway can proxy rajiblabs.com → it in Phase 2
+#     (no PestFlow compose change needed — external networks attach freely).
+#     If PestFlow isn't deployed yet, comment out that network + the Phase-2
+#     step still works on :8080.
+#   - Persistent data survives container replacement and VPS reboot:
+#       /opt/rajiblabs/data/mongo    (MongoDB data files)
+#       /opt/rajiblabs/data/qdrant   (vector index)
+#       /opt/rajiblabs/data/uploads  (resume uploads + seed PDF copy)
+#   - The API self-seeds on startup (init_db is idempotent — collections
+#     are only seeded when empty). Mongo is health-checked before the API
+#     starts, so a DB failure stops the deploy instead of boot-looping.
+#   - `build:` blocks are retained so a manual `--build` deploy works
+#     without prebuilt images.
+#
+# VPS first-time setup (run once as root):
+#   mkdir -p /opt/rajiblabs/{app,config/nginx,data/{mongo,qdrant,uploads},logs/nginx}
+#   cd /opt/rajiblabs/app            # copy this repo (or at least:
+#                                    # docker-compose.production.yml, frontend/,
+#                                    # rajiblabs-ai-backend/, deploy/)
+#   cp deploy/dotenv.production.example /opt/rajiblabs/config/.env
+#   nano /opt/rajiblabs/config/.env  # fill secrets (see below)
+#   cp deploy/nginx/gateway.conf /opt/rajiblabs/config/nginx/gateway.conf
+#
+# Deploy / update:
+#   cd /opt/rajiblabs/app
+#   docker compose -f docker-compose.production.yml --env-file /opt/rajiblabs/config/.env up -d --build
+#   docker compose -f docker-compose.production.yml --env-file /opt/rajiblabs/config/.env ps
+#   curl -fsS http://127.0.0.1/health && curl -fsS http://127.0.0.1/api/health
+#
+# Required in /opt/rajiblabs/config/.env:
+#   ADMIN_INITIAL_PASSWORD, SECRET_KEY, JWT_SECRET
+# Optional (empty = feature stays disabled, site keeps working):
+#   GITHUB_TOKEN, OPENAI_API_KEY, SMTP_* (see deploy/dotenv.production.example)
+#
+# SAFETY: never run `down -v` here (would delete nothing today — all state
+# is in bind mounts — but keep the habit), never delete /opt/rajiblabs/data.
+# NOTE: IP-only VPS, no domain attached → plain HTTP on :80 (no certbot).
+# When a domain points here, terminate 443 in gateway.conf like PestFlow.
+
+name: rajiblabs
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: rajiblabs-mongo
+    restart: unless-stopped
+    volumes:
+      # MongoDB data files (PERSISTENT — never deleted)
+      - /opt/rajiblabs/data/mongo:/data/db
+    ports:
+      # Host-local only — NOT published on public interfaces, NOT opened in UFW.
+      - "127.0.0.1:27017:27017"
+    networks:
+      rajiblabs-internal:
+        aliases:
+          - mongo
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  ai-api:
+    build:
+      context: ./rajiblabs-ai-backend
+      dockerfile: Dockerfile
+    image: rajiblabs-ai-api:latest
+    container_name: rajiblabs-ai-api
+    restart: unless-stopped
+    environment:
+      APP_ENV: "production"
+      APP_URL: "${APP_URL:-http://169.58.165.10}"
+      BASE_URL: "${APP_URL:-http://169.58.165.10}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://169.58.165.10,https://rajiblabs.com}"
+      DATABASE_URL: "mongodb://mongo:27017/rajiblabs"
+      MONGO_DB_NAME: "rajiblabs"
+      # Vector index (own instance — PestFlow's qdrant is on another network)
+      QDRANT_URL: "http://qdrant:6333"
+      # Admin seed (first run only — never overwrites an existing admin)
+      ADMIN_EMAILS: "${ADMIN_EMAILS:-rajibmahata143@gmail.com,rajibmahata143@outlook.com}"
+      ADMIN_INITIAL_PASSWORD: "${ADMIN_INITIAL_PASSWORD}"
+      SECRET_KEY: "${SECRET_KEY}"
+      JWT_SECRET: "${JWT_SECRET}"
+      JWT_EXPIRE_MINUTES: "${JWT_EXPIRE_MINUTES:-15}"
+      REFRESH_EXPIRE_DAYS: "${REFRESH_EXPIRE_DAYS:-7}"
+      JWT_ISSUER: "${JWT_ISSUER:-rajiblabs}"
+      # GitHub sync (server-only; empty = sync endpoints report not-configured)
+      GITHUB_OWNER: "${GITHUB_OWNER:-rajibmahata}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
+      GITHUB_SYNC_ENABLED: "${GITHUB_SYNC_ENABLED:-true}"
+      # OpenAI content + chat (server-only; empty = heuristic/fallback mode)
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-5-nano}"
+      OPENAI_FALLBACK_MODEL: "${OPENAI_FALLBACK_MODEL:-gpt-5.6-luna}"
+      OPENAI_ENABLED: "${OPENAI_ENABLED:-true}"
+      OPENAI_MAX_RETRIES: "${OPENAI_MAX_RETRIES:-3}"
+      AI_AUTO_PUBLISH: "${AI_AUTO_PUBLISH:-false}"
+      AI_QUALITY_THRESHOLD: "${AI_QUALITY_THRESHOLD:-85}"
+      # Scheduler + chat + failure-log retention
+      DAILY_AGENT_ENABLED: "${DAILY_AGENT_ENABLED:-true}"
+      DAILY_AGENT_HOUR: "${DAILY_AGENT_HOUR:-2}"
+      DAILY_AGENT_MINUTE: "${DAILY_AGENT_MINUTE:-0}"
+      CHAT_ENABLED: "${CHAT_ENABLED:-true}"
+      LOG_RETENTION_DAYS: "${LOG_RETENTION_DAYS:-7}"
+      # Uploads (bind-mounted below so files survive redeploys)
+      UPLOAD_DIR: "/app/data/uploads"
+      MAX_IMAGE_MB: "${MAX_IMAGE_MB:-5}"
+      MAX_RESUME_MB: "${MAX_RESUME_MB:-10}"
+      # Contact channels (fallback when DB has no profile yet)
+      CONTACT_EMAIL: "${CONTACT_EMAIL:-rajibmahata143@gmail.com}"
+      CONTACT_EMAIL_SECONDARY: "${CONTACT_EMAIL_SECONDARY:-rajibmahata143@outlook.com}"
+      PRIMARY_PHONE: "${PRIMARY_PHONE:-+918420249020}"
+      SECONDARY_PHONE: "${SECONDARY_PHONE:-+919100184730}"
+      WHATSAPP_PHONE: "${WHATSAPP_PHONE:-+918420249020}"
+      # SMTP for future mail notifications (empty = disabled)
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-}"
+    volumes:
+      # Uploaded + seeded files (PERSISTENT — never deleted)
+      - /opt/rajiblabs/data/uploads:/app/data/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - rajiblabs-internal
+    healthcheck:
+      # python:slim has no curl — urllib like PestFlow's AI service.
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: rajiblabs-frontend:latest
+    container_name: rajiblabs-frontend
+    restart: unless-stopped
+    networks:
+      - rajiblabs-internal
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.3
+    container_name: rajiblabs-qdrant
+    restart: unless-stopped
+    # Internal only — no published ports (PestFlow pattern). Reachable as
+    # qdrant:6333 on rajiblabs-internal; host tooling can use an SSH tunnel.
+    volumes:
+      # Vector index (PERSISTENT — never deleted; re-embeddings are expensive)
+      - /opt/rajiblabs/data/qdrant:/qdrant/storage
+    networks:
+      - rajiblabs-internal
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: rajiblabs-gateway
+    restart: unless-stopped
+    depends_on:
+      - ai-api
+      - frontend
+    ports:
+      # Phase 1: direct public edge on :8080 (PestFlow owns :80/:443).
+      # Phase 2: after rajiblabs.com moves behind pestflow-gateway, restrict
+      # this to "127.0.0.1:8080:80" (host-local checks only).
+      - "8080:80"
+    volumes:
+      # Edge routing: / → frontend PWA, /api/* + /health → ai-api
+      - /opt/rajiblabs/config/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+      # Nginx access/error logs on the host for persistence/rotation
+      - /opt/rajiblabs/logs/nginx:/var/log/nginx
+    networks:
+      - rajiblabs-internal
+      - pestflow-internal
+
+networks:
+  rajiblabs-internal:
+    name: rajiblabs-internal
+    driver: bridge
+  # Shared edge: lets pestflow-gateway proxy rajiblabs.com → rajiblabs-gateway
+  # in Phase 2. Created by PestFlow's stack; comment this + the gateway entry
+  # above if PestFlow isn't on this box (plain :8080 still works).
+  pestflow-internal:
+    external: true

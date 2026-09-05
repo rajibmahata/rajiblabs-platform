@@ -100,6 +100,13 @@ export default function HeroSection({ productCount = 6, companyCount = 3 }: Hero
           >
             Let's Build Something
           </a>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("rlz-open-chat"))}
+            className="w-full sm:w-auto border px-8 py-3.5 rounded-full font-body-base transition-all flex items-center justify-center gap-2 backdrop-blur"
+            style={{ borderColor: '#eec04e', color: '#eec04e', fontFamily: 'DM Sans, sans-serif', background: 'rgba(238,192,78,0.06)' }}
+          >
+            <span className="material-symbols-outlined text-sm">smart_toy</span> Chat with RajibLabs Agent
+          </button>
         </motion.div>
 
         {/* Secondary — WhatsApp / Call / CV (preserve existing functionality) */}

@@ -155,6 +155,23 @@ SEED_ACTIVITIES = [
 ]
 
 
+# Language master seed: English default; the rest ship enabled (admin can
+# disable any non-default). sort_order drives the public selector order.
+SEED_LANGUAGES = [
+    ("en", "English", "English", "ltr", 1),
+    ("bn", "Bengali", "বাংলা", "ltr", 2),
+    ("hi", "Hindi", "हिन्दी", "ltr", 3),
+    ("fr", "French", "Français", "ltr", 4),
+    ("ja", "Japanese", "日本語", "ltr", 5),
+    ("de", "German", "Deutsch", "ltr", 6),
+    ("es", "Spanish", "Español", "ltr", 7),
+    ("pt", "Portuguese", "Português", "ltr", 8),
+    ("zh-CN", "Chinese Simplified", "简体中文", "ltr", 9),
+    ("ko", "Korean", "한국어", "ltr", 10),
+    ("it", "Italian", "Italiano", "ltr", 11),
+    ("ar", "Arabic", "العربية", "rtl", 12),
+]
+
 SEED_HOME = [
     ("hero", "RajibLabs", "Enterprise software & AI product development", {
         "headline": "I design and build the software systems companies run on.",
@@ -231,9 +248,15 @@ async def ensure_indexes(db=None) -> None:
         "projects": [[("slug", 1)], [("published", 1)], [("featured", 1)], [("display_order", 1)]],
         "github_repositories": [[("github_id", 1)], [("full_name", 1)]],
         "github_commits": [[("repository_id", 1), ("committed_at", -1)]],
-        "customer_leads": [[("status", 1)], [("created_at", -1)]],
+        "customer_leads": [[("status", 1)], [("created_at", -1)],
+                           [("phone", 1)], [("lead_score", -1)]],
         "notifications": [[("is_read", 1)], [("created_at", -1)]],
         "admins": [[("emails", 1)]],
+        "customer_conversations": [[("session_token", 1)], [("lead_id", 1)]],
+        "customer_messages": [[("session_token", 1), ("created_at", 1)],
+                              [("conversation_id", 1)]],
+        "ideas": [[("lead_id", 1)], [("session_id", 1)]],
+        "audit_logs": [[("session_id", 1)], [("lead_id", 1)], [("created_at", -1)]],
         "portfolio": [[("slug", 1)]],
         "products": [[("slug", 1)]],
         "website_contents": [[("key", 1)]],
@@ -246,12 +269,53 @@ async def ensure_indexes(db=None) -> None:
         "sync_logs": [[("started_at", -1)]],
         "resume_extractions": [[("resume_id", 1)]],
         "error_logs": [[("level", 1), ("created_at", -1)], [("source", 1), ("created_at", -1)]],
+        # RAG knowledge system (MongoDB is source of truth; Qdrant is derived)
+        "knowledge_documents": [[("source_type", 1), ("source_id", 1)],
+                                [("status", 1)], [("repository", 1)],
+                                [("updated_at", -1)], [("content_hash", 1)]],
+        "knowledge_chunks": [[("document_id", 1)], [("embedding_id", 1)]],
+        # Admin AI Proposal Studio (private; never exposed via public APIs)
+        "proposal_documents": [[("status", 1)], [("type", 1)],
+                               [("created_at", -1)], [("session_id", 1)]],
+        "proposal_sessions": [[("session_id", 1)], [("updated_at", -1)]],
+        # Multilingual framework: language master + translation records + hot cache
+        "languages": [[("enabled", 1)], [("sort_order", 1)]],
+        "translations": [[("key", 1), ("target_language", 1)],
+                         [("target_language", 1), ("status", 1)],
+                         [("source_hash", 1)], [("updated_at", -1)]],
+        "translation_cache": [[("source_hash", 1), ("target_language", 1)],
+                              [("updated_at", -1)]],
     }.items():
         for key in keys:
             try:
                 await db[coll].create_index(key, background=True)
             except Exception as e:
                 log.warning("Index failed %s %s: %s", coll, key, e)
+    # Unique e-mail lookup for lead dedup. Partial: docs without an e-mail
+    # are unaffected. Best-effort — pre-existing duplicates only warn.
+    # Application-level find-then-merge in lead_pipeline is authoritative.
+    try:
+        await db["customer_leads"].create_index(
+            [("email", 1)], unique=True, background=True, name="email_unique",
+            partialFilterExpression={"email": {"$exists": True, "$ne": ""}})
+    except Exception as e:
+        log.warning("Index failed customer_leads.email_unique: %s", e)
+    # One document per (source_type, source_id) — dedup/upsert key for RAG.
+    try:
+        await db["knowledge_documents"].create_index(
+            [("source_type", 1), ("source_id", 1)], unique=True, background=True,
+            name="source_unique")
+    except Exception as e:
+        log.warning("Index failed knowledge_documents.source_unique: %s", e)
+    # One language per code; one translation per (key, target_language).
+    for coll, spec in (("languages", [("code", 1)]),
+                       ("translations", [("key", 1), ("target_language", 1)]),
+                       ("translation_cache", [("source_hash", 1), ("target_language", 1)])):
+        try:
+            await db[coll].create_index(spec, unique=True, background=True,
+                                        name="natural_unique")
+        except Exception as e:
+            log.warning("Index failed %s.natural_unique: %s", coll, e)
     # Failure-log retention: TTL index auto-deletes entries older than
     # LOG_RETENTION_DAYS (default 5). Rebuilt if the setting changed.
     try:
@@ -272,6 +336,15 @@ async def init_db() -> None:
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     db = get_db()
     await ensure_indexes(db)
+    if await db["languages"].count_documents({}) == 0:
+        now = utcnow()
+        for code, name, native, direction, order in SEED_LANGUAGES:
+            await db["languages"].insert_one({
+                "code": code, "name": name, "native_name": native,
+                "enabled": True, "is_default": code == "en",
+                "direction": direction, "sort_order": order,
+                "created_at": now, "updated_at": now})
+        log.info("Seeded language master (12 languages, en default)")
     if await db["homepage_content"].count_documents({}) == 0:
         for key, title, subtitle, body, order in SEED_HOME:
             await db["homepage_content"].insert_one({

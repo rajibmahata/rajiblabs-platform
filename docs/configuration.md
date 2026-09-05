@@ -50,11 +50,16 @@ Frontend reads `VITE_*` at build time via `import.meta.env`.
 |---|---|---|---|---|
 | `OPENAI_API_KEY` | For AI features | _(empty)_ | `sk-proj-...` | From https://platform.openai.com/api-keys. App runs with heuristics when empty |
 | `OPENAI_MODEL` | No | `gpt-5-nano` | `gpt-5-nano` | Primary model — cheapest OpenAI text model (see §7) |
-| `OPENAI_FALLBACK_MODEL` | No | `gpt-5.6-luna` | `gpt-5.6-luna` | Higher-quality fallback for manual high-value regeneration |
+| `OPENAI_FALLBACK_MODEL` | No | `gpt-5.6-luna` | `gpt-5.6-luna` | Higher-quality fallback for manual high-value regeneration; also auto-tried ONCE when the primary model returns HTTP 404, then the turn fails gracefully |
 | `OPENAI_ENABLED` | No | `true` | `true` | Master kill-switch. `false` = heuristics everywhere, zero spend |
 | `OPENAI_MAX_RETRIES` | No | `3` | `3` | Exponential backoff; no infinite loops |
 | `AI_AUTO_PUBLISH` | No | `false` | `false` | Keep `false` — AI drafts require admin approval |
 | `AI_QUALITY_THRESHOLD` | No | `85` | `85` | 0–100 gate; below threshold → `review required`, never published |
+| `AI_PROVIDER` | No | `openai` | `openai` | Lead-assistant provider: `openai` \| `deepseek`. React never calls providers directly |
+| `AI_MODEL` | No | _(empty)_ | _(empty)_ | Override for the lead assistant only. Empty = provider default (`OPENAI_MODEL`) |
+| `DEEPSEEK_API_KEY` | For DeepSeek | _(empty)_ | `sk-...` | From https://platform.deepseek.com/api_keys. Server-only, never exposed |
+| `DEEPSEEK_MODEL` | No | `deepseek-chat` | `deepseek-chat` | DeepSeek chat model (OpenAI-compatible API) |
+| `AI_FALLBACK_ENABLED` | No | `true` | `true` | `false` = primary provider only, no fallback attempt |
 
 ## 5. GitHub sync (server-only)
 
@@ -64,6 +69,26 @@ Frontend reads `VITE_*` at build time via `import.meta.env`.
 | `GITHUB_TOKEN` | For sync | _(empty)_ | `ghp_...` / fine-grained PAT | Needs **read-only** repo metadata. Create: GitHub → Settings → Developer settings → PAT (classic `public_repo` scope, or fine-grained read-only). Least privilege — no write scopes |
 | `GITHUB_SYNC_ENABLED` | No | `true` | `true` | Kill-switch for all sync activity |
 
+## 5b. RAG / Qdrant knowledge (shared index — MongoDB stays source of truth)
+
+| Variable | Required | Dev | Prod | Notes |
+|---|---|---|---|---|
+| `QDRANT_URL` | Yes | `http://localhost:6333` | `http://qdrant:6333` (compose service) | Vector server. Dashboard shows DOWN without it; chat degrades to site knowledge |
+| `QDRANT_API_KEY` | No | _(empty)_ | _(empty)_ | Only for Qdrant Cloud; leave empty for self-hosted |
+| `QDRANT_COLLECTION` | No | `rajiblabs_knowledge` | `rajiblabs_knowledge` | Auto-created on first ingest |
+| `EMBEDDING_PROVIDER` | No | `openai` | `openai` | Only supported provider today |
+| `EMBEDDING_MODEL` | No | `text-embedding-3-small` | `text-embedding-3-small` | Must match `EMBEDDING_DIM`; changing model requires full re-index |
+| `EMBEDDING_VERSION` | No | `v1` | `v1` | Bumped with model changes so old vectors never mix |
+| `EMBEDDING_DIM` | No | `1536` | `1536` | Must equal the model's vector size |
+| `RAG_ENABLED` | No | `true` | `true` | Kill-switch for all retrieval (`false` = heuristic/fallback answers) |
+| `RAG_TOP_K` | No | `5` | `5` | Chunks retrieved per query |
+| `RAG_MIN_SCORE` | No | `0.35` | `0.35` | Minimum vector score; below = treated as no evidence |
+| `RAG_CACHE_TTL_SECONDS` | No | `3600` | `3600` | Retrieval cache TTL |
+| `RAG_CHUNK_SIZE` / `RAG_CHUNK_OVERLAP` | No | `1200` / `150` | `1200` / `150` | Chunking; changing requires re-index |
+| `GITHUB_RAG_REPOS` | No | _(empty = all tracked public)_ | _(empty = all tracked public)_ | Comma-separated `owner/repo` allowlist for GitHub ingestion |
+| `GITHUB_RAG_MAX_FILES` | No | `40` | `40` | Max files indexed per repo sync |
+| `GITHUB_RAG_MAX_BYTES` | No | `200000` | `200000` | Max bytes indexed per repo sync |
+
 ## 6. Agent, chat, QA
 
 | Variable | Required | Dev | Prod | Notes |
@@ -71,7 +96,7 @@ Frontend reads `VITE_*` at build time via `import.meta.env`.
 | `DAILY_AGENT_ENABLED` | No | `true` | `true` | Daily GitHub scan → AI drafts → notifications |
 | `DAILY_AGENT_HOUR` / `DAILY_AGENT_MINUTE` | No | `2` / `0` | `2` / `0` | Cron in `APP_TIMEZONE`. Manual run anytime: `POST /api/admin/agent/run` |
 | `CHAT_ENABLED` | No | `true` | `true` | Public "Talk to RajibLabs" widget. `false` shows contact fallback |
-| `LOG_RETENTION_DAYS` | No | `5` | `5` | Admin-visible `error_logs` auto-expire via MongoDB TTL index |
+| `LOG_RETENTION_DAYS` | No | `7` | `7` | Admin System Logs: list shows latest 7 days; MongoDB TTL index + daily-agent sweep delete older entries |
 
 ## 7. Uploads & resume
 

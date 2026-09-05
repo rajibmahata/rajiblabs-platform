@@ -2,6 +2,311 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Docs/config audit: RAG vars documented, committed secrets sanitized
+
+### Security — ACTION REQUIRED
+- `.env.example` and `.env.production` contained real-looking `SECRET_KEY`/
+  `JWT_SECRET`/`API_KEY` (one shared UUID) plus `ADMIN_INITIAL_PASSWORD=Test@1234`,
+  all committed to git. Replaced with empty placeholders. **Rotate these values in
+  `/opt/rajiblabs/config/.env` + GitHub Secrets** — treat the committed ones as
+  burned (rotation only forces admin re-login).
+
+### Changed
+- New `docs/configuration.md §5b`: all 16 RAG/Qdrant/embedding vars documented
+  (were missing despite existing in code).
+- Same 16 vars added to `.env.example`, `.env.production`,
+  `deploy/dotenv.production.example`; `OPENAI_FALLBACK_MODEL` aligned to config
+  default (`gpt-5.6-luna`) in both templates.
+- `MEMORY.md`: test inventory (8 files, ~199 tests), Secrets section (placeholders
+  only, rotation procedure); `README.md`: Qdrant in deploy topology.
+- Verified: 199 passed, `tsc` clean (previous turn).
+
+## [Unreleased] — Proposal Studio reliability fix + workspace redesign
+
+### Fixed (reliability root cause)
+- `generate_artifacts` referenced undefined `LENGTH_GUIDANCE` → every Generate raised
+  `NameError` (500). Defined the length table; Generate works with or without AI.
+
+### Added — backend (`workbench.py`, schemas, `admin_workbench.py`)
+- `project_explanation` mode (guidance + deterministic evidence-assembled explanation
+  artifact, no extra LLM call); `CONTEXT_RULES` per mode (job hides freelance talk,
+  freelance/client hide corporate internals) enforced in prompts + new quality flags
+  (`freelance_leak_in_job`, `corporate_leak_in_freelance`).
+- Optional `company`/`instructions` on analyze/generate; `session_id` continuity
+  across analyze→generate→refine (was always-new sessions); per-stage server timings
+  (`stages` + `total_ms`, `elapsed_ms` on analyze); per-example `selection_reason`
+  surfaced as source reasons; `explanation` artifact stored + refinable.
+- `ProposalSaveIn.explanation`; refine target `explanation` supported.
+
+### Added — UI (`Workbench.tsx`)
+- 3-column workspace: input (+mode/company/instructions) / analysis (+match details,
+  gaps, GitHub evidence) / output tabs (Proposal, Cover Letter, Summary,
+  Explanation, Sources).
+- Real progress UX: per-action busy states, staged progress labels with elapsed
+  timer during Analyze/Generate, server stage timings after completion.
+- Full action set: Analyze/Re-analyze, Generate/Regenerate, Shorter/Technical/
+  Business/De-AI, +/− Project, Copy, Save, Markdown download; error panel with
+  Retry (no `alert()`; content preserved on failure).
+
+### Tests — full suite 199 passed
+- New: mode registration, selection reasons, explanation purity (no invented URLs),
+  context-mixing flags, deterministic full flow (analyze→generate→validate offline).
+
+## [Unreleased] — 2026-09-05 — Homepage style alignment to reference design
+
+### Changed
+- `rlz-cyan` token `#0e7490` → `#0891b2` (reference `--cyan`); project-media
+  background aligned to `var(--rlz-bg)`.
+- Scroll-reveal safety net (reference pattern): `.rlz-reveal` visible by default,
+  hidden only once JS confirms (`.rlz-js` on `<html>` via `useLayoutEffect`, no
+  flash), plus a 2.5s force-visible timeout so sections can never stick hidden.
+- Deliberately NOT copied from the mock: invented stats (15/40/7), placeholder
+  video IDs, fictional employers, fake contact details/links, alternate tech
+  marquee — live site keeps verified data (12/30/6, real YouTube IDs, real career
+  history, siteConfig contact, real stack) and the i18n wiring.
+
+### Verified
+- Frontend `tsc` + `eslint` clean, `vite build` OK.
+
+## [Unreleased] — KB Guardrails + Hallucination Control (central, enforced)
+
+No duplicate config/RAG systems: one `kb_policy` service, enforced by retrieval + concierge, edited in the KB Admin form.
+
+### Added
+- `app/services/kb_policy.py`: `DEFAULT_GUARDRAILS` (public/admin access, allow_rag/urls/source-code/internal/sensitive, require_source, blocked_fields) + `DEFAULT_HALLUCINATION` (grounded_only, min confidence, inference/general toggles, require evidence/verified-URLs, max_unsupported_claims=0, fallback/clarify, fallback message); `FIELD_META` drives the Admin form; normalize/resolve helpers with safe defaults (no migration — old docs resolve to defaults).
+- Enforcement: `rag_query.retrieve(consumer=)` drops disallowed/orphan chunks server-side (fail-closed); `upsert_document` stores normalized policies; concierge validates LLM replies deterministically (no-evidence/low-confidence/unsupported-claims → fallback or clarify) and merges agent + per-doc policies (strictest wins); tool-derived sources ground `require_source`.
+- Admin APIs: `GET /api/admin/rag/guardrail-schema`; doc create/update accept both policy blocks; metadata/policy-only saves skip re-indexing (no version bump, no embedding cost).
+- Admin UI: Knowledge form gains Access/Visibility + Guardrails + Hallucination Control (schema-driven widgets with help tooltips) + RAG/Indexing note.
+
+### Tests — full suite 192 passed
+- New `tests/test_kb_policy.py` (20): normalization/clamps, consumer matrix, sensitive/code/rag gates, fail-closed orphans, blocked fields, grounding validation (missing/low-confidence/unsupported/ok), URL gate, schema shape, auth gates, live persistence + no-reindex save + public/admin retrieval split + concierge compliance. Fixed `test_github_knowledge` retrieval fixture for fail-closed (parent doc now inserted; new orphan-drop test).
+
+## [Unreleased] — 2026-09-05 — AI orchestrator: precise failure diagnosis + JSON repair
+
+### Fixed
+- `AIService._complete` no longer collapses every failure into bare `JSONDecodeError`.
+  Stages are now distinguished: `HTTP_{status}`, `NonJsonBody`, `EmptyContent`
+  (with `finish_reason`), `Refusal`, `BadJson`, network errors. The admin error log
+  records the cause plus a scrubbed raw snippet, so the next failure is diagnosable
+  from System Logs alone.
+- Repair path: prose/code-fence-wrapped JSON is parsed via balanced-brace extraction
+  (`_extract_json_object`) instead of failing; downstream Pydantic validation still
+  applies, so garbage is rejected, never trusted.
+- Retry discipline: refusals and 400/401/403/404 break after 1 attempt (deterministic);
+  429/5xx/network/empty/bad-JSON keep exponential backoff. Final `AIError` contract
+  and visitor-facing graceful fallback unchanged.
+- Rationale for the 12:49am incident (`openai: JSONDecodeError` ×3 on lead-chat):
+  HTTP 200s with unparseable content — almost certainly empty/refused content for that
+  specific visitor message, NOT a key/config problem (auth failures surface as
+  HTTP_401). Key verified present; chain is OpenAI-only (no DeepSeek key set).
+
+### Verified
+- 5 new tests (23–27: prose repair, empty-content retries, refusal/401 early-break
+  with attempt counts, extractor unit cases). Full suite 171/171 pytest.
+
+## [Unreleased] — 2026-09-05 — 404 model fallback + request tracing in orchestrator
+
+### Fixed
+- `openai: HTTP_404` (e.g. concierge-reply, 1:03am incident): unknown/inaccessible
+  primary model now retries ONCE with `openai_fallback_model`, then stops. Wired the
+  previously dead `openai_fallback_model` setting into `_complete`.
+  (Correction: an earlier draft of this entry wrongly called the `gpt-5.6-luna`
+  default bogus — it is a REAL model, GPT-5.6 cheap tier $0.20/$1.20, verified
+  against OpenAI docs. The default was kept; only the wiring was missing.)
+- Error details now include `models tried: [...]` + OpenAI `x-request-id` when present
+  (non-secret; proves WHICH model 404'd and lets support trace the call).
+
+### Verified
+- New test_28 (404 primary → success on configured fallback, model asserted dynamically).
+  Lead-chat suite 28/28.
+
+## [Unreleased] — Qdrant DOWN fix (missing client + no prod server)
+
+### Fixed
+- Root cause of dashboard "qdrant-client unavailable: No module named 'qdrant_client'":
+  the package was never declared. Pinned `qdrant-client==1.12.1` in
+  `requirements.txt` (same pin as PestFlow) and installed it.
+- Production had no vector server at all (ai-api defaulted to `localhost:6333`,
+  unreachable in-container). Added internal-only `qdrant` service
+  (`qdrant/qdrant:v1.11.3`, persistent `/opt/rajiblabs/data/qdrant`, no published
+  ports — no PestFlow clash) + `QDRANT_URL=http://qdrant:6333` to ai-api env;
+  `deploy-vps.sh` creates the data dir. Aligned `LOG_RETENTION_DAYS` default to 7.
+- Verified live: import OK, client↔server round-trip (upsert/search/delete on a
+  scratch collection, removed afterwards), health endpoint now reports real
+  collection status instead of the import error.
+
+### Tests — full suite 166 passed
+- New in `test_rag.py`: requirements-guard (package declared), import check,
+  health-never-raises on unreachable server, live upsert/search/health round-trip.
+
+## [Unreleased] — Docs refresh for future development
+
+### Changed
+- `MEMORY.md`: 15 admin pages + Login; routers/services/tests inventory current (~162
+  tests, 7 files); new Concierge/agents rules section (tools, guardrails, lead flow,
+  `ai_agents` store); Motor `db or get_db()` bool-trap + `respx` install gotchas;
+  current endpoint/collection inventory (`/api/public/agent/*`, `/api/admin/agents/*`,
+  GitHub knowledge lifecycle, `github-sources`; `error_logs` 7-day TTL + sweep).
+- `README.md` deployment: shared-VPS `:8080` edge, `deploy-vps.yml` auto-deploy,
+  full GitHub Secrets list (SSH + app secrets sync).
+- Verified while writing: `?lang=` endpoint suffix (not `?lang/`), `LOG_RETENTION_DAYS=7`
+  in config/env/docs, `docker-compose.production.yml` edge + external network.
+
+## [Unreleased] — 2026-09-05 — Agentic database-driven multilingual framework (12 languages)
+
+Agentic, cost-capped i18n as a clean extension: English default, admin-controlled
+languages, static + database + cached-LLM translation levels, one shared RAG index.
+
+### Added
+- Language master: `languages` collection + `SEED_LANGUAGES` (en default + bn/hi/fr/ja/de/es/pt/zh-CN/ko/it/ar, ar RTL) seeded in `init_db`; unique `code` index; admin Languages page (enable/disable, add, edit, order, delete-if-unused; default protected).
+- `translations` + `translation_cache` collections + indexes. Priority chain: approved → content cache → valid generated → English source (+ background LLM fill) → explicit LLM only when asked; every LLM call via `AIService` orchestrator, secrets refused, result cached permanently under source hash.
+- Agents: `TranslationAgent` (orchestrator-only, call-counted, URL/code/placeholder protection) + `TranslationQualityAgent` (zero-cost: URLs, placeholders, formatting, script-mismatch, echo, length checks) in `app/services/translation_agents.py`; `LanguageService` / `TranslationService` / `TranslationCache` (+ `localize_doc`, `localize_many`, `universe`, `coverage`).
+- Public API: `GET /api/public/languages`, `GET /api/public/translations/{language}` (hash-checked), `POST /api/public/translate` (rate-limited); `?lang=` overlay on `/home`, `/projects`, `/projects/{slug}`, `/products`, legacy `/api/products*` (English = zero-cost passthrough).
+- Admin API (`require_admin`, audited): languages CRUD + `PATCH /{code}/status` + guarded `DELETE`; translations list/generate/regenerate/edit/approve/delete + coverage. Admin Languages + Translations pages (nav group Localization).
+- Multilingual chat, same KB: `language` on lead chat, RAG `/query`, and concierge agent (final-reply localization via content-hash cache, ≤1 call first time, 0 steady-state); workbench generate/chat accept `language`.
+- Frontend L1: 12 locale bundles (`src/i18n/*.json`, key-parity checked), `LanguageProvider` (stored → browser-detect → default; `<html lang/dir>` sync; English fallback per key), top-right selector (enabled-only) in `RlzNav`, localized Nav/Hero/Contact/Footer/ChatWidget, `?lang=` on CMS fetches, chat sends UI language.
+
+### Fixed
+- `test_lead_chat.py` strict fake updated for backward-compatible `language` kwarg.
+- Pre-existing build breaks fixed: missing `Field` import (GitHubManage), unused import (AgentsManage).
+
+### Verified
+- Backend 161/161 pytest (21 new `test_i18n.py`: seed/resolve/guards, protection, secret refusal, quality flags, chain priority, bill-once caching, stale handling, overlay skips, auth, public fallback, chat instruction).
+- Frontend `tsc` + `eslint` clean, `vite build` OK.
+
+## [Unreleased] — Public AI Concierge + Admin Agent Management
+
+Reuses chat sessions/messages, RAG/Qdrant, GitHub knowledge, lead/idea pipeline, AIService orchestrator — no duplicate systems.
+
+### Added — concierge (`/api/public/agent/*`)
+- `agent_tools.py`: 10 sanitized public tools (profile, projects/detail/live-url, products, services, GitHub, contact, RAG search/sources); allowlisted outputs, URLs DB-only, admin-only names rejected server-side.
+- `concierge.py`: rule-based intent (13 intents) + entity extraction + allow-list tool selection; tool/DB/RAG lookup → single small LLM reply; deterministic tool-only fast paths (greeting/contact/verified live URL/lead follow-ups) that never call the LLM; guardrail source filtering + reply-URL validation (unverified links stripped); gradual lead capture (one field/turn, Thanks-greeting on capture) via existing pipeline storage; turn persistence with intent/tools/sources/lead/latency/model.
+- `GET /config` (public card: name, starters) + `POST /chat` (rate-limited, graceful degradation when disabled/down).
+
+### Added — agents store + admin (`/api/admin/agents/*`, JWT)
+- `ai_agents` collection (seeded concierge): prompt, tools, knowledge policy per source (public_allowed/priority), guardrail/hallucination/response policies, style, lead + fallback config; future types supported. CRUD/test-console/stats (turns, tools, conversions, errors, p50 latency, models)/conversations endpoints.
+
+### Added — UI
+- Homepage: "Chat with RajibLabs Agent" hero button opens chat; widget shows server-driven conversation starters, concierge greeting, ask-tab on the agent endpoint (plan/blueprint flow untouched).
+- Admin AI Agents page (Intelligence group): agent switcher, enable/public toggles, full editor, test console, stats, conversations, future-agent creator.
+
+### Tests — `tests/test_concierge.py`: 46 passed
+- Intent matrix (incl. all starters), entities, tool mapping/allow-list, auth rejection, sanitization, policy filter, URL validation/collection, fallback purity, contact extraction, lead triggers, config CRUD, live tool shapes, LLM-free tool-only turns, full lead capture, disabled-agent, provider-failure, endpoint auth. Full suite: **161 passed**, `tsc` clean.
+
+## [Unreleased] — GitHub Integration & Knowledge Sync (Admin)
+
+Built on the existing pipeline (`github_service` + `rag_ingest` + shared Qdrant index) — no duplicate GitHub/RAG/vector/auth systems.
+
+### Added — token & connection (`/api/admin/github/*`, JWT)
+- `POST /config` stores the PAT in `site_settings` (write-only, shape-validated, audited); `GET /config` returns masked status (`***last4`, source db|env, owner) — full token never returned; `DELETE /config` revokes; `POST /test` validates any token and returns account info (login, name, repos, followers). DB token wins over env (`resolve_github_token/owner`), `sync_now` refactored onto it.
+
+### Added — repo knowledge lifecycle
+- `PATCH /repositories/{id}` (`rag_enabled`, classification); `POST .../sync` (manual incremental sync, 409 when disabled, last-error recorded); `GET .../knowledge` (docs/chunks/last-indexed/status rollup); `POST .../reindex`, `POST .../disable` (flag off + vectors removed), `DELETE .../knowledge` (docs + vectors removed).
+- `upsert_document` + Qdrant payloads gain `branch`/`file_path`/`commit_sha`; ingest passes them per doc. Stale-file cleanup deletes docs + vectors for files gone from the tree; `rag_enabled=False` repos refuse ingest; file content secret-scrubbed before indexing.
+- `GET /api/admin/rag/github-sources`: per-repo tree (docs, chunks, last indexed, index/sync status) for the KB Admin; `GET /documents` gains `repository` filter.
+- Proposal Studio: `github_documentation` chunks are now selectable as work examples (URLs already attached from retrieval — no invented links).
+
+### Added — Admin UI (same template, no new routes)
+- GitHub Projects page: Connection panel (masked token status, save/test/revoke, account info) + Knowledge-sync table (toggle, per-repo Sync Now, last sync, errors). Portfolio-publish cards untouched.
+- Knowledge Base page: GitHub sources panel (counts, status, View/Re-index/Enable/Disable/Sync/Delete).
+
+### Tests — new `tests/test_github_knowledge.py`: 12 passed
+- Masking, config masked/revoke + auth gates, mocked connection ok/401, discovery upsert (no dup, token never persisted), sync metadata, incremental (unchanged/update/stale-removal), secret-content scrub, failure-record + retry, disable/delete (vectors removed), RAG retrieval URL passthrough, workbench GitHub selection.
+- Full suite: my areas green (`test_rag` + `test_workbench` + `test_github_knowledge` = 52 passed; `tsc` clean). NOTE: 25 pre-existing failures in `test_lead_chat.py`/`test_i18n.py` (other agent's uncommitted lead system — verified unrelated: fails identically with my config reverted, my only touches there are additive log kwargs).
+
+## [Unreleased] — System Logs upgrade: grid, search, details, 7-day retention
+
+### Added
+- `GET /api/admin/logs` now takes `q` (message/source/module/path/error search, regex-escaped), `level` (info|warning|error), `source`, `date_from`/`date_to`, `sort` (newest|oldest), `page`/`page_size` (≤200) and returns `{items, total, page, page_size, retention_days, window_start}` — always constrained to the latest 7 days. New `GET /api/admin/logs/{id}` detail endpoint.
+- Log docs gain `logger` (module), `path`, `stack_trace`; all call sites enriched; daily-agent failures record full tracebacks. Old docs read fine (fields optional).
+- Retention 5→7 days (`LOG_RETENTION_DAYS` default + both env templates + `docs/configuration.md`): TTL index (auto-rebuilt) + new daily-agent `purge_old_logs` sweep as backup.
+- Secret scrubbing on every write (`password/token/secret/key` assignments, Bearer, `sk-/ghp-/pat/xox-` tokens, credentialed DB URIs); truncation caps kept.
+- Frontend `LogsManage`: `rla-table` grid (Time sortable, Level pill, Source+module, truncated message, View action), debounced search, level/date/sort/page-size filters, pagination, details modal (full fields + error details + stack trace, ESC/overlay close), new `rla-*` CSS (filter grid, pager, modal, kv, pre).
+
+### Tests — `pytest -q`: 83 passed
+- New: scrub cases, level normalization, cutoff math, query-builder (window/filters/escaping), detail auth gate, live filtering + window exclusion + sweep + scrub-integration (real Mongo).
+
+## [Unreleased] — 2026-09-04 — Admin light redesign: shared template on all 12 pages + Proposal Studio + RAG fixes
+
+### Added
+- Admin light design system: `frontend/src/styles/admin.css` (scoped `.rl-admin`, Sora/Inter/JetBrains Mono, violet→cyan) + `frontend/src/components/admin/ui.tsx` template primitives (`PageHead`, `Panel`, `StatusPill`, `Chip`, `Field`, `Empty`) + `frontend/src/components/admin/toast.ts` event toast bus. All 12 admin pages (Dashboard, Resume, Portfolio, GitHub, Products, Profile, Content, Leads, Knowledge, AI Proposal Studio, Logs, Settings) + Login rewritten onto it; public site untouched.
+- Rebuilt `AdminLayout`: grouped sidebar, section search + ⌘K quick-jump, live notifications bell, working topbar GitHub sync, mobile drawer, real admin email.
+- Rebuilt `Dashboard`: real-data KPIs, quick actions, system status (backend/GitHub/RAG/AI), recent activity, needs-attention, content library. Rebuilt `Login` to match.
+- Admin AI Proposal Studio (end-to-end): `app/services/workbench{,_prompts}.py` (analyzer → shared-RAG retriever → matcher → generator → quality gate → refiner, all via `AIService` orchestrator), `app/routers/admin_workbench.py` (8 JWT endpoints under `/api/admin/ai`), `proposal_documents` + `proposal_sessions` collections + indexes, `frontend/src/pages/admin/Workbench.tsx` (`/admin/ai-workbench`, `/admin/ai-workbench/history`), `tests/test_workbench.py` (20 cases).
+- RAG completion: public `POST /api/rag/query` + `GET /api/rag/health`, admin `/api/admin/rag/*` (dashboard/CRUD/reindex/evaluate), RAG-augmented lead chat (`intent`+`sources` in chat response, `mode:"rag"`), `KnowledgeManage.tsx` admin page, `tests/test_rag.py` (20 cases), Qdrant service in `docker-compose.yml`.
+- Font Awesome bundled locally (`@fortawesome/fontawesome-free` npm import in `admin.css`); cdnjs CDN link removed (was flagged by tracking prevention, broke offline).
+
+### Fixed
+- Black screen after admin login (`TypeError: ... .reduce is not a function`): `/api/admin/logs/stats` returns `by_level` as an **object**, Dashboard treated it as an array. Fixed + `Array.isArray` guards on every admin list fetch (Dashboard, AdminLayout notifications).
+- RAG chunk hydration: Qdrant point IDs are UUIDv5, unresolvable as Mongo ObjectIds → vectors now carry `mongo_chunk_id` in payload; Mongo rows written first, rolled back on vector failure.
+- `github_rag_repos` is a comma-separated **string** (not a list) — admin reindex now parses it, falling back to tracked public repos.
+- `EmbeddingService.descriptor()` keys are `embedding_provider/model/version/dim`; routers updated (`health_check()` replaces nonexistent `collection_info()`).
+- GitHub skip lists extended (secret filenames, key/data/binary extensions).
+- `_overlap_terms` ignored short tech tokens (`.NET`, `AI` never matched evidence) — boundary-aware substring matching added.
+- Windows dev builds broken by WSL-run `npm install` pruning win32 native bindings — restored `rolldown`, `@tailwindcss/oxide`, `lightningcss` win32-x64-msvc bindings at exact lock versions. **Run `npm install` from Windows, not WSL.**
+- Full verification: backend 75/75 pytest, frontend `tsc` + `eslint` clean, `vite build` OK (FA woff2 bundled in `dist/assets`).
+
+## [Unreleased] — App secrets from GitHub Secrets (VPS deploy)
+
+### Added
+- `deploy-vps.yml` syncs `OPENAI_API_KEY`, `GITHUB_TOKEN`, `ADMIN_INITIAL_PASSWORD`, `SECRET_KEY`, `JWT_SECRET` from GitHub Secrets into `/opt/rajiblabs/config/.env` on every deploy (non-empty win, server file stays fallback; values never printed, file `chmod 600`). Upsert logic verified (replace/preserve/skip-empty/reload).
+
+## [Unreleased] — Dedicated VPS workflow (auto-deploy on merge to main)
+
+### Added
+- `.github/workflows/deploy-vps.yml`: standalone "Deploy VPS" workflow — fires on every push/merge to `main` (+ manual dispatch). SSHes to the VPS, pulls `/opt/rajiblabs/app`, runs `deploy-vps.sh` (30 min timeout), skips cleanly without secrets. The old manual `deploy-vps` job was removed from `ci.yml` (now build + FTP only) so there is exactly one VPS path.
+
+## [Unreleased] — CI VPS deploy job (SSH, manual)
+
+### Added
+- `deploy-vps` job in `ci.yml`: manual ("Run workflow") SSH deploy to 169.58.165.10 — pulls `/opt/rajiblabs/app` and runs `deploy-vps.sh` (30 min timeout). Skips cleanly without secrets. Needs `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (+ optional `VPS_SSH_PORT`). YAML-validated.
+
+## [Unreleased] — Shared-VPS POCs: zero PestFlow impact proven, keep :8080
+
+### POC results (all PASS — decision: no port change needed)
+- **POC-1 clash matrix** (both production composes): published ports disjoint (PestFlow `80/443/127.0.0.1:1433` vs RajibLabs `8080/127.0.0.1:27017`) → **OVERLAP: NONE**; container names disjoint; networks separate (`pestflow-internal` attached external-only); `/opt` binds disjoint (`/opt/pestflow/*` vs `/opt/rajiblabs/*`); images and env files separate. Only 8080 user elsewhere is PestFlow's **dev** compose, which never runs on the VPS.
+- **POC-2**: production compose renders clean (edge `8080:80`, external net attached).
+- **POC-3**: `gateway.conf` static check 10/10 (single `:80` server, `/`→frontend, `/api/`+`/health`→ai-api, 12 MB uploads, no PestFlow coupling, balanced braces).
+- Verdict: :8080 already IS the "different port" — PestFlow untouched (no shared ports/names/volumes; Phase-2 domain move is additive server blocks + reload only).
+
+### Changed
+- `deploy-vps.sh`: added `pestflow-internal` network preflight (fails with fix instructions if PestFlow stack absent) alongside the existing `:8080` clash check. `sh -n` clean.
+
+## [Unreleased] — 2026-09-03 — Default OpenAI model → gpt-4o-mini
+
+### Changed
+- `OPENAI_MODEL` default is now `gpt-4o-mini` ($0.15/1M in, $0.60/1M out) per operator choice: `app/config.py`, `.env.example`, `.env.production`, backend `README.md`, local `.env`, `deploy/dotenv.production.example`, `docker-compose.production.yml` fallback.
+- `docs/configuration.md`: model table + cost math updated (~3,300 chats / ~1,150 AI jobs per $1). `gpt-5-nano` ($0.05/$0.40) documented as the cheaper env-only alternative; fallback stays `gpt-5.6-luna`.
+- `pytest -q`: 11 passed, 2 skipped (unchanged).
+
+## [Unreleased] — VPS deploy readiness (169.58.165.10)
+
+### Added
+- `deploy/deploy-vps.sh`: one-command VPS deploy — tooling/env/secret preflight (refuses empty `<16-char` secrets), host dirs + `gateway.conf` install (never overwrites), `up -d --build`, ai-api health-gate with log dump on failure, edge smoke tests (`/health`, `/api/health`, `/`, `/api/projects`), plus admin URL and SQLite-migration runbook in the success banner. `sh -n` syntax-checked.
+- `rajiblabs-ai-backend/Dockerfile` now ships the resume seed PDF (`init_db` copies it to `UPLOAD_DIR` on first boot); new `.dockerignore` files for backend (no tests/`__pycache__`/`.env`/uploads in the image) and frontend (no `node_modules`/`dist` in build context).
+- `deploy/dotenv.production.example`: IP-based production env template (points at `docs/configuration.md` + domain-oriented `.env.production` for reference).
+
+### Verified
+- `docker compose -f docker-compose.production.yml config`: renders clean (only expected unset-secret warnings); only `:80` + localhost mongo published.
+- Frontend `npm run build` (`tsc -b` + vite): clean, 776 ms.
+- `pytest -q`: 11 passed, 2 skipped.
+- Not runnable here: `docker build` / `nginx -t` (this box's Docker client is broken — SIGBUS; user runs Docker Desktop 29.7.2 on Windows, verified working). Re-verify images + gateway on the VPS via `deploy-vps.sh` smoke tests.
+
+## [Unreleased] — run-docker.bat batch-syntax fix
+
+### Fixed
+- `not was unexpected at this time` crash: unescaped `)` in three `echo` lines inside parenthesized blocks prematurely closed the blocks at parse time (`(v2 plugin)`, `(fill secrets!)`, `(%%i/18)` → `^)`). The first one fired on every run at the compose-version check.
+- Quoted all `if "%errorlevel%" neq "0"` comparisons (empty-safe); detection commands (`where`, `docker info`, `docker compose version`) keep `>nul` on stdout but no longer swallow stderr; `TEMP` fallback + `if exist` guard on the health-file read.
+- Validated per-label-section with a paren-balance checker (no unescaped `)` in blocks, no unbalanced closers, no unquoted comparisons). No Docker/WSL changes; modes and behavior preserved.
+
+## [Unreleased] — VPS production compose (169.58.165.10, PestFlow pattern)
+
+### Added
+- `docker-compose.production.yml` (root): production stack for the VPS — `mongo` (internal, 127.0.0.1:27017 host-tooling only, `/opt/rajiblabs/data/mongo`, mongosh healthcheck), `ai-api` (full env wiring with `${VAR}` secrets from `/opt/rajiblabs/config/.env`, uploads bind `/opt/rajiblabs/data/uploads`, urllib `/health` check, starts only after mongo healthy), `frontend` (static only), `gateway` (nginx:1.27-alpine, sole publisher on `:80`). Private `rajiblabs-internal` network, `unless-stopped` everywhere, persistent bind mounts (reboot-safe), full setup/deploy commands in the header.
+- `deploy/nginx/gateway.conf`: edge routing (`/` → frontend PWA, `/api/*` + `/health` → ai-api, 12 MB uploads, security headers; plain HTTP — IP-only VPS, no certs).
+- `deploy/dotenv.production.example`: production env template (`APP_URL=http://169.58.165.10`, required secrets + optionals).
+- Validated with `docker compose config` (renders clean; only expected unset-secret warnings). Gateway `nginx -t` pending Docker daemon access — re-verify on the VPS at deploy time.
+
 ## [Unreleased] — .NET API removed, all APIs on Python (FastAPI + MongoDB)
 
 Joint work with the parallel agent (removal, seeds, CI/run-script cutover, route test) — consolidated to a single port.

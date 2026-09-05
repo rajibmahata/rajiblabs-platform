@@ -87,3 +87,15 @@ Auth protects admin APIs, resume CRUD, portfolio/product CRUD, Page Flow visible
 **Update 2026-09-03 (gap-fix pass):** gaps 1–4 and 7 fixed and verified (`pytest -q`: 7 passed, 1 skipped; `tsc --noEmit`: clean; `run_qa.py`: PASS, 2 placeholder-only secret hits). Gap 5 resolved as documented decision (.NET authoritative, nginx note added). Gap 6 partially closed (auth-gate + lifespan + log-truncation tests added; mocked CRUD/chat/agent tests remain open). **Update (.NET removal):** `backend/` deleted; gap-5 ports landed in FastAPI (`legacy.py` Site API v1 — 47 routes incl. public projects/activity/profile/contact/subscribe/learning + legacy admin auth — plus seeds + indexes); single-backend Docker (ai-api :8090) and nginx; `services/auth.ts` FastAPI-only; vite proxy → `:8000`. `scripts/migrate_sqlite_to_mongo.py` migrates all 14 tables (verified live: 4 projects, 6 activities, 1 profile, 5 courses + seeds); `pytest -q`: 11 passed, 2 skipped. **New requirement added:** admin System Logs section — every backend failure recorded to `error_logs` with automatic 5-day TTL retention (`LOG_RETENTION_DAYS`), served by `GET /api/admin/logs|/stats` + `DELETE` purge, visible at `/admin/logs` (filter, details, stats, purge). See `CHANGELOG.md` for the full fix list.
 
 **Requirement traceability:** P1 Audit done; P2 DB done (Mongo, seeded home/skills/experience/5 verified projects, `github_url=NULL` unless verified; Site-API collections `legacy_projects/activities/profiles/products/website_contents/resumes` + Page Flow/DocuFlow/profile/resume seeds; 14-table migration script verified live); P3 Auth done (dual-email JWT + rate limit; frontend FastAPI-only); P4 Resume done on FastAPI (upload/version/publish/download/extract/decision, legacy paths); P5-P6 Portfolio/Products done on FastAPI (legacy admin + public paths, camelCase parity); P7-10 GitHub/AI agents done (sync + daily agent + quality gate, `locked_fields`/`is_manually_edited` preserved, `AI_AUTO_PUBLISH=false` default; legacy repos/sync-log/PATCH paths ported); P11 Public CMS done (published-only filters, `locked_fields` stripped; legacy `/api/portfolio|products|content` ported); P14 Security/tests partial (see gaps 6-7); P15 Deploy done (single-backend Docker + nginx, secrets gitignored; CI is frontend-only FTP).
+
+## 9. Current state pointer (for future development)
+
+Sections 1–8 above are the historical record (SQLite-era plan + 2026-09-03 validation).
+The living documents are now:
+
+- `MEMORY.md` — read before implementing anything (stack, layout, recipes, RAG/concierge/i18n rules, gotchas, endpoints, verify commands).
+- `CHANGELOG.md` — what was actually built, newest first (concierge + agents, GitHub knowledge sync, logs grid, shared-VPS `:8080` edge, VPS auto-deploy).
+- `docs/configuration.md` — every env var with dev/prod values.
+- `proposals/` — original product specs (frozen requirements context).
+
+Superseded notes: SQLite/.NET references (§§1–4), dual-backend coexistence (§8), 5-day log retention (now 7), `:80` VPS edge (now `:8080` shared with PestFlow), FTP-only CI (now + `deploy-vps.yml`).

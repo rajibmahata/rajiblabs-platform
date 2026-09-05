@@ -1,0 +1,10 @@
+# Keep the api image lean and secret-free
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+.env
+*.env.local
+data/uploads/
+.git/
+.vscode/
