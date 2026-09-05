@@ -1,25 +1,20 @@
-# RajibLabs — Production Docker Compose (VPS 169.58.165.10, SHARED with PestFlow)
+# RajibLabs — Production Docker Compose (VPS 169.58.165.10, SHARED VPS)
 #
-# PestFlow (pestflow-gateway) already owns host ports 80/443 on this box,
-# so RajibLabs does NOT publish :80. Two-phase edge:
+# This box already runs PasteControl in production. RajibLabs coexists by
+# using NOTHING PasteControl uses: no host ports 80/443, no shared networks,
+# no shared volumes, no shared container names. Two-phase edge:
 #   Phase 1 (now, no DNS change): rajiblabs-gateway on host :8080
 #             → site live at http://169.58.165.10:8080 immediately.
-#   Phase 2 (rajiblabs.com → 169.58.165.10): append
-#             deploy/nginx/rajiblabs-behind-pestflow.conf to PestFlow's
-#             /opt/pestflow/config/nginx/gateway.conf (certbot cert first),
-#             reload pestflow-gateway, then restrict :8080 to localhost.
+#   Phase 2 (rajiblabs.com → 169.58.165.10): add the server blocks from
+#             deploy/nginx/rajiblabs-behind-proxy.conf to the existing edge
+#             proxy (certbot cert first), reload it — RajibLabs stays on
+#             127.0.0.1:8080 loopback, reachable only via that proxy.
+#             Then restrict :8080 to localhost (see gateway ports below).
 #
-# Design (mirrors PestFlow's production compose):
+# Design:
 #   - MongoDB is bound to 127.0.0.1:27017 for host tooling only.
-#     (No clash: PestFlow uses SQL Server :1433; both qdrants stay internal
-#     on their own private networks.)
 #   - The API reaches MongoDB/Qdrant through the private `rajiblabs-internal`
 #     network as `mongo:27017` / `qdrant:6333`.
-#   - The gateway additionally joins the EXTERNAL `pestflow-internal`
-#     network so PestFlow's gateway can proxy rajiblabs.com → it in Phase 2
-#     (no PestFlow compose change needed — external networks attach freely).
-#     If PestFlow isn't deployed yet, comment out that network + the Phase-2
-#     step still works on :8080.
 #   - Persistent data survives container replacement and VPS reboot:
 #       /opt/rajiblabs/data/mongo    (MongoDB data files)
 #       /opt/rajiblabs/data/qdrant   (vector index)
@@ -53,7 +48,8 @@
 # SAFETY: never run `down -v` here (would delete nothing today — all state
 # is in bind mounts — but keep the habit), never delete /opt/rajiblabs/data.
 # NOTE: IP-only VPS, no domain attached → plain HTTP on :80 (no certbot).
-# When a domain points here, terminate 443 in gateway.conf like PestFlow.
+# When a domain points here, terminate 443 in the edge proxy (see
+# deploy/nginx/rajiblabs-behind-proxy.conf).
 
 name: rajiblabs
 
@@ -93,7 +89,7 @@ services:
       CORS_ORIGINS: "${CORS_ORIGINS:-http://169.58.165.10,https://rajiblabs.com}"
       DATABASE_URL: "mongodb://mongo:27017/rajiblabs"
       MONGO_DB_NAME: "rajiblabs"
-      # Vector index (own instance — PestFlow's qdrant is on another network)
+      # Vector index (own instance on rajiblabs-internal; never shared)
       QDRANT_URL: "http://qdrant:6333"
       # Admin seed (first run only — never overwrites an existing admin)
       ADMIN_EMAILS: "${ADMIN_EMAILS:-rajibmahata143@gmail.com,rajibmahata143@outlook.com}"
@@ -146,7 +142,7 @@ services:
     networks:
       - rajiblabs-internal
     healthcheck:
-      # python:slim has no curl — urllib like PestFlow's AI service.
+      # python:slim has no curl — stdlib urllib instead.
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health')"]
       interval: 15s
       timeout: 5s
@@ -167,7 +163,7 @@ services:
     image: qdrant/qdrant:v1.11.3
     container_name: rajiblabs-qdrant
     restart: unless-stopped
-    # Internal only — no published ports (PestFlow pattern). Reachable as
+    # Internal only — no published ports. Reachable as
     # qdrant:6333 on rajiblabs-internal; host tooling can use an SSH tunnel.
     volumes:
       # Vector index (PERSISTENT — never deleted; re-embeddings are expensive)
@@ -183,9 +179,9 @@ services:
       - ai-api
       - frontend
     ports:
-      # Phase 1: direct public edge on :8080 (PestFlow owns :80/:443).
-      # Phase 2: after rajiblabs.com moves behind pestflow-gateway, restrict
-      # this to "127.0.0.1:8080:80" (host-local checks only).
+      # Phase 1: direct public edge on :8080 (PasteControl owns :80/:443).
+      # Phase 2: after rajiblabs.com moves behind the existing edge proxy,
+      # restrict this to "127.0.0.1:8080:80" (host-local checks only).
       - "8080:80"
     volumes:
       # Edge routing: / → frontend PWA, /api/* + /health → ai-api
@@ -194,14 +190,8 @@ services:
       - /opt/rajiblabs/logs/nginx:/var/log/nginx
     networks:
       - rajiblabs-internal
-      - pestflow-internal
 
 networks:
   rajiblabs-internal:
     name: rajiblabs-internal
     driver: bridge
-  # Shared edge: lets pestflow-gateway proxy rajiblabs.com → rajiblabs-gateway
-  # in Phase 2. Created by PestFlow's stack; comment this + the gateway entry
-  # above if PestFlow isn't on this box (plain :8080 still works).
-  pestflow-internal:
-    external: true

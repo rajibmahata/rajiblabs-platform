@@ -2,6 +2,14 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Fix frontend build (Workbench lint/type errors)
+
+### Fixed
+- `npm run build` was failing: unused `anyBusy` flag tripped `tsc noUnusedLocals`,
+  and the progress hook set state inside an effect (`react-hooks/set-state-in-effect`).
+  Progress timer now stops via an explicit `stop()` in request `finally` blocks.
+  Verified: `tsc`, `eslint`, and `npm run build` all clean.
+
 ## [Unreleased] — Docs/config audit: RAG vars documented, committed secrets sanitized
 
 ### Security — ACTION REQUIRED

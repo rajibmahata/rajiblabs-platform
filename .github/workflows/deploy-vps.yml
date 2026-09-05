@@ -1,8 +1,8 @@
-# RajibLabs — VPS deploy (169.58.165.10, shared box with PestFlow)
+# RajibLabs — VPS deploy (169.58.165.10, shared box with PasteControl)
 #
 # Trigger: every push/merge to main (+ manual "Run workflow").
 # Flow: SSH into the VPS → git pull /opt/rajiblabs/app → sh deploy/deploy-vps.sh
-# (build, health-gate, edge smoke tests). PestFlow untouched: disjoint ports
+# (build, health-gate, edge smoke tests). PasteControl untouched: disjoint ports
 # (:8080 vs :80/:443), names, networks, /opt paths — see CHANGELOG POCs.
 #
 # Required repo secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (+ optional VPS_SSH_PORT).
