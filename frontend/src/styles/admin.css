@@ -482,3 +482,6 @@
 .rla-progress-steps { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .72rem; color: var(--rla-text-faint); }
 .rla-progress-steps .active { color: var(--rla-violet); font-weight: 600; }
 .rla-progress-steps .done { color: var(--rla-green); }
+.rla-alert-error { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); color: #b91c1c; border-radius: 8px; padding: 10px 12px; font-size: .82rem; margin-bottom: 12px; }
+.rla-modal-wide { max-width: 880px; }
+.rla-mono { font-family: 'JetBrains Mono', monospace; font-size: .8rem; }

@@ -2,6 +2,40 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Full Products + Portfolio CMS
+
+### Added — backend (`legacy.py`, `main.py`, `database.py`, `rag_ingest.py`)
+- Extended portfolio/product models: tags, featured image + gallery, video URL
+  (validated YouTube/Vimeo → safe `videoEmbedUrl`), live/docs/CTA URLs, SEO
+  title/description/image, `ragIndexed` flag. Public shapes unchanged + new fields.
+- Admin lists now support search (title/descriptions/tags/tech, regex-escaped),
+  status/category/featured/tech/tag filters, sorting, pagination envelope.
+- New `PATCH .../status` + `PATCH .../featured` toggles (publish = active;
+  drafts/hidden never served publicly); deletes remove knowledge vectors.
+- Image uploads (`POST /api/admin/uploads/image?kind=`, 5MB, magic-byte check,
+  uuid filenames) + delete; served via `/uploads` static mount (Starlette
+  traversal-safe; uuid names unguessable). Fixed the same latent
+  `isinstance(UploadFile)` version-skew bug in resume upload (was 400ing).
+- RAG lifecycle: publish+approved → upsert (`portfolio:`/`product:` source ids,
+  verified URLs, tech/tags); unpublish/opt-out → deactivate; delete → vectors
+  removed; content-hash dedup avoids needless re-embedding. `ingest_mongodb`
+  now covers both collections, so bulk re-ingest stays in one pipeline.
+- Indexes for status/featured/display_order/updated_at on both collections.
+
+### Added — admin UI (shared `CatalogManager`, same template)
+- Grids with search, status/category/featured/tech/tag filters, sorting,
+  pagination, active + featured inline toggles, view/edit/delete.
+- Sectioned form (Basic/Description/Media/Tech&Tags/Links/Publishing/SEO) with
+  validation errors, image upload + preview + gallery, Save/Save&Continue/Cancel/
+  Preview/Delete; Markdown description editor + safe `Markdown` renderer.
+- Public detail pages render gallery, tags, video, live/GitHub/docs/CTA links,
+  SEO title; empty fields hidden; responsive as before.
+
+### Tests — full suite 208 passed
+- New `tests/test_catalog.py` (9): video providers/rejections, query builder,
+  auth gates, portfolio + products CRUD/filter/toggle round-trips, upload
+  validation, RAG upsert/deactivate/opt-out lifecycle.
+
 ## [Unreleased] — Fix CI lint failures blocking frontend build
 
 ### Fixed

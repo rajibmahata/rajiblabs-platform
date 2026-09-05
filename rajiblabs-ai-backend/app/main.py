@@ -64,6 +64,13 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware, allow_origins=settings.cors_list, allow_credentials=True,
         allow_methods=["*"], allow_headers=["*"])
+    # Public uploads (images/gallery). Starlette blocks path traversal;
+    # filenames are server-generated uuids, never user input.
+    from pathlib import Path as _Path
+    from fastapi.staticfiles import StaticFiles
+    _up = _Path(settings.upload_dir)
+    _up.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(_up)), name="uploads")
     for r, tags in (
         (health.router, ["System"]),
         (public.router, ["Public CMS"]),

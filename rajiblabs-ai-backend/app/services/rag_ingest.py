@@ -296,6 +296,90 @@ async def ingest_mongodb() -> dict:
         await one("service", f"service:{slug}", title, desc,
                   url="https://rajiblabs.com/#services",
                   tags=["service", "rajiblabs"])
+    sub = await ingest_portfolio_products()
+    for k in ("created", "updated", "unchanged", "failed"):
+        stats[k] += sub.get(k, 0)
+    stats["errors"].extend(sub.get("errors", [])[:10])
+    return stats
+
+
+async def ingest_portfolio_products() -> dict:
+    """Index admin-managed portfolio + products (published/approved only).
+
+    Source ids are stable per slug (`portfolio:{slug}`, `product:{slug}`), so
+    content-hash dedup re-indexes only changed docs. Docs with
+    `rag_indexed: false`, or that left published status, are deactivated
+    (vectors removed, record kept) instead.
+    """
+    from app.services import kb_policy as _kb
+    db = get_db()
+    stats = {"created": 0, "updated": 0, "unchanged": 0, "failed": 0, "errors": []}
+
+    async def one(source_type, source_id, title, content, **kw):
+        try:
+            r = await upsert_document(source_type, source_id, title, content, **kw)
+            stats[r["status"]] += 1
+        except Exception as e:
+            stats["failed"] += 1
+            stats["errors"].append(f"{source_type}:{source_id}: {e}"[:200])
+
+    async def deactivate(source_type: str, source_id: str):
+        try:
+            d = await db["knowledge_documents"].find_one(
+                {"source_type": source_type, "source_id": source_id})
+            if d and d.get("status") == "active":
+                await deactivate_document(str(d["_id"]))
+        except Exception as e:
+            stats["errors"].append(f"{source_id}: deactivate failed: {e}"[:200])
+
+    async for p in db["portfolio"].find({}):
+        sid = f"portfolio:{p.get('slug', p.get('_id'))}"
+        live = p.get("status") == "published" and p.get("rag_indexed", True)
+        if not live:
+            await deactivate("project", sid)
+            continue
+        tech = ", ".join(p.get("tech_stack", []) or [])
+        tags = ", ".join(p.get("tags", []) or [])
+        await one("project", sid, p.get("title", "Untitled"),
+                  "\n".join(filter(None, [
+                      p.get("short_description", "") or "",
+                      p.get("description", "") or "",
+                      p.get("problem", "") or "",
+                      p.get("solution", "") or "",
+                      f"Technologies: {tech}" if tech else "",
+                      f"Tags: {tags}" if tags else "",
+                      f"Live: {p['live_url']}" if p.get("live_url") else "",
+                      f"GitHub: {p['github_url']}" if p.get("github_url") else "",
+                  ])),
+                  url=f"https://rajiblabs.com/portfolio/{p.get('slug', '')}",
+                  language=(p.get("tech_stack") or [None])[0],
+                  tags=["portfolio", p.get("status", "")],
+                  guardrails=_kb.effective_guardrails(p),
+                  hallucination_control=_kb.effective_hallucination(p))
+    async for p in db["products"].find({"status": {"$in": ["published", "featured"]}}):
+        sid = f"product:{p.get('slug', p.get('_id'))}"
+        if not p.get("rag_indexed", True):
+            await deactivate("product", sid)
+            continue
+        tech = ", ".join(p.get("tech_stack", []) or [])
+        tags = ", ".join(p.get("tags", []) or [])
+        await one("product", sid, p.get("name", "Untitled"),
+                  "\n".join(filter(None, [
+                      p.get("short_description", "") or p.get("description", ""),
+                      f"Features: {', '.join(p.get('features', []) or [])}" if p.get("features") else "",
+                      f"Technologies: {tech}" if tech else "",
+                      f"Tags: {tags}" if tags else "",
+                      f"Live: {p['live_url']}" if p.get("live_url") else "",
+                      f"GitHub: {p['github_url']}" if p.get("github_url") else "",
+                  ])),
+                  url=f"https://rajiblabs.com/products/{p.get('slug', '')}",
+                  language=(p.get("tech_stack") or [None])[0],
+                  tags=["product", p.get("category", ""), p.get("status", "")],
+                  guardrails=_kb.effective_guardrails(p),
+                  hallucination_control=_kb.effective_hallucination(p))
+    # products that left published/featured (or opted out) lose vectors too
+    async for p in db["products"].find({"status": {"$nin": ["published", "featured"]}}):
+        await deactivate("product", f"product:{p.get('slug', p.get('_id'))}")
     return stats
 
 

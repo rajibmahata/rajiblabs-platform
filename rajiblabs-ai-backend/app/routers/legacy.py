@@ -66,6 +66,128 @@ def _iso(v: Any) -> Any:
     return v
 
 
+def _is_upload(value: Any) -> bool:
+    """Duck-typed file check: fastapi/starlette version skew means
+    isinstance(x, UploadFile) can fail across duplicate class objects."""
+    return (hasattr(value, "filename") and hasattr(value, "read")
+            and not isinstance(value, (str, bytes)))
+
+
+# ── shared catalog helpers (portfolio + products) ──
+
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+IMAGE_KINDS = ("portfolio", "product")
+
+
+def video_embed_url(url: Optional[str]) -> Optional[str]:
+    """Validate a video URL and return a safe embed URL, else None.
+
+    Only YouTube and Vimeo are approved providers — anything else is rejected
+    so no arbitrary iframe/script injection is possible.
+    """
+    if not url or not isinstance(url, str):
+        return None
+    u = url.strip()
+    m = (re.match(r"^https?://(?:www\.)?youtube\.com/watch\?[^#]*v=([\w-]{6,20})", u)
+         or re.match(r"^https?://youtu\.be/([\w-]{6,20})", u)
+         or re.match(r"^https?://(?:www\.)?youtube\.com/embed/([\w-]{6,20})", u)
+         or re.match(r"^https?://(?:www\.)?youtube\.com/shorts/([\w-]{6,20})", u))
+    if m:
+        return f"https://www.youtube.com/embed/{m.group(1)}"
+    m = (re.match(r"^https?://vimeo\.com/(\d{5,12})", u)
+         or re.match(r"^https?://player\.vimeo\.com/video/(\d{5,12})", u))
+    if m:
+        return f"https://player.vimeo.com/video/{m.group(1)}"
+    return None
+
+
+def _list_query(q: Optional[str], status: Optional[str], featured: Optional[bool],
+                tech: Optional[str], tag: Optional[str],
+                extra: Optional[dict] = None) -> dict:
+    """Shared search/filter builder for admin catalog grids."""
+    query: dict = dict(extra or {})
+    if status:
+        query["status"] = status
+    if featured is not None:
+        query["featured"] = featured
+    if tech:
+        t = {"$regex": re.escape(tech.strip()[:60]), "$options": "i"}
+        query["$and"] = query.get("$and", []) + [{"tech_stack": t}]
+    if tag:
+        query["tags"] = {"$regex": f"^{re.escape(tag.strip()[:60])}$", "$options": "i"}
+    if q and q.strip():
+        rx = {"$regex": re.escape(q.strip()[:200]), "$options": "i"}
+        query["$or"] = [{"title": rx}, {"name": rx},
+                        {"short_description": rx}, {"description": rx},
+                        {"tags": rx}, {"tech_stack": rx}]
+    return query
+
+
+def _list_sort(sort: Optional[str]) -> list:
+    if sort == "title":
+        return [("title", 1)]
+    if sort == "name":
+        return [("name", 1)]
+    if sort == "-updated":
+        return [("updated_at", -1)]
+    if sort == "order":
+        return [("display_order", 1)]
+    return [("display_order", 1), ("updated_at", -1)]
+
+
+async def _sync_catalog_rag(coll: str, doc: dict) -> None:
+    """Keep the shared RAG index in step with portfolio/products writes.
+
+    Published + approved docs are upserted (content-hash dedup means unchanged
+    docs skip re-embedding); anything else is deactivated (vectors removed,
+    record kept). Failures are logged, never raised into the CRUD path.
+    """
+    try:
+        from app.services import rag_ingest
+        db = get_db()
+        published = (doc.get("status") == "published"
+                     or (coll == "products" and doc.get("status") == "featured"))
+        indexed = doc.get("rag_indexed", True)
+        if coll == "portfolio":
+            sid = f"portfolio:{doc.get('slug', doc.get('_id'))}"
+            title = doc.get("title", "")
+            url = f"https://rajiblabs.com/portfolio/{doc.get('slug', '')}"
+        else:
+            sid = f"product:{doc.get('slug', doc.get('_id'))}"
+            title = doc.get("name", "")
+            url = f"https://rajiblabs.com/products/{doc.get('slug', '')}"
+        if published and indexed:
+            tech = ", ".join(doc.get("tech_stack", []) or [])
+            tags = ", ".join(doc.get("tags", []) or [])
+            body = "\n".join(filter(None, [
+                doc.get("short_description", "") or "",
+                doc.get("description", "") or "",
+                doc.get("problem", "") or "",
+                doc.get("solution", "") or "",
+                f"Features: {', '.join(doc.get('features', []) or [])}" if doc.get("features") else "",
+                f"Technologies: {tech}" if tech else "",
+                f"Tags: {tags}" if tags else "",
+                f"Live: {doc['live_url']}" if doc.get("live_url") else "",
+                f"GitHub: {doc['github_url']}" if doc.get("github_url") else "",
+            ]))
+            await rag_ingest.upsert_document(
+                "project" if coll == "portfolio" else "product", sid, title, body,
+                url=url, language=(doc.get("tech_stack") or [None])[0],
+                tags=["portfolio" if coll == "portfolio" else "product",
+                      doc.get("category", "") or doc.get("status", "")])
+        else:
+            existing = await db["knowledge_documents"].find_one(
+                {"source_type": "project" if coll == "portfolio" else "product",
+                 "source_id": sid})
+            if existing:
+                await rag_ingest.deactivate_document(str(existing["_id"]))
+    except Exception as e:
+        try:
+            await log_error("catalog_rag", f"RAG sync failed for {coll}", str(e)[:1000])
+        except Exception:
+            pass
+
+
 # ── project shape ──
 
 def project_out(d: dict) -> dict:
@@ -395,7 +517,14 @@ def portfolio_out(d: dict, public_list: bool = False) -> dict:
         "techStack": d.get("tech_stack", []), "aiCapabilities": d.get("ai_capabilities", []),
         "cloudCapabilities": d.get("cloud_capabilities", []), "screenshots": d.get("screenshots", []),
         "demoUrl": d.get("demo_url"), "gitHubUrl": d.get("github_url"),
+        "liveUrl": d.get("live_url"), "docsUrl": d.get("docs_url"),
+        "ctaText": d.get("cta_text"), "ctaUrl": d.get("cta_url"),
         "productUrl": d.get("product_url"), "status": d.get("status", "draft"),
+        "tags": d.get("tags", []),
+        "featuredImage": d.get("featured_image"), "gallery": d.get("gallery", []) or d.get("screenshots", []),
+        "videoUrl": d.get("video_url"), "videoEmbedUrl": video_embed_url(d.get("video_url")),
+        "seoTitle": d.get("seo_title"), "seoDescription": d.get("seo_description"),
+        "seoImage": d.get("seo_image"), "ragIndexed": d.get("rag_indexed", True),
         "featured": d.get("featured", False), "displayOrder": d.get("display_order", 0),
         "createdAt": _iso(d.get("created_at")), "publishedAt": _iso(d.get("published_at")),
     }
@@ -420,8 +549,20 @@ class PortfolioIn(BaseModel):
     screenshots: Optional[list[str]] = Field(default=None, alias="screenshots")
     demo_url: Optional[str] = Field(default=None, alias="demoUrl")
     github_url: Optional[str] = Field(default=None, alias="gitHubUrl")
+    live_url: Optional[str] = Field(default=None, alias="liveUrl")
+    docs_url: Optional[str] = Field(default=None, alias="docsUrl")
+    cta_text: Optional[str] = Field(default=None, alias="ctaText")
+    cta_url: Optional[str] = Field(default=None, alias="ctaUrl")
     product_url: Optional[str] = Field(default=None, alias="productUrl")
     status: Optional[str] = None
+    tags: Optional[list[str]] = None
+    featured_image: Optional[str] = Field(default=None, alias="featuredImage")
+    gallery: Optional[list[str]] = None
+    video_url: Optional[str] = Field(default=None, alias="videoUrl")
+    seo_title: Optional[str] = Field(default=None, alias="seoTitle")
+    seo_description: Optional[str] = Field(default=None, alias="seoDescription")
+    seo_image: Optional[str] = Field(default=None, alias="seoImage")
+    rag_indexed: Optional[bool] = Field(default=None, alias="ragIndexed")
     featured: Optional[bool] = None
     display_order: Optional[int] = Field(default=None, alias="displayOrder")
 
@@ -444,10 +585,20 @@ async def portfolio_detail(slug: str):
 
 
 @router.get("/api/admin/portfolio")
-async def portfolio_admin_list(email: str = Depends(require_admin)):
+async def portfolio_admin_list(q: Optional[str] = None, status: Optional[str] = None,
+                               featured: Optional[bool] = None, tech: Optional[str] = None,
+                               tag: Optional[str] = None, sort: Optional[str] = None,
+                               page: int = 1, page_size: int = 25,
+                               email: str = Depends(require_admin)):
     db = get_db()
-    cur = db["portfolio"].find().sort("display_order", 1)
-    return [portfolio_out(d) async for d in cur]
+    query = _list_query(q, status, featured, tech, tag)
+    total = await db["portfolio"].count_documents(query)
+    page = max(1, page)
+    page_size = max(1, min(page_size, 200))
+    cur = db["portfolio"].find(query).sort(_list_sort(sort)).skip(
+        (page - 1) * page_size).limit(page_size)
+    return {"items": [portfolio_out(d) async for d in cur],
+            "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/api/admin/portfolio", status_code=201)
@@ -466,7 +617,13 @@ async def portfolio_create(body: PortfolioIn, email: str = Depends(require_admin
         "tech_stack": body.tech_stack or [], "ai_capabilities": body.ai_capabilities or [],
         "cloud_capabilities": body.cloud_capabilities or [], "screenshots": body.screenshots or [],
         "demo_url": body.demo_url, "github_url": body.github_url, "product_url": body.product_url,
+        "live_url": body.live_url, "docs_url": body.docs_url,
+        "cta_text": body.cta_text, "cta_url": body.cta_url,
         "status": body.status or "draft", "featured": body.featured or False,
+        "tags": body.tags or [], "featured_image": body.featured_image,
+        "gallery": body.gallery or [], "video_url": body.video_url,
+        "seo_title": body.seo_title, "seo_description": body.seo_description,
+        "seo_image": body.seo_image, "rag_indexed": body.rag_indexed if body.rag_indexed is not None else True,
         "display_order": body.display_order or 0,
         "created_at": utcnow(), "updated_at": utcnow(),
         "published_at": utcnow() if (body.status or "") == "published" else None,
@@ -474,6 +631,7 @@ async def portfolio_create(body: PortfolioIn, email: str = Depends(require_admin
     }
     await db["portfolio"].insert_one(doc)
     await audit(email, "PORTFOLIO_CREATE", slug)
+    await _sync_catalog_rag("portfolio", doc)
     return portfolio_out(doc)
 
 
@@ -496,7 +654,9 @@ async def portfolio_update(rid: str, body: PortfolioIn, email: str = Depends(req
     db = get_db()
     await db["portfolio"].update_one({"_id": d["_id"]}, {"$set": patch})
     await audit(email, "PORTFOLIO_UPDATE", d.get("slug", rid))
-    return portfolio_out({**d, **patch})
+    updated = {**d, **patch}
+    await _sync_catalog_rag("portfolio", updated)
+    return portfolio_out(updated)
 
 
 @router.delete("/api/admin/portfolio/{rid}")
@@ -507,7 +667,45 @@ async def portfolio_delete(rid: str, email: str = Depends(require_admin)):
     db = get_db()
     await db["portfolio"].delete_one({"_id": d["_id"]})
     await audit(email, "PORTFOLIO_DELETE", rid)
+    try:
+        from app.services import rag_ingest
+        existing = await db["knowledge_documents"].find_one(
+            {"source_type": "project", "source_id": f"portfolio:{d.get('slug', rid)}"})
+        if existing:
+            await rag_ingest.delete_document(str(existing["_id"]))
+    except Exception:
+        pass
     return {"message": "Deleted"}
+
+
+@router.patch("/api/admin/portfolio/{rid}/status")
+async def portfolio_status(rid: str, body: dict, email: str = Depends(require_admin)):
+    d = await by_id("portfolio", rid)
+    if not d:
+        raise HTTPException(404, {"error": "Not found"})
+    status = (body or {}).get("status", "draft")
+    patch = {"status": status, "updated_at": utcnow(), "is_manual_edit": True}
+    if status == "published" and not d.get("published_at"):
+        patch["published_at"] = utcnow()
+    db = get_db()
+    await db["portfolio"].update_one({"_id": d["_id"]}, {"$set": patch})
+    await audit(email, "PORTFOLIO_STATUS", d.get("slug", rid), {"status": status})
+    updated = {**d, **patch}
+    await _sync_catalog_rag("portfolio", updated)
+    return portfolio_out(updated)
+
+
+@router.patch("/api/admin/portfolio/{rid}/featured")
+async def portfolio_featured(rid: str, body: dict, email: str = Depends(require_admin)):
+    d = await by_id("portfolio", rid)
+    if not d:
+        raise HTTPException(404, {"error": "Not found"})
+    featured = bool((body or {}).get("featured", False))
+    db = get_db()
+    await db["portfolio"].update_one(
+        {"_id": d["_id"]}, {"$set": {"featured": featured, "updated_at": utcnow()}})
+    await audit(email, "PORTFOLIO_FEATURED", d.get("slug", rid), {"featured": featured})
+    return portfolio_out({**d, "featured": featured})
 
 
 # ── products ──
@@ -516,11 +714,20 @@ def product_out(d: dict) -> dict:
     return {
         "id": oid(d), "name": d.get("name", ""), "slug": d.get("slug", ""),
         "category": d.get("category", ""), "description": d.get("description", ""),
+        "shortDescription": d.get("short_description", ""),
         "logoUrl": d.get("logo_url"), "screenshots": d.get("screenshots", []),
         "features": d.get("features", []), "techStack": d.get("tech_stack", []),
         "aiCapabilities": d.get("ai_capabilities"), "architecture": d.get("architecture"),
-        "productUrl": d.get("product_url"), "gitHubRepoId": d.get("github_repo_id"),
+        "productUrl": d.get("product_url"), "liveUrl": d.get("live_url"),
+        "docsUrl": d.get("docs_url"), "ctaText": d.get("cta_text"),
+        "ctaUrl": d.get("cta_url"), "gitHubUrl": d.get("github_url"),
+        "gitHubRepoId": d.get("github_repo_id"),
+        "videoUrl": d.get("video_url"), "videoEmbedUrl": video_embed_url(d.get("video_url")),
         "status": d.get("status", "draft"), "featured": d.get("featured", False),
+        "tags": d.get("tags", []),
+        "featuredImage": d.get("featured_image"), "gallery": d.get("gallery", []),
+        "seoTitle": d.get("seo_title"), "seoDescription": d.get("seo_description"),
+        "seoImage": d.get("seo_image"), "ragIndexed": d.get("rag_indexed", True),
         "displayOrder": d.get("display_order", 0),
         "createdAt": _iso(d.get("created_at")), "updatedAt": _iso(d.get("updated_at")),
     }
@@ -532,6 +739,7 @@ class ProductLegacyIn(BaseModel):
     slug: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
+    short_description: Optional[str] = Field(default=None, alias="shortDescription")
     logo_url: Optional[str] = Field(default=None, alias="logoUrl")
     screenshots: Optional[list[str]] = None
     features: Optional[list[str]] = None
@@ -539,9 +747,22 @@ class ProductLegacyIn(BaseModel):
     ai_capabilities: Optional[str] = Field(default=None, alias="aiCapabilities")
     architecture: Optional[str] = None
     product_url: Optional[str] = Field(default=None, alias="productUrl")
+    live_url: Optional[str] = Field(default=None, alias="liveUrl")
+    docs_url: Optional[str] = Field(default=None, alias="docsUrl")
+    cta_text: Optional[str] = Field(default=None, alias="ctaText")
+    cta_url: Optional[str] = Field(default=None, alias="ctaUrl")
+    github_url: Optional[str] = Field(default=None, alias="gitHubUrl")
     github_repo_id: Optional[str] = Field(default=None, alias="gitHubRepoId")
+    video_url: Optional[str] = Field(default=None, alias="videoUrl")
     status: Optional[str] = None
     featured: Optional[bool] = None
+    tags: Optional[list[str]] = None
+    featured_image: Optional[str] = Field(default=None, alias="featuredImage")
+    gallery: Optional[list[str]] = None
+    seo_title: Optional[str] = Field(default=None, alias="seoTitle")
+    seo_description: Optional[str] = Field(default=None, alias="seoDescription")
+    seo_image: Optional[str] = Field(default=None, alias="seoImage")
+    rag_indexed: Optional[bool] = Field(default=None, alias="ragIndexed")
     display_order: Optional[int] = Field(default=None, alias="displayOrder")
 
 
@@ -572,10 +793,22 @@ async def product_detail(slug: str, lang: str | None = None):
 
 
 @router.get("/api/admin/products")
-async def products_admin_list(email: str = Depends(require_admin)):
+async def products_admin_list(q: Optional[str] = None, status: Optional[str] = None,
+                              category: Optional[str] = None, featured: Optional[bool] = None,
+                              tech: Optional[str] = None, tag: Optional[str] = None,
+                              sort: Optional[str] = None,
+                              page: int = 1, page_size: int = 25,
+                              email: str = Depends(require_admin)):
     db = get_db()
-    cur = db["products"].find().sort("display_order", 1)
-    return [product_out(d) async for d in cur]
+    extra = {"category": category} if category else None
+    query = _list_query(q, status, featured, tech, tag, extra)
+    total = await db["products"].count_documents(query)
+    page = max(1, page)
+    page_size = max(1, min(page_size, 200))
+    cur = db["products"].find(query).sort(_list_sort(sort)).skip(
+        (page - 1) * page_size).limit(page_size)
+    return {"items": [product_out(d) async for d in cur],
+            "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/api/admin/products", status_code=201)
@@ -589,16 +822,25 @@ async def product_create(body: ProductLegacyIn, email: str = Depends(require_adm
     doc = {
         "legacy_id": uuid.uuid4().hex, "name": body.name.strip(), "slug": slug,
         "category": body.category or "", "description": body.description or "",
+        "short_description": body.short_description or "",
         "logo_url": body.logo_url, "screenshots": body.screenshots or [],
         "features": body.features or [], "tech_stack": body.tech_stack or [],
         "ai_capabilities": body.ai_capabilities, "architecture": body.architecture,
-        "product_url": body.product_url, "github_repo_id": body.github_repo_id,
+        "product_url": body.product_url, "live_url": body.live_url,
+        "docs_url": body.docs_url, "cta_text": body.cta_text, "cta_url": body.cta_url,
+        "github_url": body.github_url, "github_repo_id": body.github_repo_id,
+        "video_url": body.video_url,
         "status": body.status or "draft", "featured": body.featured or False,
+        "tags": body.tags or [], "featured_image": body.featured_image,
+        "gallery": body.gallery or [],
+        "seo_title": body.seo_title, "seo_description": body.seo_description,
+        "seo_image": body.seo_image, "rag_indexed": body.rag_indexed if body.rag_indexed is not None else True,
         "display_order": body.display_order or 0,
         "created_at": utcnow(), "updated_at": utcnow(),
     }
     await db["products"].insert_one(doc)
     await audit(email, "PRODUCT_CREATE", slug)
+    await _sync_catalog_rag("products", doc)
     return product_out(doc)
 
 
@@ -619,7 +861,9 @@ async def product_update(rid: str, body: ProductLegacyIn, email: str = Depends(r
     db = get_db()
     await db["products"].update_one({"_id": d["_id"]}, {"$set": patch})
     await audit(email, "PRODUCT_UPDATE", d.get("slug", rid))
-    return product_out({**d, **patch})
+    updated = {**d, **patch}
+    await _sync_catalog_rag("products", updated)
+    return product_out(updated)
 
 
 @router.delete("/api/admin/products/{rid}")
@@ -630,7 +874,92 @@ async def product_delete(rid: str, email: str = Depends(require_admin)):
     db = get_db()
     await db["products"].delete_one({"_id": d["_id"]})
     await audit(email, "PRODUCT_DELETE", rid)
+    try:
+        from app.services import rag_ingest
+        existing = await db["knowledge_documents"].find_one(
+            {"source_type": "product", "source_id": f"product:{d.get('slug', rid)}"})
+        if existing:
+            await rag_ingest.delete_document(str(existing["_id"]))
+    except Exception:
+        pass
     return {"message": "Deleted"}
+
+
+@router.patch("/api/admin/products/{rid}/status")
+async def product_status(rid: str, body: dict, email: str = Depends(require_admin)):
+    d = await by_id("products", rid)
+    if not d:
+        raise HTTPException(404, {"error": "Not found"})
+    status = (body or {}).get("status", "draft")
+    db = get_db()
+    await db["products"].update_one(
+        {"_id": d["_id"]}, {"$set": {"status": status, "updated_at": utcnow()}})
+    await audit(email, "PRODUCT_STATUS", d.get("slug", rid), {"status": status})
+    updated = {**d, "status": status}
+    await _sync_catalog_rag("products", updated)
+    return product_out(updated)
+
+
+@router.patch("/api/admin/products/{rid}/featured")
+async def product_featured(rid: str, body: dict, email: str = Depends(require_admin)):
+    d = await by_id("products", rid)
+    if not d:
+        raise HTTPException(404, {"error": "Not found"})
+    featured = bool((body or {}).get("featured", False))
+    db = get_db()
+    await db["products"].update_one(
+        {"_id": d["_id"]}, {"$set": {"featured": featured, "updated_at": utcnow()}})
+    await audit(email, "PRODUCT_FEATURED", d.get("slug", rid), {"featured": featured})
+    return product_out({**d, "featured": featured})
+
+
+# ── catalog image uploads ──
+
+@router.post("/api/admin/uploads/image")
+async def upload_image(request: Request, kind: str = "portfolio",
+                       email: str = Depends(require_admin)):
+    """Upload a catalog image. Returns a public /uploads/... URL (never a disk path)."""
+    from fastapi import UploadFile
+    if kind not in IMAGE_KINDS:
+        raise HTTPException(400, {"error": "kind must be portfolio|product"})
+    s = get_settings()
+    form = await request.form()
+    file = next((v for v in form.values() if _is_upload(v)), None)
+    if file is None:
+        raise HTTPException(400, {"error": "No file"})
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in IMAGE_EXTS:
+        raise HTTPException(400, {"error": "Only PNG/JPG/WEBP/GIF allowed"})
+    data = await file.read()
+    if len(data) > s.max_image_mb * 1024 * 1024:
+        raise HTTPException(400, {"error": f"Max {s.max_image_mb}MB"})
+    if not data.startswith((b"\x89PNG", b"\xff\xd8\xff", b"RIFF", b"GIF8")):
+        raise HTTPException(400, {"error": "Not a recognized image file"})
+    safe = f"{uuid.uuid4().hex}{ext}"
+    updir = Path(s.upload_dir) / kind
+    updir.mkdir(parents=True, exist_ok=True)
+    (updir / safe).write_bytes(data)
+    await audit(email, "IMAGE_UPLOAD", f"{kind}/{safe}", {"size": len(data)})
+    return {"url": f"/uploads/{kind}/{safe}", "size": len(data)}
+
+
+@router.delete("/api/admin/uploads")
+async def delete_upload(path: str = "", email: str = Depends(require_admin)):
+    """Delete an uploaded file by its public /uploads/... URL path."""
+    rel = (path or "").strip().lstrip("/")
+    parts = rel.split("/")
+    if len(parts) != 3 or parts[0] != "uploads" or parts[1] not in IMAGE_KINDS:
+        raise HTTPException(400, {"error": "Only catalog image URLs can be deleted this way"})
+    name = parts[2]
+    if not re.fullmatch(r"[0-9a-f]{32}\.(png|jpg|jpeg|webp|gif)", name, re.IGNORECASE):
+        raise HTTPException(400, {"error": "Invalid file reference"})
+    target = Path(get_settings().upload_dir) / parts[1] / name
+    try:
+        target.unlink(missing_ok=True)
+    except Exception:
+        pass
+    await audit(email, "IMAGE_DELETE", rel)
+    return {"ok": True}
 
 
 # ── github sync (heuristic port of the .NET sync) ──
@@ -922,7 +1251,7 @@ async def resume_upload(request: Request, email: str = Depends(require_admin)):
     from fastapi import UploadFile
     s = get_settings()
     form = await request.form()
-    file = next((v for v in form.values() if isinstance(v, UploadFile)), None)
+    file = next((v for v in form.values() if _is_upload(v)), None)
     if file is None:
         raise HTTPException(400, {"error": "No file"})
     ext = Path(file.filename or "").suffix.lower()

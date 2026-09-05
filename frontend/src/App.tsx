@@ -18,6 +18,7 @@ import Workbench from "./pages/admin/Workbench";
 import LogsManage from "./pages/admin/LogsManage";
 import Settings from "./pages/admin/Settings";
 import AdminLayout from "./components/admin/AdminLayout";
+import Markdown from "./components/Markdown";
 import ProtectedRoute from "./components/admin/ProtectedRoute";
 
 function DetailPage({ kind }: { kind: "portfolio" | "product" }) {
@@ -47,30 +48,52 @@ function DetailPage({ kind }: { kind: "portfolio" | "product" }) {
     return () => { alive = false; };
   }, [slug, kind]);
   const d = data as null | {
-    name?: string; title?: string; short_description?: string; description?: string;
+    name?: string; title?: string; short_description?: string; shortDescription?: string; description?: string;
     full_description?: string; problem?: string; solution?: string; business_value?: string;
     features?: string[]; architecture?: string; technologies?: string[]; techStack?: string[];
+    tags?: string[];
     github_url?: string | null; GitHubUrl?: string; live_url?: string | null; LiveUrl?: string;
-    demo_url?: string | null; video_url?: string | null; featured_image?: string | null;
-    gallery?: string[]; status?: string;
+    liveUrl?: string | null; demo_url?: string | null; docsUrl?: string | null; docs_url?: string | null;
+    ctaText?: string | null; cta_text?: string | null; ctaUrl?: string | null; cta_url?: string | null;
+    video_url?: string | null; videoEmbedUrl?: string | null;
+    featured_image?: string | null; featuredImage?: string | null;
+    logoUrl?: string | null; screenshots?: string[]; gallery?: string[];
+    seoTitle?: string | null; seo_title?: string | null;
+    status?: string;
   };
   const title = d?.name ?? d?.title ?? slug;
   const techs = d?.technologies ?? d?.techStack ?? [];
+  const tags = d?.tags ?? [];
   const gh = d?.github_url ?? d?.GitHubUrl ?? null;
-  const live = d?.live_url ?? d?.LiveUrl ?? d?.demo_url ?? null;
+  const live = d?.liveUrl ?? d?.live_url ?? d?.LiveUrl ?? d?.demo_url ?? null;
+  const docs = d?.docsUrl ?? d?.docs_url ?? null;
+  const ctaUrl = d?.ctaUrl ?? d?.cta_url ?? null;
+  const ctaText = d?.ctaText ?? d?.cta_text ?? null;
+  const heroImg = d?.featuredImage ?? d?.featured_image ?? d?.logoUrl ?? null;
+  const gallery = d?.gallery ?? d?.screenshots ?? [];
+  const embed = d?.videoEmbedUrl ?? (d?.video_url ? d.video_url.replace("youtu.be/", "www.youtube.com/embed/").split("?")[0] : null);
+  const seoTitle = d?.seoTitle ?? d?.seo_title ?? null;
+  useEffect(() => { if (seoTitle) document.title = seoTitle; }, [seoTitle]);
   return (
     <div className="min-h-screen p-6 md:p-12" style={{ background: "var(--c-bg-primary)", color: "var(--c-text-primary)" }}>
       <div className="max-w-3xl mx-auto">
         <a href="/" className="text-sm" style={{ color: "var(--c-text-secondary)" }}>← Home</a>
         <p className="mt-4 text-xs tracking-widest uppercase" style={{ color: "var(--c-accent-gold)", fontFamily: "JetBrains Mono, monospace" }}>{kind === "portfolio" ? "Portfolio" : "Product"}</p>
         <h1 className="text-3xl md:text-4xl font-bold mt-1" style={{ fontFamily: "Fraunces, serif" }}>{title}</h1>
-        {(d?.short_description || d?.description) && <p className="mt-3" style={{ color: "var(--c-text-secondary)" }}>{d.short_description ?? d.description}</p>}
-        {d?.featured_image && <img src={d.featured_image} alt={`${title} screenshot`} loading="lazy" className="mt-6 rounded-xl w-full" />}
-        {d?.video_url && (
-          <div className="mt-6 aspect-video">
-            <iframe src={d.video_url.replace("youtu.be/", "www.youtube.com/embed/").split("?")[0]} title={`${title} demo`} className="w-full h-full rounded-xl" loading="lazy" allowFullScreen />
+        {(d?.short_description || d?.shortDescription || d?.description) && <p className="mt-3" style={{ color: "var(--c-text-secondary)" }}>{d.short_description ?? d.shortDescription ?? ""}</p>}
+        {!!tags.length && <p className="mt-2 text-xs" style={{ color: "var(--c-text-muted)" }}>{tags.map((t) => `#${t}`).join("  ")}</p>}
+        {heroImg && <img src={heroImg} alt={`${title} screenshot`} loading="lazy" className="mt-6 rounded-xl w-full" />}
+        {!!gallery.length && (
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {gallery.filter((g) => g !== heroImg).map((g) => <img key={g} src={g} alt={`${title} gallery`} loading="lazy" style={{ width: 160, height: 110, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />)}
           </div>
         )}
+        {embed && (
+          <div className="mt-6 aspect-video">
+            <iframe src={embed} title={`${title} demo`} className="w-full h-full rounded-xl" loading="lazy" allowFullScreen />
+          </div>
+        )}
+        {(d?.description || d?.full_description) && <div className="mt-4 text-sm" style={{ color: "var(--c-text-secondary)" }}><Markdown text={d.description ?? d.full_description ?? ""} /></div>}
         {d?.problem && (<><h2 className="text-xl font-semibold mt-8">Problem</h2><p className="mt-2 text-sm" style={{ color: "var(--c-text-secondary)" }}>{d.problem}</p></>)}
         {d?.solution && (<><h2 className="text-xl font-semibold mt-6">Solution</h2><p className="mt-2 text-sm" style={{ color: "var(--c-text-secondary)" }}>{d.solution}</p></>)}
         {!!d?.features?.length && (<><h2 className="text-xl font-semibold mt-6">Features</h2><ul className="list-disc ml-5 mt-2 text-sm" style={{ color: "var(--c-text-secondary)" }}>{d.features.map((f) => <li key={f}>{f}</li>)}</ul></>)}
@@ -81,7 +104,9 @@ function DetailPage({ kind }: { kind: "portfolio" | "product" }) {
           {live ? <a href={live} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-full text-sm text-white" style={{ background: "#1547be" }}>Live Website ↗</a> : null}
           {gh ? <a href={gh} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-full text-sm border" style={{ borderColor: "var(--c-border)" }} aria-label="View GitHub repository">GitHub Repository ↗</a>
             : <span className="px-5 py-2.5 rounded-full text-sm border" style={{ borderColor: "var(--c-border)", color: "var(--c-text-muted)" }}>GitHub repository unavailable</span>}
-          <a href="/#contact" className="px-5 py-2.5 rounded-full text-sm border" style={{ borderColor: "var(--c-border)" }}>Request Quote</a>
+          {docs ? <a href={docs} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-full text-sm border" style={{ borderColor: "var(--c-border)" }}>Documentation ↗</a> : null}
+          {ctaUrl ? <a href={ctaUrl} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-full text-sm border" style={{ borderColor: "var(--c-border)" }}>{ctaText || "Learn more"} ↗</a>
+            : <a href="/#contact" className="px-5 py-2.5 rounded-full text-sm border" style={{ borderColor: "var(--c-border)" }}>Request Quote</a>}
         </div>
         {!d && <p className="mt-6 text-sm" style={{ color: "var(--c-text-muted)" }}>Loading CMS content… (falls back to homepage sections if API is offline)</p>}
       </div>
