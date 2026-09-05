@@ -21,6 +21,12 @@ const NAV: { label: string; items: NavEntry[] }[] = [
   { label: "Engagement", items: [
     { to: "/admin/leads", label: "Leads", icon: "fas fa-user-plus" },
   ]},
+  { label: "Career", items: [
+    { to: "/admin/career", label: "Workspace", icon: "fas fa-briefcase" },
+    { to: "/admin/career/jobs", label: "Job Openings", icon: "fas fa-list-check" },
+    { to: "/admin/career/companies", label: "Companies", icon: "fas fa-building" },
+    { to: "/admin/career/applications", label: "Applications", icon: "fas fa-paper-plane" },
+  ]},
   { label: "Intelligence", items: [
     { to: "/admin/knowledge", label: "Knowledge Base", icon: "fas fa-brain" },
     { to: "/admin/agents", label: "AI Agents", icon: "fas fa-robot" },

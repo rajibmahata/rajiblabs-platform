@@ -812,3 +812,79 @@ async def audit_workbench(email: str, action: str, entity: str = "",
                     event_type=action, session_id=session_id)
     except Exception as e:
         log.warning("workbench audit failed: %s", e)
+
+
+# ── Career Application generation (admin-only; reuses the pipeline above) ──
+
+CAREER_GENERATION_PROMPT = """You are drafting a job application email for Rajib Mahata, a professional
+software candidate. Use ONLY the verified evidence provided. Never invent
+employers, titles, metrics, certifications, URLs or history. Never mention
+Upwork, freelancing, freelancer platforms, or present RajibLabs as a
+freelancing platform. Write as Rajib in first person: professional, human,
+concise, personalized to the hiring contact. Return JSON keys exactly:
+email_subject, email_body, cover_letter, short_summary."""
+
+CAREER_CONTEXT_RULES = (
+    "Context rules for JOB APPLICATIONS: draw on professional experience, resume, "
+    "skills, LinkedIn, relevant projects and education. Do NOT mention Upwork, "
+    "freelancing, freelancer platforms, 'freelance project', or present RajibLabs "
+    "as a freelancing platform, unless the job description explicitly requires it."
+)
+
+
+async def generate_career_application(analysis: RequirementAnalysis,
+                                      matches: list[ExperienceMatch],
+                                      selected: list[dict],
+                                      known_urls: set[str],
+                                      company_name: str = "",
+                                      contact_name: str = "",
+                                      db=None) -> tuple[dict, bool]:
+    """Returns ({email_subject, email_body, cover_letter, short_summary,
+    sources}, ai_used). Deterministic template fallback when AI is down —
+    still grounded only in verified evidence."""
+    match_lines = "\n".join(
+        f"- {m.requirement} → {m.project or '(no direct evidence)'}"
+        + (f" ({m.url})" if m.url else "") for m in matches)
+    sources = [ProposalSource(
+        title=c.get("doc_title") or c.get("title", ""),
+        type=c.get("source_type", "project"),
+        url=validate_url(c.get("doc_url") or "", known_urls),
+        reason=c.get("selection_reason") or f"Ranked #{i+1} for this role") for i, c in enumerate(selected)]
+    to_line = f"To: {contact_name} ({company_name})" if contact_name or company_name else "To: hiring team"
+    brief = (f"{to_line}\nRole: {analysis.title} | {analysis.industry} | {company_name}\n"
+             f"{CAREER_CONTEXT_RULES}\n"
+             f"Requirements:\n{match_lines}\nEvidence:\n{_evidence_block(selected)}")
+    try:
+        svc = await _orchestrator()
+        out = await svc._complete(
+            [{"role": "system", "content": CAREER_GENERATION_PROMPT},
+             {"role": "user", "content": brief[:9000]}],
+            max_tokens=1500, temperature=0.4, tag="career-generate")
+        data = out["data"]
+        texts = {k: str(data.get(k, "")) for k in
+                 ("email_subject", "email_body", "cover_letter", "short_summary")}
+    except Exception as e:
+        log.warning("career template fallback: %s", e)
+        ex = selected[0] if selected else None
+        ex_line = (f"For example, {ex.get('doc_title')}: "
+                   f"{(ex.get('content') or '')[:220]}") if ex else ""
+        role = analysis.title or "this role"
+        texts = {
+            "email_subject": f"Application for {role} — Rajib Mahata",
+            "email_body": (
+                f"Dear {contact_name or 'Hiring Manager'},\n\n"
+                f"I am applying for the {role} position"
+                f"{' at ' + company_name if company_name else ''}. {ex_line}\n\n"
+                f"Relevant strengths: "
+                f"{', '.join(m.requirement for m in matches if m.project) or 'see below'}.\n\n"
+                f"I would welcome the chance to discuss how I can contribute.\n\n"
+                f"Best regards,\nRajib Mahata"),
+            "cover_letter": "",
+            "short_summary": (
+                f"Rajib Mahata applying for {role}: "
+                f"{', '.join(analysis.technologies[:4]) or 'relevant experience'}."),
+        }
+        return {**texts, "sources": [s.model_dump() for s in sources]}, False
+    for k in ("email_body", "cover_letter", "short_summary"):
+        texts[k] = _scrub_urls(texts[k], known_urls)
+    return {**texts, "sources": [s.model_dump() for s in sources]}, True

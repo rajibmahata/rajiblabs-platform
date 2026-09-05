@@ -279,6 +279,14 @@ async def ensure_indexes(db=None) -> None:
         "proposal_documents": [[("status", 1)], [("type", 1)],
                                [("created_at", -1)], [("session_id", 1)]],
         "proposal_sessions": [[("session_id", 1)], [("updated_at", -1)]],
+        # Career Application module (private; admin JWT only)
+        "career_companies": [[("name", 1)], [("active", 1)]],
+        "career_contacts": [[("company_id", 1)], [("email", 1)],
+                            [("active", 1)]],
+        "career_jobs": [[("company_id", 1)], [("status", 1)],
+                        [("updated_at", -1)]],
+        "career_applications": [[("job_id", 1)], [("status", 1)],
+                                [("created_at", -1)], [("followup_date", 1)]],
         # Multilingual framework: language master + translation records + hot cache
         "languages": [[("enabled", 1)], [("sort_order", 1)]],
         "translations": [[("key", 1), ("target_language", 1)],

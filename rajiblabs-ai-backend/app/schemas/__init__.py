@@ -411,3 +411,130 @@ class TranslateIn(BaseModel):
     source_language: str = Field(default="en", max_length=12)
     context: str = Field(default="", max_length=1000)
 
+
+
+# ── Career Application module ──
+
+CareerContactType = Literal["HR", "Recruiter", "Talent Acquisition", "General"]
+CAREER_CONTACT_TYPES = ("HR", "Recruiter", "Talent Acquisition", "General")
+
+CareerJobStatus = Literal["Draft", "Open", "Analyzing", "Ready for Application",
+                          "Applied", "Closed"]
+CAREER_JOB_STATUSES = ("Draft", "Open", "Analyzing", "Ready for Application",
+                       "Applied", "Closed")
+
+CareerAppStatus = Literal["Draft", "AI Generated", "Needs Review", "Approved",
+                          "Sent", "Follow-up", "Response Received", "Interview",
+                          "Rejected", "Offer", "Closed"]
+CAREER_APP_STATUSES = ("Draft", "AI Generated", "Needs Review", "Approved",
+                       "Sent", "Follow-up", "Response Received", "Interview",
+                       "Rejected", "Offer", "Closed")
+
+
+class CompanyIn(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    careers_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    active: bool = True
+    notes: Optional[str] = None
+
+
+class CompanyPatch(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    careers_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class ContactIn(BaseModel):
+    company_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=2, max_length=200)
+    email: str = Field(min_length=3, max_length=254)
+    designation: Optional[str] = None
+    department: Optional[str] = None
+    contact_type: CareerContactType = "HR"
+    source: Optional[str] = None
+    verified: bool = False
+    active: bool = True
+    notes: Optional[str] = None
+
+
+class ContactPatch(BaseModel):
+    company_id: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    email: Optional[str] = None
+    designation: Optional[str] = None
+    department: Optional[str] = None
+    contact_type: Optional[CareerContactType] = None
+    source: Optional[str] = None
+    verified: Optional[bool] = None
+    active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class JobIn(BaseModel):
+    company_id: Optional[str] = None
+    title: str = Field(min_length=2, max_length=300)
+    job_url: Optional[str] = None
+    description: str = Field(min_length=20, max_length=20000)
+    location: Optional[str] = None
+    employment_type: Optional[str] = None
+    required_skills: list[str] = []
+    preferred_skills: list[str] = []
+    experience: Optional[str] = None
+    technologies: list[str] = []
+    keywords: list[str] = []
+    deadline: Optional[str] = None
+    status: CareerJobStatus = "Draft"
+    agent_slug: Optional[str] = None
+
+
+class JobPatch(BaseModel):
+    company_id: Optional[str] = None
+    title: Optional[str] = Field(default=None, min_length=2, max_length=300)
+    job_url: Optional[str] = None
+    description: Optional[str] = Field(default=None, min_length=20, max_length=20000)
+    location: Optional[str] = None
+    employment_type: Optional[str] = None
+    required_skills: Optional[list[str]] = None
+    preferred_skills: Optional[list[str]] = None
+    experience: Optional[str] = None
+    technologies: Optional[list[str]] = None
+    keywords: Optional[list[str]] = None
+    deadline: Optional[str] = None
+    status: Optional[CareerJobStatus] = None
+    agent_slug: Optional[str] = None
+
+
+class CareerAnalyzeIn(BaseModel):
+    instructions: Optional[str] = Field(default=None, max_length=2000)
+
+
+class CareerGenerateIn(BaseModel):
+    contact_id: Optional[str] = None
+    instructions: Optional[str] = Field(default=None, max_length=2000)
+
+
+class CareerRefineIn(BaseModel):
+    instruction: str = Field(min_length=2, max_length=2000)
+    target: str = Field(default="email_body", max_length=20)  # email_body|cover_letter|summary
+
+
+class ApplicationPatch(BaseModel):
+    status: Optional[CareerAppStatus] = None
+    notes: Optional[str] = None
+    followup_date: Optional[str] = None
+    response_at: Optional[str] = None
+    email_subject: Optional[str] = None
+    email_body: Optional[str] = None
+    cover_letter: Optional[str] = None
+    summary: Optional[str] = None

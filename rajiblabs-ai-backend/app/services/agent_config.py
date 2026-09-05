@@ -77,7 +77,46 @@ EDITABLE_FIELDS = {
 }
 
 AGENT_TYPES = ("concierge", "proposal", "recruiter", "marketing",
-               "research", "support")
+               "research", "support", "career")
+
+CAREER_SLUG = "rajiblabs-career"
+
+DEFAULT_CAREER = {
+    "name": "RajibLabs Career Application Agent",
+    "slug": CAREER_SLUG,
+    "description": "Admin-only agent: analyzes job openings against Rajib's verified "
+                   "professional knowledge and drafts targeted job applications "
+                   "(email + cover letter + summary). Never sends without approval.",
+    "enabled": True,
+    "public_enabled": False,
+    "agent_type": "career",
+    "system_prompt": (
+        "You are the RajibLabs Career Application Agent. Rajib Mahata is a "
+        "professional candidate applying for employment. Use ONLY the verified "
+        "evidence provided (resume, experience, skills, projects, GitHub). Never "
+        "invent employers, titles, metrics, certifications, URLs or history. "
+        "Never mention Upwork, freelancing, freelancer platforms, or present "
+        "RajibLabs as a freelancing platform. Sound like a professional human "
+        "candidate, concise and personalized. Use only the URLs provided."
+    ),
+    "allowed_tools": [
+        "search_knowledge", "get_rajib_profile", "get_projects",
+        "get_project_details", "get_github_projects", "get_relevant_sources",
+    ],
+    "knowledge_sources": list(DEFAULT_SOURCE_POLICY),
+    "knowledge_policy": dict(DEFAULT_SOURCE_POLICY),
+    "guardrail_policy": "career",
+    "hallucination_policy": "verified-only",
+    "response_policy": "concise-grounded",
+    "response_style": "professional, human, concise; first-person candidate voice; "
+                      "no jargon dumps; never repeat the job description",
+    "lead_capture_enabled": False,
+    "lead_fields": [],
+    "fallback_message": (
+        "I don't currently have verified information about that in the "
+        "RajibLabs knowledge base."
+    ),
+}
 
 
 async def ensure_seed(db=None) -> dict:
@@ -86,6 +125,18 @@ async def ensure_seed(db=None) -> dict:
     if existing:
         return existing
     doc = {**DEFAULT_CONCIERGE, "created_at": utcnow(), "updated_at": utcnow(),
+           "stats": {"turns": 0, "tool_calls": 0, "leads": 0, "errors": 0}}
+    await db["ai_agents"].insert_one(doc)
+    return doc
+
+
+async def ensure_career_seed(db=None) -> dict:
+    """Idempotent seed for the Career Application Agent (never overwrites edits)."""
+    db = get_db() if db is None else db
+    existing = await db["ai_agents"].find_one({"slug": CAREER_SLUG})
+    if existing:
+        return existing
+    doc = {**DEFAULT_CAREER, "created_at": utcnow(), "updated_at": utcnow(),
            "stats": {"turns": 0, "tool_calls": 0, "leads": 0, "errors": 0}}
     await db["ai_agents"].insert_one(doc)
     return doc

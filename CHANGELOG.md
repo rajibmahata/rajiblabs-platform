@@ -2,6 +2,31 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Career Application module (Admin)
+
+### Added
+- New collections `career_companies`, `career_contacts`, `career_jobs`,
+  `career_applications` (+indexes); schemas with strict statuses; `career` agent
+  type + seeded `rajiblabs-career` agent (admin-only, shared KB).
+- `email_service.py` (stdlib SMTP only): validated sends, `EmailError` taxonomy,
+  never logs bodies/credentials.
+- `workbench.generate_career_application` reusing analyze→evidence→match→quality
+  pipeline + career context policy (no freelance language; new quality flags);
+  deterministic template fallback when AI is down.
+- `admin_career` router (JWT): company/contact/job CRUD with guards (409 on
+  in-use deletes), analyze (staged timings), generate (creates Needs Review app
+  + job → Ready), refine, approve (state-gated), send (approved-only, duplicate
+  guard, active-contact + subject/body validation, 502 leaves status untouched),
+  status transitions, tracking grid (search/status/company/date/sort/page).
+  Everything audited; failures logged without secrets.
+- Admin UI: Career group (Workspace 3-column with progress/loading states, error
+  panel + Retry, tabs, approve/send confirmation; Companies+Contacts; Jobs;
+  Applications tracking with detail/approve/send). No bare `alert()` in new code.
+- Tests: `test_career.py` (12 passed) — email validation/config/send/failure,
+  agent seed idempotency, CRUD guards, analyze→generate flow, approve/send guards,
+  duplicate/resend, missing-contact + SMTP-down paths, tracking/refine, auth gates.
+- Full suite **232 passed**; `tsc` + `eslint` clean; `vite build` succeeds.
+
 ## [Unreleased] — Fix CI suite: seed fixture + fake provider key (7 failures)
 
 ### Fixed (root causes, not symptoms)

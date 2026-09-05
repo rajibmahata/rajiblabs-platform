@@ -211,10 +211,15 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - Admin GitHub: `/api/admin/github/{config,test,status,sync}`, `/repositories` (+`/{id}` PATCH/sync/knowledge/reindex/disable/delete-knowledge, `/map`).
 - Workbench: `/api/admin/ai/proposal/{analyze,generate,refine,save}`, `/proposal/{id}`
   (GET/PUT/DELETE), `/proposal/{id}/duplicate`, `/proposals`, `/ai/chat`.
+- Career: `/api/admin/career/{companies,contacts,jobs,applications}` (+`/{id}` CRUD),
+  `/jobs/{id}/{analyze,generate}`, `/applications/{id}/{refine,approve,send,status}`.
+  Email sends ONLY approved apps via `email_service` (stdlib SMTP); duplicate sends
+  refused without `resend:true`; sent apps are history-immutable.
 - CMS/admin: `/api/admin/{dashboard,projects,products,portfolio,resume,profile,content,leads,notifications,logs,github/*}`.
 - Collections: `projects`, `products`, `profiles`, `customer_leads`, `customer_conversations`,
   `customer_messages`, `ideas`, `knowledge_documents`, `knowledge_chunks`,
   `proposal_documents`, `proposal_sessions`, `github_repositories`, `notifications`,
+  `career_companies`, `career_contacts`, `career_jobs`, `career_applications`,
   `error_logs` (7-day TTL + daily-agent sweep), `audit_logs`, `ai_agents` (seeded concierge),
   `site_settings` (`github` token doc — write-only API, never returned),
   `languages` (seeded, unique `code`),
