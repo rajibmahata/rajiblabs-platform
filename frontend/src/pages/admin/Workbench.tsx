@@ -26,7 +26,7 @@ const GENERATE_STEPS = ["Reading project requirements…", "Matching Rajib's exp
 
 type Progress = { steps: string[]; index: number; startedAt: number; elapsed: number } | null;
 
-function useProgress(active: boolean, steps: string[]): [Progress, () => void] {
+function useProgress(steps: string[]): [Progress, () => void, () => void] {
   const [prog, setProg] = useState<Progress>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const start = () => {
@@ -42,15 +42,13 @@ function useProgress(active: boolean, steps: string[]): [Progress, () => void] {
       });
     }, 500);
   };
-  useEffect(() => {
-    if (!active) {
-      if (timer.current) clearInterval(timer.current);
-      setProg(null);
-    }
-    return () => { if (timer.current) clearInterval(timer.current); };
-  }, [active]);
+  const stop = () => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = null;
+    setProg(null);
+  };
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
-  return [prog, start];
+  return [prog, start, stop];
 }
 
 function ProgressBar({ prog, doneLabel }: { prog: NonNullable<Progress>; doneLabel?: string }) {
@@ -77,8 +75,8 @@ export default function Workbench({ initialView = "workspace" }: { initialView?:
   const [busyRefine, setBusyRefine] = useState<string | null>(null);
   const [busyChat, setBusyChat] = useState(false);
   const [busySave, setBusySave] = useState(false);
-  const [analyzeProg, startAnalyzeProg] = useProgress(busyAnalyze, ANALYZE_STEPS);
-  const [generateProg, startGenerateProg] = useProgress(busyGenerate, GENERATE_STEPS);
+  const [analyzeProg, startAnalyzeProg, stopAnalyzeProg] = useProgress(ANALYZE_STEPS);
+  const [generateProg, startGenerateProg, stopGenerateProg] = useProgress(GENERATE_STEPS);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [match, setMatch] = useState<any>(null);
@@ -136,7 +134,7 @@ export default function Workbench({ initialView = "workspace" }: { initialView?:
       setAnalysis(r.analysis); setSessionId(r.session_id); setErr(null);
       setMsgs((m) => [...m, { role: "user", text: jd.slice(0, 400) + (jd.length > 400 ? "…" : "") },
         { role: "assistant", text: `Analyzed: ${r.analysis.title || "opportunity"} (${r.analysis.industry || "industry TBD"}). Tech: ${(r.analysis.technologies || []).slice(0, 6).join(", ") || "—"} in ${((r.elapsed_ms ?? 0) / 1000).toFixed(1)}s. Press Generate Proposal when ready.` }]);
-    } catch (e: any) { fail("Analyze", e, doAnalyze); } finally { setBusyAnalyze(false); }
+    } catch (e: any) { fail("Analyze", e, doAnalyze); } finally { setBusyAnalyze(false); stopAnalyzeProg(); }
   };
   const doGenerate = async () => {
     if (!validJd() || busyAnalyze || busyGenerate) return;
@@ -146,7 +144,7 @@ export default function Workbench({ initialView = "workspace" }: { initialView?:
         { job_description: jd, mode, analysis, session_id: sessionId, company: company || undefined, instructions: instructions || undefined });
       syncGen(g);
       setMsgs((m) => [...m, { role: "assistant", text: `Generated (${mode}, AI relevance estimate ${g.match?.match_score ?? 0}%) in ${((g.total_ms ?? 0) / 1000).toFixed(1)}s. Review the tabs on the right, then refine or save.` }]);
-    } catch (e: any) { fail("Generate", e, doGenerate); } finally { setBusyGenerate(false); }
+    } catch (e: any) { fail("Generate", e, doGenerate); } finally { setBusyGenerate(false); stopGenerateProg(); }
   };
   const refineTarget = outTab === "cover" ? "cover_letter" : outTab === "summary" ? "summary" : outTab === "explanation" ? "explanation" : "proposal";
   const doRefine = async (instruction: string, target: string = refineTarget) => {
@@ -222,7 +220,6 @@ export default function Workbench({ initialView = "workspace" }: { initialView?:
     URL.revokeObjectURL(a.href);
   };
 
-  const anyBusy = busyAnalyze || busyGenerate || busyChat || busySave || busyRefine !== null;
   const ghRelevant = relevant.filter((r) => /github|repo/i.test(`${r.project} ${r.evidence}`));
   return (
     <div>
