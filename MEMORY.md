@@ -58,7 +58,11 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 5. Register router in `app/main.py` router list + `openapi_tags`. Add tests in `tests/`
    following the fake-at-boundary pattern (monkeypatch `AIService` / `rag_query.retrieve`;
    `respx` for GitHub HTTP; live-Mongo tests must skip gracefully when DB is down).
-6. `python3 -m pytest tests/ -q` (~199 tests, must stay green).
+   Tests hitting `lead_ai._complete` retry logic need the `fake_ai_key` fixture
+   (fake `OPENAI_API_KEY` + cache reset) — otherwise they die at the unconfigured gate.
+   `tests/conftest.py` seeds-if-empty on a reachable Mongo so live tests are
+   deterministic on fresh DBs; never assert on ambient seed content beyond that.
+6. `python3 -m pytest tests/ -q` (~208 tests, must stay green).
 
 ## Secrets (non-negotiable)
 

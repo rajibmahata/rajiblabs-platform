@@ -57,6 +57,18 @@ def fake_ai(monkeypatch):
     return fake
 
 
+@pytest.fixture
+def fake_ai_key(monkeypatch):
+    """Fake provider key so `lead_ai._complete` retry tests reach the mocked
+    HTTP layer instead of failing at the unconfigured gate. No network happens
+    (tests monkeypatch httpx.AsyncClient); deterministic with cache reset."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake-key-for-unit-tests")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture(autouse=True)
 async def _mongo_guard():
     try:
@@ -555,7 +567,7 @@ async def test_22_audit_logging(fake_ai):
 
 
 @pytest.mark.asyncio
-async def test_23_prose_wrapped_json_repaired(monkeypatch):
+async def test_23_prose_wrapped_json_repaired(monkeypatch, fake_ai_key):
     """Model wraps JSON in prose → repair path parses, no AIError."""
     import httpx
     import json as _json
@@ -595,7 +607,7 @@ async def test_23_prose_wrapped_json_repaired(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_24_empty_content_retries_then_ai_error(monkeypatch):
+async def test_24_empty_content_retries_then_ai_error(monkeypatch, fake_ai_key):
     """200 + empty content (the JSONDecodeError("") case) → EmptyContent, AIError."""
     import httpx
     from app.services import lead_ai
@@ -637,7 +649,7 @@ async def test_24_empty_content_retries_then_ai_error(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_25_refusal_breaks_early(monkeypatch):
+async def test_25_refusal_breaks_early(monkeypatch, fake_ai_key):
     """Refusal is deterministic for the input → exactly 1 attempt, AIError."""
     import httpx
     from app.services import lead_ai
@@ -675,7 +687,7 @@ async def test_25_refusal_breaks_early(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_26_http_401_breaks_early(monkeypatch):
+async def test_26_http_401_breaks_early(monkeypatch, fake_ai_key):
     """Wrong key (401) → 1 attempt, not 3; details name the status."""
     import httpx
     from app.services import lead_ai
@@ -720,7 +732,7 @@ def test_27_extract_json_object_cases():
 
 
 @pytest.mark.asyncio
-async def test_28_http_404_retries_once_with_fallback_model(monkeypatch):
+async def test_28_http_404_retries_once_with_fallback_model(monkeypatch, fake_ai_key):
     """Unknown primary model (404) → one retry with openai_fallback_model, then success."""
     import httpx
     import json as _json

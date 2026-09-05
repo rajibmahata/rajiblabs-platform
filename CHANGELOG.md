@@ -2,6 +2,19 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Fix CI suite: seed fixture + fake provider key (7 failures)
+
+### Fixed (root causes, not symptoms)
+- `/api/profile` 404 + empty-profile tools on fresh DBs: live tests assumed a
+  seeded database but nothing seeds it (ASGI transport skips lifespan). New
+  session `tests/conftest.py` runs seed-if-empty `init_db()` when Mongo is
+  reachable (never wipes; no-op when down, existing skip-guards unchanged).
+- 5× `lead_ai` retry/repair tests died at the `AI not configured` gate: they mock
+  HTTP but never opened the config gate. New `fake_ai_key` fixture (fake
+  `OPENAI_API_KEY` + `lru_cache` reset, torn down after) wired into exactly those
+  5 tests — no network happens, other unconfigured-behavior tests untouched.
+- Verified: full suite **208 passed**, including the 7 previously failing.
+
 ## [Unreleased] — Transfer-based VPS deploy (no git on server)
 
 ### Changed
