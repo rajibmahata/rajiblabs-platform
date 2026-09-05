@@ -50,14 +50,12 @@ export default function LogsManage() {
     api.get<Stats>(`${BASE}/api/admin/logs/stats`).then(setStats).catch(() => {});
   };
 
-  // Debounced reload on filter change (page resets to 1).
+  // Debounced reload (page resets to 1 in the input handlers below).
   useEffect(() => {
-    setPageNo(1);
-    const t = setTimeout(() => load(1), 400);
+    const t = setTimeout(() => load(pageNo), 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, level, dateFrom, dateTo, sort, pageSize]);
-  useEffect(() => { load(pageNo); }, [pageNo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [q, level, dateFrom, dateTo, sort, pageSize, pageNo]);
 
   // ESC closes the details modal.
   useEffect(() => {
@@ -88,20 +86,20 @@ export default function LogsManage() {
 
       <Panel title="Search & filters" sub="Message, source, module, path and error text">
         <div className="rla-filter-grid">
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search message / source / error…" className="rla-input" aria-label="Search logs" />
-          <select value={level} onChange={e => setLevel(e.target.value)} className="rla-select" aria-label="Log level">
+          <input value={q} onChange={e => { setQ(e.target.value); setPageNo(1); }} placeholder="Search message / source / error…" className="rla-input" aria-label="Search logs" />
+          <select value={level} onChange={e => { setLevel(e.target.value); setPageNo(1); }} className="rla-select" aria-label="Log level">
             <option value="all">all levels</option>
             <option value="error">error</option>
             <option value="warning">warning</option>
             <option value="info">info</option>
           </select>
-          <input type="datetime-local" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="rla-input" aria-label="From date" />
-          <input type="datetime-local" value={dateTo} onChange={e => setDateTo(e.target.value)} className="rla-input" aria-label="To date" />
-          <select value={sort} onChange={e => setSort(e.target.value as "newest" | "oldest")} className="rla-select" aria-label="Sort order">
+          <input type="datetime-local" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPageNo(1); }} className="rla-input" aria-label="From date" />
+          <input type="datetime-local" value={dateTo} onChange={e => { setDateTo(e.target.value); setPageNo(1); }} className="rla-input" aria-label="To date" />
+          <select value={sort} onChange={e => { setSort(e.target.value as "newest" | "oldest"); setPageNo(1); }} className="rla-select" aria-label="Sort order">
             <option value="newest">newest first</option>
             <option value="oldest">oldest first</option>
           </select>
-          <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} className="rla-select" aria-label="Page size">
+          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPageNo(1); }} className="rla-select" aria-label="Page size">
             {PAGE_SIZES.map(n => <option key={n} value={n}>{n} / page</option>)}
           </select>
           <button onClick={clearFilters} className="rla-btn rla-btn-ghost rla-btn-sm">Clear</button>
@@ -116,7 +114,7 @@ export default function LogsManage() {
         <div className="rla-table-wrap">
           <table className="rla-table">
             <thead><tr>
-              <th><button onClick={() => setSort(s => s === "newest" ? "oldest" : "newest")} className="rla-th-sort" title="Toggle sort">Time {sort === "newest" ? "↓" : "↑"}</button></th>
+              <th><button onClick={() => { setSort(s => s === "newest" ? "oldest" : "newest"); setPageNo(1); }} className="rla-th-sort" title="Toggle sort">Time {sort === "newest" ? "↓" : "↑"}</button></th>
               <th>Level</th><th>Source</th><th>Message</th><th style={{ textAlign: "right" }}>Actions</th>
             </tr></thead>
             <tbody>

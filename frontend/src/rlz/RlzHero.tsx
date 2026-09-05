@@ -3,90 +3,6 @@ import { siteConfig } from "../config/site";
 import { HERO_STATS } from "./data";
 import { useLang } from "../i18n/langContext";
 
-function useNeuralCanvas(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let raf = 0;
-    const mouse: { x: number | null; y: number | null } = { x: null, y: null };
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const count = Math.min(90, Math.floor(window.innerWidth / 14));
-    const particles = Array.from({ length: count }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      r: Math.random() * 1.8 + 0.6,
-    }));
-
-    const onMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
-    };
-    const onOut = () => { mouse.x = null; mouse.y = null; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseout", onOut);
-
-    const frame = () => {
-      if (!ctx) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const isMobile = window.innerWidth < 768;
-      for (const p of particles) {
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(124, 58, 237, 0.35)";
-        ctx.fill();
-        if (mouse.x !== null && mouse.y !== null && !isMobile) {
-          const dist = Math.hypot(mouse.x - p.x, mouse.y - p.y);
-          if (dist < 180) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(mouse.x, mouse.y);
-            ctx.strokeStyle = `rgba(6, 182, 212, ${0.3 * (1 - dist / 180)})`;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          }
-        }
-      }
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(124, 58, 237, ${0.12 * (1 - dist / 120)})`;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          }
-        }
-      }
-      raf = requestAnimationFrame(frame);
-    };
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!reduced) raf = requestAnimationFrame(frame);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseout", onOut);
-    };
-  }, [canvasRef]);
-}
-
 function useTyping(textRef: React.RefObject<HTMLSpanElement | null>, phrases: string[]) {
   useEffect(() => {
     const el = textRef.current;
@@ -154,16 +70,13 @@ function useCounters(scopeRef: React.RefObject<HTMLElement | null>) {
 
 export default function RlzHero({ scopeRef }: { scopeRef: React.RefObject<HTMLElement | null> }) {
   const { t, tArr } = useLang();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const typingRef = useRef<HTMLSpanElement | null>(null);
-  useNeuralCanvas(canvasRef);
   useTyping(typingRef, tArr("hero.typing"));
   useCounters(scopeRef);
   const statLabels = [t("hero.statYears"), t("hero.statRepos"), t("hero.statProducts")];
 
   return (
     <section className="rlz-hero rlz-section" id="home" style={{ paddingTop: 160, paddingBottom: 80 }}>
-      <canvas ref={canvasRef} className="rlz-neural-canvas" aria-hidden="true" />
       <div className="rlz-container">
         <div className="rlz-hero-grid">
           <div>

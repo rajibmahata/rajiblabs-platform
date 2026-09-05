@@ -28,7 +28,7 @@ export default function AgentsManage() {
       try { setConvos(await api.get<any[]>(`/api/admin/agents/${s}/conversations?limit=20`)); } catch { /* none */ }
     } catch (e: any) { toast("Load failed", String(e.message || e).slice(0, 120)); }
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- initial mount fetch
 
   const pick = (s: string) => { setSlug(s); setTestRes(null); load(s); };
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));

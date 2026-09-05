@@ -25,8 +25,8 @@
 --rlz-shadow-glow: 0 12px 40px rgba(124, 58, 237, 0.25);
 --rlz-radius: 20px;
 --rlz-ease: cubic-bezier(0.22, 1, 0.36, 1);
-font-family: 'Inter', system-ui, sans-serif;
-background: var(--rlz-bg);
+ font-family: 'Inter', system-ui, sans-serif;
+ background: transparent;
 color: var(--rlz-text);
 line-height: 1.6;
 overflow-x: clip;
@@ -44,8 +44,9 @@ overflow-x: clip;
 .rlz .rlz-mono {font-family: 'JetBrains Mono', monospace;}
 .rlz .rlz-container {width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px;}
 .rlz .rlz-section {padding: 110px 0; position: relative;}
+.rlz .rlz-page-bg {position: fixed; inset: 0; z-index: -4; background: #f7f8fc; pointer-events: none;}
 .rlz .rlz-bg-grid {
-    position: fixed; inset: 0; z-index: 0;
+    position: fixed; inset: 0; z-index: -3;
     background-image:
       linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px),
       linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px);
@@ -55,7 +56,7 @@ overflow-x: clip;
     pointer-events: none;}
 .rlz .rlz-orb {
     position: fixed; border-radius: 50%; filter: blur(100px);
-    z-index: 0; opacity: 0.5; pointer-events: none;
+    z-index: -2; opacity: 0.5; pointer-events: none;
     animation: rlz-orb-float 18s ease-in-out infinite alternate;}
 .rlz .rlz-orb-1 {width: 480px; height: 480px; background: rgba(196, 181, 253, 0.55); top: -160px; left: -140px;}
 .rlz .rlz-orb-2 {width: 400px; height: 400px; background: rgba(165, 243, 252, 0.55); top: 30%; right: -150px; animation-delay: -6s;}
@@ -93,8 +94,12 @@ overflow-x: clip;
 .rlz .rlz-nav-cta {background: var(--rlz-grad-1) !important; color: #fff !important; box-shadow: var(--rlz-shadow-glow);}
 .rlz .rlz-nav-cta:hover {box-shadow: 0 14px 34px rgba(124,58,237,0.4) !important; transform: translateY(-1px); color: #fff !important;}
 .rlz .rlz-hamburger {display: none; background: none; border: none; color: var(--rlz-text); font-size: 1.4rem; cursor: pointer; min-width: 44px; min-height: 44px;}
-.rlz .rlz-hero {min-height: 100vh; display: flex; align-items: center; padding: 160px 0 80px; overflow: hidden; position: relative;}
-.rlz .rlz-neural-canvas {position: absolute; inset: 0; z-index: 0; opacity: 0.75;}
+.rlz .rlz-hero {min-height: 100vh; display: flex; align-items: center; padding: 160px 0 80px; position: relative; overflow: visible;}
+/* Full-page fixed neural canvas — covers the entire homepage, not just hero */
+.rlz .rlz-neural-canvas {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  z-index: -1; pointer-events: none; opacity: 0.85; display: block;
+}
 .rlz .rlz-hero .rlz-container {position: relative; z-index: 2;}
 .rlz .rlz-hero-grid {display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 60px; align-items: center;}
 .rlz .rlz-hero-badge {

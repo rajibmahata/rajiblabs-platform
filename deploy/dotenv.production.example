@@ -1,0 +1,60 @@
+# RajibLabs production env — copy to /opt/rajiblabs/config/.env and fill secrets.
+# NEVER commit the filled file. IP-based VPS values (no domain attached);
+# full variable reference: docs/configuration.md
+# (rajiblabs-ai-backend/.env.production is the domain-oriented equivalent.)
+APP_URL=http://169.58.165.10
+CORS_ORIGINS=http://169.58.165.10,https://rajiblabs.com
+ADMIN_EMAILS=rajibmahata143@gmail.com,rajibmahata143@outlook.com
+
+# ── REQUIRED (deploy fails safe without these — API boot errors in prod) ──
+ADMIN_INITIAL_PASSWORD=
+SECRET_KEY=
+JWT_SECRET=
+
+# ── Optional tuning (defaults shown) ──
+JWT_EXPIRE_MINUTES=15
+REFRESH_EXPIRE_DAYS=7
+JWT_ISSUER=rajiblabs
+GITHUB_OWNER=rajibmahata
+GITHUB_TOKEN=
+GITHUB_SYNC_ENABLED=true
+QDRANT_URL=http://qdrant:6333
+QDRANT_API_KEY=
+QDRANT_COLLECTION=rajiblabs_knowledge
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_VERSION=v1
+EMBEDDING_DIM=1536
+RAG_ENABLED=true
+RAG_TOP_K=5
+RAG_MIN_SCORE=0.35
+RAG_CACHE_TTL_SECONDS=3600
+RAG_CHUNK_SIZE=1200
+RAG_CHUNK_OVERLAP=150
+GITHUB_RAG_REPOS=
+GITHUB_RAG_MAX_FILES=40
+GITHUB_RAG_MAX_BYTES=200000
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-nano
+OPENAI_FALLBACK_MODEL=gpt-5.6-luna
+OPENAI_ENABLED=true
+OPENAI_MAX_RETRIES=3
+AI_AUTO_PUBLISH=false
+AI_QUALITY_THRESHOLD=85
+DAILY_AGENT_ENABLED=true
+DAILY_AGENT_HOUR=2
+DAILY_AGENT_MINUTE=0
+CHAT_ENABLED=true
+LOG_RETENTION_DAYS=7
+MAX_IMAGE_MB=5
+MAX_RESUME_MB=10
+CONTACT_EMAIL=rajibmahata143@gmail.com
+CONTACT_EMAIL_SECONDARY=rajibmahata143@outlook.com
+PRIMARY_PHONE=+918420249020
+SECONDARY_PHONE=+919100184730
+WHATSAPP_PHONE=+918420249020
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM=

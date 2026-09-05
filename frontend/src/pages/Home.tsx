@@ -2,6 +2,7 @@ import { useRef } from "react";
 import "../rlz/rlz.css";
 import useRlzReveal from "../rlz/Reveal";
 import RlzNav from "../rlz/RlzNav";
+import RlzNeuralCanvas from "../rlz/RlzNeuralCanvas";
 import RlzHero from "../rlz/RlzHero";
 import RlzMarquee from "../rlz/RlzMarquee";
 import RlzExpertise from "../rlz/RlzExpertise";
@@ -23,10 +24,12 @@ export default function Home() {
   return (
     <>
       <main id="main-content" className="rlz pb-20 md:pb-0" ref={scopeRef}>
+        <div className="rlz-page-bg" aria-hidden="true" />
         <div className="rlz-bg-grid" aria-hidden="true" />
         <div className="rlz-orb rlz-orb-1" aria-hidden="true" />
         <div className="rlz-orb rlz-orb-2" aria-hidden="true" />
         <div className="rlz-orb rlz-orb-3" aria-hidden="true" />
+        <RlzNeuralCanvas />
         <RlzNav />
         <RlzHero scopeRef={scopeRef} />
         <RlzMarquee />

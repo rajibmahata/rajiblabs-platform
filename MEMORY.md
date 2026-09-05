@@ -172,6 +172,13 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - `localhost:5010` serves the Docker-baked `dist/` — after frontend changes, rebuild the
   image (`run-docker.bat rebuild` / `docker compose up --build`); a local `npm run build`
   alone does not update Docker.
+- Production VPS is SHARED with PasteControl: RajibLabs must never use host :80/:443,
+  shared networks, or shared volumes (edge is host :8080; DBs on 127.0.0.1 only).
+  Never add an `external:` network belonging to another app — `up` fails hard when
+  it is absent. Phase-2 domain routing goes through the existing edge proxy to
+  `127.0.0.1:8080` loopback (`deploy/nginx/rajiblabs-behind-proxy.conf`).
+- `deploy/` is TRACKED (un-ignored on purpose) — CI pulls `deploy-vps.sh` and nginx
+  confs from git. Never re-ignore it. All VPS compose commands use `-p rajiblabs`.
 - A blank/black admin screen = render crash (no error boundary). Check console first;
   usual cause is an API shape assumption (see by_level above).
 - Font Awesome is bundled via npm (`@fortawesome/fontawesome-free` imported in

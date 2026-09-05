@@ -2,6 +2,53 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Fix homepage neural canvas (full-page, not hero-only)
+
+### Fixed
+- `rlz-neural-canvas` was rendered inside `RlzHero` as an `absolute` hero-only
+  layer — invisible on the rest of the homepage. Moved to a dedicated
+  `RlzNeuralCanvas` fixed component (`position:fixed; inset:0; z-index:-1;
+  opacity:.85`) covering the entire viewport, with DPR-aware resize, mouse
+  attraction (180px), inter-particle links (120px), page-visibility pause,
+  and `prefers-reduced-motion` support — matching the vanilla design spec.
+  Homepage layers now: page-bg `#f7f8fc` (-4) → grid (-3) → orbs (-2) →
+  canvas (-1) → content. `RlzHero` no longer owns a canvas; its `useNeuralCanvas`
+  hook removed. Verified: `tsc` + `vite build` clean, canvas visible across
+  all homepage sections.
+
+## [Unreleased] — Production deployment: PasteControl coexistence + deploy hardening
+
+### Fixed (deployment blockers found by inspection)
+- Reported frontend Docker failure (`RUN npm run build`, exit 2) root-caused to TS6133
+  (`anyBusy`) — already fixed in 8e3389b. Re-verified at HEAD: `tsc` + `vite build`
+  clean, lock in sync, imports case-exact, `.dockerignore` correct.
+- `docker-compose.production.yml` required external `pestflow-internal` network, which
+  does not exist on the PasteControl VPS → `up` would have failed before starting
+  anything. Removed the external network; gateway is `rajiblabs-internal`-only.
+- `deploy/deploy-vps.sh` hard-failed without that network. Replaced with a
+  `:80/:443`-ownership sanity check (warn-only) plus the existing `:8080` clash guard.
+- `deploy/` was gitignored, so CI `git pull` could never deliver `deploy-vps.sh`,
+  `gateway.conf`, or the Phase-2 snippet to the VPS. Removed the `deploy/` ignore
+  rule (dir holds exactly 4 secret-free files, verified) — must be committed+pushed.
+- All compose invocations in `deploy-vps.sh` now pass explicit `-p rajiblabs`
+  (in addition to `name:` in the file); added `curl` preflight and a rollback
+  reference (git SHA + image IDs printed before every build).
+
+### Changed
+- All PestFlow coexistence assumptions replaced with PasteControl-agnostic ones:
+  compose/gateway comments, deploy script + workflow headers.
+- `deploy/nginx/rajiblabs-behind-pestflow.conf` replaced by
+  `deploy/nginx/rajiblabs-behind-proxy.conf` — generic Phase-2 server blocks proxying
+  to `127.0.0.1:8080` loopback (no shared Docker network needed), with discovery
+  steps for host-vs-container edge, certbot guidance, and test-before-reload safety.
+
+### Verified (repo-side; VPS SSH not available from this environment)
+- Production + dev compose YAML parse: only `:8080` + localhost mongo published in
+  prod, no external networks, healthchecks + persistent binds intact.
+- `deploy-vps.sh`: `sh -n` clean. Workflows YAML-valid.
+- nginx static check: braces balanced, upstreams match compose service names.
+- Backend: 199 passed. Frontend: `npm run build` clean.
+
 ## [Unreleased] — Fix frontend build (Workbench lint/type errors)
 
 ### Fixed
