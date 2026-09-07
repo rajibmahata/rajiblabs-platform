@@ -74,7 +74,7 @@ export default function RlzHero({ scopeRef }: { scopeRef: React.RefObject<HTMLEl
   useTyping(typingRef, tArr("hero.typing"));
   useCounters(scopeRef);
   const statLabels = [t("hero.statYears"), t("hero.statRepos"), t("hero.statProducts")];
-
+ 
   return (
     <section className="rlz-hero rlz-section" id="home" style={{ paddingTop: 160, paddingBottom: 80 }}>
       <div className="rlz-container">
