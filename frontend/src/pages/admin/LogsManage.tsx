@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
+import { toast } from "../../components/admin/toast";
 
 type LogEntry = {
   id: string; level: string; source: string; logger?: string | null;
@@ -14,7 +15,6 @@ type LogPage = {
 };
 type Stats = { retention_days: number; total_in_window: number; by_level: Record<string, number> };
 
-const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 const PAGE_SIZES = [25, 50, 100];
 
 const fmtTime = (iso: string) => {

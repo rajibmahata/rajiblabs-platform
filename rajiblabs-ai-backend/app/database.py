@@ -308,10 +308,12 @@ async def ensure_indexes(db=None) -> None:
     # Unique e-mail lookup for lead dedup. Partial: docs without an e-mail
     # are unaffected. Best-effort — pre-existing duplicates only warn.
     # Application-level find-then-merge in lead_pipeline is authoritative.
+    # NOTE: $ne is illegal in partialFilterExpression on every MongoDB version;
+    # {"email": {"$gt": ""}} matches only docs with a non-empty string e-mail.
     try:
         await db["customer_leads"].create_index(
             [("email", 1)], unique=True, background=True, name="email_unique",
-            partialFilterExpression={"email": {"$exists": True, "$ne": ""}})
+            partialFilterExpression={"email": {"$gt": ""}})
     except Exception as e:
         log.warning("Index failed customer_leads.email_unique: %s", e)
     # One document per (source_type, source_id) — dedup/upsert key for RAG.
