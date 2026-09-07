@@ -107,11 +107,32 @@ jobs:
           echo "SHA=$SHA" >> "$GITHUB_ENV"
           # Tracked files only: no .git, no node_modules/dist, no local .env,
           # no secrets (repo holds placeholders/empties only).
-          git archive --format=tar.gz --prefix=release/ -o "/tmp/rajiblabs-${SHA}.tgz" HEAD
-          if tar tzf "/tmp/rajiblabs-${SHA}.tgz" | grep -E '(^|/)\.env$|/__pycache__/|/node_modules/|/dist/'; then
+          # NOTE: must be inside $GITHUB_WORKSPACE so the scp container can see it
+          # (appleboy/scp runs in Docker and only mounts the workspace, not /tmp).
+          TARBALL="$GITHUB_WORKSPACE/rajiblabs-${SHA}.tgz"
+          git archive --format=tar.gz --prefix=release/ -o "$TARBALL" HEAD
+          if tar tzf "$TARBALL" | grep -E '(^|/)\.env$|/__pycache__/|/node_modules/|/dist/'; then
             echo "[ERROR] tarball contains excluded paths"; exit 1
           fi
-          ls -la "/tmp/rajiblabs-${SHA}.tgz"
+          ls -lh "$TARBALL"
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+
+      - name: Prepare VPS release directory
+        if: steps.check.outputs.skip == 'false'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 5m
+          script: |
+            set -eu
+            # Guarantee #1: releases dir exists, owned by the deploy user,
+            # before scp delivers into it. RajibLabs paths only.
+            mkdir -p /opt/rajiblabs/releases
+            echo "== /opt/rajiblabs/releases =="
+            ls -la /opt/rajiblabs/releases | head -n 15
 
       - name: Transfer tarball to VPS
         if: steps.check.outputs.skip == 'false'
@@ -121,8 +142,9 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT }}
-          source: "/tmp/rajiblabs-${{ env.SHA }}.tgz"
+          source: "rajiblabs-${{ env.SHA }}.tgz"
           target: "/opt/rajiblabs/releases/"
+          strip_components: 0
           timeout: 10m
 
       - name: Deploy release on VPS over SSH
@@ -150,9 +172,27 @@ jobs:
             SHA="${DEPLOY_SHA}"
             APP_DIR=/opt/rajiblabs/app
             REL=/opt/rajiblabs/releases/"$SHA"
+            TGZ="rajiblabs-$SHA.tgz"
+            # ── 0. Verify the uploaded archive BEFORE touching anything ──
+            # (fail fast: never extract, sync, or deploy on a missing/corrupt file)
+            echo "== release diagnostics =="
+            echo "commit SHA:      $SHA"
+            echo "expected file:   /opt/rajiblabs/releases/$TGZ"
+            echo "target release:  $REL"
+            ls -la /opt/rajiblabs/releases | head -n 15
+            [ -s "/opt/rajiblabs/releases/$TGZ" ] || {
+              echo "[ERROR] release archive missing or empty — scp transfer failed, STOPPING before Docker deployment."
+              exit 1
+            }
+            echo "archive bytes:   $(wc -c < "/opt/rajiblabs/releases/$TGZ")"
+            tar tzf "/opt/rajiblabs/releases/$TGZ" >/dev/null || {
+              echo "[ERROR] release archive is corrupt (gzip integrity check failed) — STOPPING."
+              exit 1
+            }
+            echo "archive integrity: OK"
             # ── 1. Stage the release (RajibLabs paths only) ──
             mkdir -p /opt/rajiblabs/releases "$REL"
-            tar xzf /opt/rajiblabs/releases/"$SHA".tgz -C "$REL"
+            tar xzf /opt/rajiblabs/releases/"$TGZ" -C "$REL"
             # tarball has release/ prefix → move contents up (no .git involved)
             mv "$REL"/release/* "$REL"/ 2>/dev/null || true
             mv "$REL"/release/.* "$REL"/ 2>/dev/null || true
@@ -195,7 +235,7 @@ jobs:
               case "$b" in [0-9a-f]*) [ ${#b} -eq 40 ] || continue;; *) continue;; esac
               case " $seen " in *" $b "*) continue;; esac
               seen="$seen $b"; n=$((n + 1))
-              if [ "$n" -gt 2 ]; then rm -rf -- "$b" "$b.tgz"; fi
+              if [ "$n" -gt 2 ]; then rm -rf -- "$b" "rajiblabs-$b.tgz"; fi
             done
             echo "Releases kept:"
             ls -t | head -n 6

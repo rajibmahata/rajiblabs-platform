@@ -2,6 +2,24 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Fix release filename mismatch breaking VPS extraction
+
+### Root cause (traced, not guessed)
+- `git archive`/`scp` stages used `rajiblabs-<SHA>.tgz`, but the SSH extract step
+  read `<SHA>.tgz` (prefix dropped) — the exact reported "No such file" path.
+  Same dropped prefix in the prune `rm`, which would also have leaked stale tarballs.
+
+### Changed (`deploy-vps.yml` only; no app code, no PasteControl contact)
+- New SSH prepare step: `mkdir -p /opt/rajiblabs/releases` + directory listing
+  before scp (guarantees the target dir, owned by the deploy user).
+- Single `TGZ="rajiblabs-$SHA.tgz"` used for verify → extract; pre-extraction
+  gates: file exists + non-empty (with byte count), gzip integrity via `tar tzf`,
+  full diagnostics (SHA, expected path, target dir, listing). Any failure stops
+  before extraction, sync, or Docker.
+- Prune `rm` fixed to the prefixed tarball name.
+- Validated: workflow YAML parses, embedded script `sh -n` clean, fixed
+  verify→extract→prune flow executed locally (positive + missing-file cases).
+
 ## [Unreleased] — Career Application module (Admin)
 
 ### Added
