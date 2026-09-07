@@ -201,13 +201,19 @@ class AIService:
             last_model = f"{name}:{model}"
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
+                    payload = {"model": model, "messages": messages,
+                               "response_format": {"type": "json_object"}}
+                    if name == "openai":
+                        payload["max_completion_tokens"] = max_tokens
+                        payload["temperature"] = temperature
+                    else:
+                        payload["max_tokens"] = max_tokens
+                        payload["temperature"] = temperature
                     r = await client.post(
                         f"{base}/chat/completions",
                         headers={"Authorization": f"Bearer {key}",
                                  "Content-Type": "application/json"},
-                        json={"model": model, "max_tokens": max_tokens,
-                              "temperature": temperature, "messages": messages,
-                              "response_format": {"type": "json_object"}})
+                        json=payload)
                 if r.status_code != 200:
                     try:
                         last_rid = r.headers.get("x-request-id", "") or ""

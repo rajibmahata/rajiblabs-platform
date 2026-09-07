@@ -31,7 +31,7 @@ async def generate_project_content(name: str, readme: str, meta: dict, existing:
         prompt = (f"Project: {name}\nDescription: {meta.get('description','')}\n"
                   f"Language: {meta.get('language','')}\nREADME (truncated):\n{readme[:2000]}")
         resp = await client.chat.completions.create(
-            model=s.openai_model, max_tokens=700, temperature=0.2,
+            model=s.openai_model, max_completion_tokens=700, temperature=0.2,
             messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
             response_format={"type": "json_object"})
         data = json.loads(resp.choices[0].message.content or "{}")

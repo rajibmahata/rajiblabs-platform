@@ -146,6 +146,8 @@ async def _index_chunks(doc_id: str, doc: dict) -> int:
                 "file_path": doc.get("file_path"),
                 "commit_sha": doc.get("commit_sha"),
                 "topic": c.get("topic", ""),
+                "status": doc.get("status", "active"),
+                "visibility": doc.get("visibility", "public"),
                 **emb.descriptor(),
             }})
     try:

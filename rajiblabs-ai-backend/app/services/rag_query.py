@@ -103,7 +103,7 @@ async def classify_intent_ai(text: str) -> str:
             return "GENERAL"
         client = AsyncOpenAI(api_key=s.openai_api_key)
         resp = await client.chat.completions.create(
-            model=s.openai_model, max_tokens=20, temperature=0,
+            model=s.openai_model, max_completion_tokens=20, temperature=0,
             messages=[
                 {"role": "system", "content": (
                     "Classify the visitor message into exactly one of: "
@@ -282,7 +282,7 @@ async def answer_question(question: str, history: list[dict] | None = None,
             raise RuntimeError("LLM not configured")
         client = _Client(api_key=s.openai_api_key)
         resp = await client.chat.completions.create(
-            model=s.openai_model, max_tokens=500, temperature=0.3,
+            model=s.openai_model, max_completion_tokens=500, temperature=0.3,
             messages=[
                 {"role": "system", "content": RAG_SYSTEM_PROMPT},
                 *([{"role": "system", "content": _lang_ins}] if _lang_ins else []),
@@ -302,11 +302,13 @@ async def answer_question(question: str, history: list[dict] | None = None,
             pass
         return RagAnswer(answer=answer, intent=intent, sources=sources, grounded=True)
     except Exception as e:
-        log.warning("grounded answer failed: %s", e)
+        log.warning("grounded answer failed (intent=%s sources=%d): %s", intent, len(sources), e)
         try:
             from app.services.notify import log_error
             await log_error("rag_answer", "Grounded answer failed", str(e)[:2000],
                             level="warning", logger="app.services.rag_query")
         except Exception:
             pass
-        return RagAnswer(answer=NO_RESULT_REPLY, intent=intent, sources=[], grounded=False)
+        # Preserve sources even when LLM fails so callers can distinguish
+        # retrieval success (grounded=False but sources>0) from empty retrieval.
+        return RagAnswer(answer=NO_RESULT_REPLY, intent=intent, sources=sources, grounded=False)
