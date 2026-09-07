@@ -193,7 +193,7 @@ export default function RlzProjects() {
         for (const p of all) {
           if (!seen.has(p.slug)) seen.set(p.slug, p);
         }
-        let merged = Array.from(seen.values());
+        const merged = Array.from(seen.values());
         // sort featured first then displayOrder
         merged.sort((a, b) => {
           if (a.featured && !b.featured) return -1;

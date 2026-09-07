@@ -114,9 +114,11 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setNotFound(false);
     (async () => {
+      if (alive) {
+        setLoading(true);
+        setNotFound(false);
+      }
       const base = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
       const tryUrls =
         kind === "portfolio"
@@ -134,7 +136,9 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
               break;
             }
           }
-        } catch {}
+        } catch {
+          /* try next URL */
+        }
       }
       if (!alive) return;
       if (!found) {
@@ -196,11 +200,15 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
                   if (p.slug !== found!.slug) filtered.push(p);
                 }
               }
-            } catch {}
+            } catch {
+              /* related-products enrichment optional */
+            }
           }
           if (alive) setRelated(filtered);
         }
-      } catch {}
+      } catch {
+        /* related fetch optional */
+      }
     })();
     return () => {
       alive = false;
