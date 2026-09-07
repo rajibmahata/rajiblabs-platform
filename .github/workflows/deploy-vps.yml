@@ -218,6 +218,7 @@ jobs:
               mv "$1.tmp" "$1"
             }
             ENV_FILE=/opt/rajiblabs/config/.env
+            mkdir -p "$(dirname "$ENV_FILE")"
             touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
             upsert "$ENV_FILE" OPENAI_API_KEY "$APP_OPENAI_API_KEY"
             upsert "$ENV_FILE" GITHUB_TOKEN "$APP_GITHUB_TOKEN"
