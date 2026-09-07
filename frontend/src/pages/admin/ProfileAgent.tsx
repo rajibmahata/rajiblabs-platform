@@ -23,7 +23,7 @@ export default function ProfileAgent() {
       setCfg(c); setDash(d); setRuns(Array.isArray(r)?r:[]); setProps(Array.isArray(p)?p:[]);
     } catch (e:any) { toast("Load failed", String(e.message||e).slice(0,120)); }
   };
-  useEffect(()=>{ load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- initial mount fetch
   useEffect(()=>{ api.get<any[]>(`/api/admin/profile-agent/proposals?status=${filter}`).then(setProps).catch(()=>{}); }, [filter]);
 
   const saveCfg = async () => {
