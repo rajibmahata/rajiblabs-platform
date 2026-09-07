@@ -58,12 +58,17 @@ if [ -n "$missing" ]; then
   exit 1
 fi
 
-# ── 3. Host dirs + gateway config (create, never overwrite live config) ──
+# ── 3. Host dirs + gateway config (versioned file wins, live backup kept) ──
 mkdir -p /opt/rajiblabs/config/nginx /opt/rajiblabs/data/mongo \
          /opt/rajiblabs/data/qdrant /opt/rajiblabs/data/uploads /opt/rajiblabs/logs/nginx
 if [ ! -f /opt/rajiblabs/config/nginx/gateway.conf ]; then
   cp deploy/nginx/gateway.conf /opt/rajiblabs/config/nginx/gateway.conf
   echo "  - installed gateway.conf (edit live copy at /opt/rajiblabs/config/nginx/)"
+elif ! cmp -s deploy/nginx/gateway.conf /opt/rajiblabs/config/nginx/gateway.conf; then
+  bak="/opt/rajiblabs/config/nginx/gateway.conf.bak.$(date +%F-%H%M%S)"
+  cp /opt/rajiblabs/config/nginx/gateway.conf "$bak" || true
+  cp deploy/nginx/gateway.conf /opt/rajiblabs/config/nginx/gateway.conf
+  echo "  - gateway.conf updated from repo (previous live copy backed up to $bak)"
 fi
 
 # ── 3b. Shared-box preflight: :8080 must be free or already ours ──
@@ -82,6 +87,10 @@ fi
 echo "Deploying revision: ${DEPLOY_SHA:-unknown} (see $APP_DIR/.release after success)"
 docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' rajiblabs-ai-api rajiblabs-frontend 2>/dev/null || true
 docker compose -p rajiblabs -f "$COMPOSE" --env-file "$ENV_FILE" up -d --build
+# Gateway caches upstream container IPs at nginx startup — recreate it so it
+# picks up the just-(re)built frontend/ai-api instead of 502ing on stale IPs.
+# --no-deps: nothing else restarts (mongo/qdrant/ai-api/frontend untouched).
+docker compose -p rajiblabs -f "$COMPOSE" --env-file "$ENV_FILE" up -d --force-recreate --no-deps gateway
 
 # ── 5. Health-gate the API (max ~3 min), then smoke-test the edge ──
 echo "Waiting for ai-api to turn healthy..."
