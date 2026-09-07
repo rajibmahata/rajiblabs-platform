@@ -17,7 +17,9 @@ import AgentsManage from "./pages/admin/AgentsManage";
 import CareerCompanies from "./pages/admin/CareerCompanies";
 import CareerJobs from "./pages/admin/CareerJobs";
 import CareerWorkspace from "./pages/admin/CareerWorkspace";
-import CareerApplications from "./pages/admin/CareerApplications";import Workbench from "./pages/admin/Workbench";
+import CareerApplications from "./pages/admin/CareerApplications";
+import ProfileAgent from "./pages/admin/ProfileAgent";
+import Workbench from "./pages/admin/Workbench";
 import LogsManage from "./pages/admin/LogsManage";
 import Settings from "./pages/admin/Settings";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -141,6 +143,7 @@ export default function App() {
           <Route path="leads" element={<LeadsManage />} />
           <Route path="knowledge" element={<KnowledgeManage />} />
           <Route path="agents" element={<AgentsManage />} />
+          <Route path="profile-agent" element={<ProfileAgent />} />
           <Route path="career" element={<CareerWorkspace />} />
           <Route path="career/jobs" element={<CareerJobs />} />
           <Route path="career/companies" element={<CareerCompanies />} />

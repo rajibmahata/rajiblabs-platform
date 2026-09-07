@@ -28,6 +28,7 @@ const NAV: { label: string; items: NavEntry[] }[] = [
     { to: "/admin/career/applications", label: "Applications", icon: "fas fa-paper-plane" },
   ]},
   { label: "Intelligence", items: [
+    { to: "/admin/profile-agent", label: "Profile Agent", icon: "fas fa-user-gear" },
     { to: "/admin/knowledge", label: "Knowledge Base", icon: "fas fa-brain" },
     { to: "/admin/agents", label: "AI Agents", icon: "fas fa-robot" },
   ]},

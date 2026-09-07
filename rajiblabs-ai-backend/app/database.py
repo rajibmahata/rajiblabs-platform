@@ -287,6 +287,11 @@ async def ensure_indexes(db=None) -> None:
                         [("updated_at", -1)]],
         "career_applications": [[("job_id", 1)], [("status", 1)],
                                 [("created_at", -1)], [("followup_date", 1)]],
+        # Profile Intelligence Agent (proposals, runs, tasks)
+        "profile_agent_proposals": [[("status", 1)], [("target_collection", 1)],
+                                    [("created_at", -1)]],
+        "profile_agent_runs": [[("started_at", -1)], [("status", 1)]],
+        "profile_agent_tasks": [[("status", 1)], [("created_at", -1)]],
         # Multilingual framework: language master + translation records + hot cache
         "languages": [[("enabled", 1)], [("sort_order", 1)]],
         "translations": [[("key", 1), ("target_language", 1)],

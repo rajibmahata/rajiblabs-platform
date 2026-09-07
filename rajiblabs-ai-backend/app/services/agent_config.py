@@ -77,7 +77,7 @@ EDITABLE_FIELDS = {
 }
 
 AGENT_TYPES = ("concierge", "proposal", "recruiter", "marketing",
-               "research", "support", "career")
+               "research", "support", "career", "profile")
 
 CAREER_SLUG = "rajiblabs-career"
 
@@ -142,14 +142,73 @@ async def ensure_career_seed(db=None) -> dict:
     return doc
 
 
+PROFILE_SLUG = "rajiblabs-profile"
+
+DEFAULT_PROFILE_AGENT = {
+    "name": "RajibLabs Profile Intelligence Agent",
+    "slug": PROFILE_SLUG,
+    "description": "Keeps profile, resume, GitHub, portfolio and knowledge base synchronized, complete and accurate.",
+    "enabled": True,
+    "public_enabled": False,
+    "agent_type": "profile",
+    "system_prompt": (
+        "You are the Profile Intelligence Agent. Keep Rajib's professional "
+        "profile accurate and synchronized. Never invent facts. Propose changes "
+        "with source and confidence; require approval for public content."
+    ),
+    "allowed_tools": [
+        "get_profile", "analyze_resume", "sync_github",
+        "get_github_repositories", "create_project_draft",
+        "validate_urls", "search_knowledge", "update_knowledge",
+        "check_configuration", "create_admin_task",
+    ],
+    "knowledge_sources": list(DEFAULT_SOURCE_POLICY),
+    "knowledge_policy": dict(DEFAULT_SOURCE_POLICY),
+    "guardrail_policy": "profile",
+    "hallucination_policy": "verified-only",
+    "response_policy": "verified-only",
+    "response_style": "precise, evidence-backed",
+    "lead_capture_enabled": False,
+    "lead_fields": [],
+    "fallback_message": "Profile Intelligence: no verified change proposed.",
+    "policy": {
+        "auto_create_drafts": True,
+        "auto_update_metadata": True,
+        "auto_translation": False,
+        "auto_publish": False,
+        "github_sync": True,
+        "knowledge_sync": True,
+        "health_check_frequency": "daily",
+        "approval_required_for": ["publish", "delete", "identity", "urls", "seo"],
+        "run_frequency": "daily",
+    },
+    "schedule": {"cron": "0 6 * * *", "timezone": "Asia/Kolkata"},
+}
+
+
+async def ensure_profile_seed(db=None) -> dict:
+    db = get_db() if db is None else db
+    existing = await db["ai_agents"].find_one({"slug": PROFILE_SLUG})
+    if existing:
+        return existing
+    doc = {**DEFAULT_PROFILE_AGENT, "created_at": utcnow(), "updated_at": utcnow(),
+           "stats": {"runs": 0, "proposals": 0, "applied": 0, "errors": 0}}
+    await db["ai_agents"].insert_one(doc)
+    return doc
+
+
 async def get_agent(db, slug: str = CONCIERGE_SLUG) -> dict | None:
     if slug == CONCIERGE_SLUG:
         return await ensure_seed(db)
+    if slug == PROFILE_SLUG:
+        return await ensure_profile_seed(db)
     return await db["ai_agents"].find_one({"slug": slug})
 
 
 async def list_agents(db) -> list[dict]:
     await ensure_seed(db)
+    await ensure_profile_seed(db)
+    await ensure_career_seed(db)
     return [d async for d in db["ai_agents"].find().sort("created_at", 1)]
 
 
