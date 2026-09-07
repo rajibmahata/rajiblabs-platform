@@ -117,6 +117,34 @@ jobs:
           ls -lh "$TARBALL"
           echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
 
+      - name: Diagnostics — GitHub Secrets mapping (safe, no values)
+        if: steps.check.outputs.skip == 'false'
+        env:
+          CHECK_ADMIN: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
+          CHECK_SECRET: ${{ secrets.SECRET_KEY }}
+          CHECK_JWT: ${{ secrets.JWT_SECRET }}
+          CHECK_OPENAI: ${{ secrets.OPENAI_API_KEY }}
+          CHECK_GITHUB: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "== Secrets → APP_* mapping diagnostics =="
+          echo "Workflow has: APP_ADMIN_INITIAL_PASSWORD: \${{ secrets.ADMIN_INITIAL_PASSWORD }}"
+          echo "Workflow envs forwards: APP_ADMIN_INITIAL_PASSWORD"
+          echo "Remote upsert: upsert ... ADMIN_INITIAL_PASSWORD"
+          for pair in "ADMIN_INITIAL_PASSWORD:$CHECK_ADMIN" "SECRET_KEY:$CHECK_SECRET" "JWT_SECRET:$CHECK_JWT"; do
+            name="${pair%%:*}"; val="${pair#*:}"
+            if [ -n "$val" ]; then
+              # Do not print length — only YES/NO per task spec; length check stays on server
+              echo "$name GitHub value received: YES"
+            else
+              echo "$name GitHub value received: NO — secret is empty, misspelled, or is an Environment secret (needs 'environment:' in job) / not a Repository secret"
+              echo "  → Check: GitHub → Settings → Secrets and variables → Actions → Repository secrets (not Environment secrets) → name must be exactly $name"
+            fi
+          done
+          # OPENAI/GITHUB are optional — just info
+          if [ -n "$CHECK_OPENAI" ]; then echo "OPENAI_API_KEY GitHub value received: YES"; else echo "OPENAI_API_KEY GitHub value received: NO (optional, AI will be disabled)"; fi
+          if [ -n "$CHECK_GITHUB" ]; then echo "GITHUB_TOKEN GitHub value received: YES"; else echo "GITHUB_TOKEN GitHub value received: NO (optional)"; fi
+          echo "If any required is NO, verify: 1) secret exists at repo level, 2) workflow run is on 'main' (not fork PR), 3) no typo in secret name."
+
       - name: Prepare VPS release directory
         if: steps.check.outputs.skip == 'false'
         uses: appleboy/ssh-action@v1
@@ -220,11 +248,40 @@ jobs:
             ENV_FILE=/opt/rajiblabs/config/.env
             mkdir -p "$(dirname "$ENV_FILE")"
             touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
+            # ── SAFE DIAGNOSTICS: remote env forwarding (no values, only YES/NO) ──
+            echo "== Remote env forwarding diagnostics =="
+            for pair in "ADMIN_INITIAL_PASSWORD:$APP_ADMIN_INITIAL_PASSWORD" "SECRET_KEY:$APP_SECRET_KEY" "JWT_SECRET:$APP_JWT_SECRET"; do
+              name="${pair%%:*}"; val="${pair#*:}"
+              if [ -n "$val" ]; then echo "$name remote value received: YES"; else echo "$name remote value received: NO — appleboy/ssh envs forwarding failed or GitHub value was empty/misspelled (check 'envs:' line includes $name)"; fi
+            done
+            if [ -n "$APP_OPENAI_API_KEY" ]; then echo "OPENAI_API_KEY remote value received: YES"; else echo "OPENAI_API_KEY remote value received: NO (optional)"; fi
+            if [ -n "$APP_GITHUB_TOKEN" ]; then echo "GITHUB_TOKEN remote value received: YES"; else echo "GITHUB_TOKEN remote value received: NO (optional)"; fi
+            echo "If required is NO here but YES in previous step, the 'envs:' list is wrong or the secret contains newlines/special chars that broke forwarding."
             upsert "$ENV_FILE" OPENAI_API_KEY "$APP_OPENAI_API_KEY"
             upsert "$ENV_FILE" GITHUB_TOKEN "$APP_GITHUB_TOKEN"
             upsert "$ENV_FILE" ADMIN_INITIAL_PASSWORD "$APP_ADMIN_INITIAL_PASSWORD"
             upsert "$ENV_FILE" SECRET_KEY "$APP_SECRET_KEY"
             upsert "$ENV_FILE" JWT_SECRET "$APP_JWT_SECRET"
+            # ── SAFE DIAGNOSTICS: .env presence (no values) ──
+            echo "== .env presence diagnostics =="
+            for key in ADMIN_INITIAL_PASSWORD SECRET_KEY JWT_SECRET; do
+              if grep -q "^$key=" "$ENV_FILE" && [ -n "$(grep "^$key=" "$ENV_FILE" | tail -n1 | cut -d= -f2- | tr -d \"'\" | tr -d '\"' | tr -d ' ')" ]; then
+                echo "$key .env entry: PRESENT"
+                # Length check without exposing value: count chars after stripping quotes
+                raw="$(grep "^$key=" "$ENV_FILE" | tail -n1 | cut -d= -f2-)"
+                # strip surrounding single quotes added by upsert
+                stripped="$(printf '%s' "$raw" | sed "s/^'//;s/'$//;s/'\\\\''/'/g")"
+                # Check actual length that deploy-vps.sh will see (after sourcing)
+                len=${#stripped}
+                if [ "$len" -ge 16 ]; then
+                  echo "  → length check: PASS (>=16, len hidden)"
+                else
+                  echo "  → length check: FAIL (<16) — will be rejected by safety gate (needs 16+ chars)"
+                fi
+              else
+                echo "$key .env entry: MISSING — upsert did not write (value was empty) or file not writable"
+              fi
+            done
             if [ -n "$APP_OPENAI_API_KEY" ]; then echo "  - OPENAI_API_KEY: from GitHub Secrets (AI enabled)"; else echo "  - OPENAI_API_KEY: server value kept (fallback mode if empty)"; fi
             # ── 4. Build/up/health/smoke via the release's own script ──
             DEPLOY_SHA="$SHA" sh "$APP_DIR/deploy/deploy-vps.sh"
