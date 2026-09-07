@@ -102,17 +102,37 @@ check() {  # check <label> <url>
   if curl -fsS --max-time 10 "$2" >/dev/null 2>&1; then
     echo "  - $1 OK ($2)"
   else
-    echo "  - $1 FAILED ($2)"
+    code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$2" 2>/dev/null || echo 'curl-error')"
+    echo "  - $1 FAILED ($2) http_code=$code"
     fail=1
   fi
 }
+# Frontend has no healthcheck (unlike ai-api above) and gateway / proxies to
+# frontend:80 — give it a grace period instead of failing on first hit.
+echo "Waiting for gateway / (frontend) ..."
+tries=0
+until curl -fsS --max-time 10 "$SITE/" >/dev/null 2>&1; do
+  tries=$((tries + 1))
+  if [ "$tries" -gt 12 ]; then
+    break
+  fi
+  sleep 5
+done
 check "gateway /health"      "$SITE/health"
 check "gateway /api/health"  "$SITE/api/health"
 check "gateway /"            "$SITE/"
 check "projects API"         "$SITE/api/projects"
 if [ "$fail" -ne 0 ]; then
-  echo "[ERROR] smoke tests failed — inspect with:"
-  echo "  docker compose -p rajiblabs -f $COMPOSE --env-file $ENV_FILE logs --tail=100"
+  echo "[ERROR] smoke tests failed — diagnostics (rajiblabs only, no secrets):"
+  echo "--- containers ---"
+  docker compose -p rajiblabs -f "$COMPOSE" --env-file "$ENV_FILE" ps 2>&1 || true
+  echo "--- gateway logs (tail 30) ---"
+  docker logs --tail=30 rajiblabs-gateway 2>&1 || true
+  echo "--- frontend logs (tail 30) ---"
+  docker logs --tail=30 rajiblabs-frontend 2>&1 || true
+  echo "--- frontend via gateway net ---"
+  docker exec rajiblabs-gateway wget -q -O /dev/null http://frontend:80/ 2>&1 && echo "frontend:80 reachable" || echo "frontend:80 NOT reachable"
+  echo "Full logs: docker compose -p rajiblabs -f $COMPOSE --env-file $ENV_FILE logs --tail=100"
   exit 1
 fi
 
