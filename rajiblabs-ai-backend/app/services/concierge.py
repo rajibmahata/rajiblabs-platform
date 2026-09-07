@@ -231,7 +231,32 @@ def compose_tool_only(intent: str, results: dict, contact: dict,
                     f"knowledge base. Ask me about the project itself, or I can "
                     f"connect you with RajibLabs."), []
         return fallback_message, []
-    if intent in ("projects_list", "github_work", "products", "services") and sources:
+    if intent == "about_rajib":
+        p = results.get("get_rajib_profile") or {}
+        if p.get("full_name") or p.get("bio"):
+            bits = [p.get("full_name") or "", p.get("title") or ""]
+            if p.get("bio"):
+                bits.append(p["bio"][:500])
+            if p.get("skills"):
+                bits.append("Skills: " + ", ".join(p["skills"][:10]))
+            txt = "\n".join(b for b in bits if b)
+            # attach search sources if any, else tool-derived source
+            src = sources if sources else [{"title": p.get("full_name") or "Rajib Mahata", "url": "https://rajiblabs.com/#about", "source_type": "profile"}]
+            return (txt or fallback_message), src
+    if intent == "project_detail":
+        d = results.get("get_project_details")
+        if d and d.get("name"):
+            txt = f"{d['name']}: {d.get('description','')[:500]}"
+            if d.get("tech_stack"):
+                txt += "\nTech: " + ", ".join(d["tech_stack"][:8])
+            if d.get("github_url"):
+                txt += f"\nGitHub: {d['github_url']}"
+            if d.get("live_url"):
+                txt += f"\nLive: {d['live_url']}"
+            src = sources if sources else [{"title": d["name"], "url": d.get("live_url") or d.get("github_url") or "", "source_type": "project"}]
+            return txt, src
+    if intent in ("projects_list", "github_work", "products", "services",
+                    "about_rajib", "about_rajiblabs", "project_detail") and sources:
         names = [s.get("title", "") for s in sources[:6] if s.get("title")]
         if names:
             return ("Here's what I found in verified RajibLabs knowledge:\n- "

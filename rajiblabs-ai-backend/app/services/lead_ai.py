@@ -204,8 +204,16 @@ class AIService:
                     payload = {"model": model, "messages": messages,
                                "response_format": {"type": "json_object"}}
                     if name == "openai":
-                        payload["max_completion_tokens"] = max_tokens
-                        payload["temperature"] = temperature
+                        # gpt-5 reasoning consumes ~900 tokens before output; 500 is too low → empty answer
+                        effective_max = max_tokens
+                        if model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3"):
+                            effective_max = max(max_tokens, 4000)
+                        payload["max_completion_tokens"] = effective_max
+                        # gpt-5/o1 only supports default temperature=1
+                        if model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3"):
+                            payload["temperature"] = 1
+                        else:
+                            payload["temperature"] = temperature
                     else:
                         payload["max_tokens"] = max_tokens
                         payload["temperature"] = temperature

@@ -102,14 +102,18 @@ async def classify_intent_ai(text: str) -> str:
         if not s.openai_api_key or not s.openai_enabled:
             return "GENERAL"
         client = AsyncOpenAI(api_key=s.openai_api_key)
-        resp = await client.chat.completions.create(
-            model=s.openai_model, max_completion_tokens=20, temperature=0,
+        kwargs = dict(
+            model=s.openai_model, max_completion_tokens=2000,
             messages=[
                 {"role": "system", "content": (
                     "Classify the visitor message into exactly one of: "
                     + ", ".join(RAG_INTENTS) + ". Reply with only the label.")},
                 {"role": "user", "content": text[:1000]}],
             response_format={"type": "json_object"})
+        # gpt-5 family only supports default temperature=1
+        if not s.openai_model.startswith("gpt-5"):
+            kwargs["temperature"] = 0
+        resp = await client.chat.completions.create(**kwargs)
         import json
         data = json.loads(resp.choices[0].message.content or "{}")
         label = str(data.get("intent", data.get("label", ""))).strip().upper()
@@ -281,8 +285,8 @@ async def answer_question(question: str, history: list[dict] | None = None,
         if not s.openai_api_key or not s.openai_enabled:
             raise RuntimeError("LLM not configured")
         client = _Client(api_key=s.openai_api_key)
-        resp = await client.chat.completions.create(
-            model=s.openai_model, max_completion_tokens=500, temperature=0.3,
+        kwargs = dict(
+            model=s.openai_model, max_completion_tokens=4000,
             messages=[
                 {"role": "system", "content": RAG_SYSTEM_PROMPT},
                 *([{"role": "system", "content": _lang_ins}] if _lang_ins else []),
@@ -291,6 +295,9 @@ async def answer_question(question: str, history: list[dict] | None = None,
                 *([] if not history_txt else [
                     {"role": "system", "content": f"Conversation so far:\n{history_txt}"}]),
                 {"role": "user", "content": question[:1500]}])
+        if not s.openai_model.startswith("gpt-5"):
+            kwargs["temperature"] = 0.3
+        resp = await client.chat.completions.create(**kwargs)
         answer = (resp.choices[0].message.content or "").strip()
         if not answer:
             raise RuntimeError("empty answer")

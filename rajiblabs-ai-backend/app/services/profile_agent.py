@@ -78,7 +78,7 @@ async def check_configuration_health(db) -> dict:
     if not (profile.get("skills") or []):
         report["warnings"].append("No skills listed")
     # projects/portfolio missing images/descriptions
-    async for coll, label in [("portfolio", "Portfolio"), ("products", "Products")]:
+    for coll, label in [("portfolio", "Portfolio"), ("products", "Products")]:
         async for doc in db[coll].find({}):
             if not doc.get("description"):
                 report["warnings"].append(f"{label} {doc.get('slug')} missing description")
@@ -342,7 +342,8 @@ async def apply_proposal(proposal_id: str, actor: str) -> dict:
 
 
 async def get_dashboard(db=None) -> dict:
-    db = db or get_db()
+    if db is None:
+        db = get_db()
     from app.services import agent_config
     cfg = await agent_config.get_agent(db, agent_config.PROFILE_SLUG)
     health = await check_configuration_health(db)

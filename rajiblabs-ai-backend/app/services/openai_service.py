@@ -30,10 +30,12 @@ async def generate_project_content(name: str, readme: str, meta: dict, existing:
         client = AsyncOpenAI(api_key=s.openai_api_key)
         prompt = (f"Project: {name}\nDescription: {meta.get('description','')}\n"
                   f"Language: {meta.get('language','')}\nREADME (truncated):\n{readme[:2000]}")
-        resp = await client.chat.completions.create(
-            model=s.openai_model, max_completion_tokens=700, temperature=0.2,
-            messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
-            response_format={"type": "json_object"})
+        kwargs = dict(model=s.openai_model, max_completion_tokens=3000,
+                      messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
+                      response_format={"type": "json_object"})
+        if not s.openai_model.startswith("gpt-5"):
+            kwargs["temperature"] = 0.2
+        resp = await client.chat.completions.create(**kwargs)
         data = json.loads(resp.choices[0].message.content or "{}")
         return AIContentOut(**{k: data.get(k, "") if not isinstance(data.get(k), list) else data.get(k, [])
                                for k in AIContentOut.model_fields}), h
