@@ -119,7 +119,10 @@ def _list_query(q: Optional[str], status: Optional[str], featured: Optional[bool
         rx = {"$regex": re.escape(q.strip()[:200]), "$options": "i"}
         query["$or"] = [{"title": rx}, {"name": rx},
                         {"short_description": rx}, {"description": rx},
-                        {"tags": rx}, {"tech_stack": rx}]
+                        {"purpose": rx}, {"problem": rx}, {"solution": rx},
+                        {"functional_details": rx}, {"workflow": rx},
+                        {"business_value": rx}, {"challenges": rx},
+                        {"features": rx}, {"tags": rx}, {"tech_stack": rx}]
     return query
 
 
@@ -159,16 +162,26 @@ async def _sync_catalog_rag(coll: str, doc: dict) -> None:
         if published and indexed:
             tech = ", ".join(doc.get("tech_stack", []) or [])
             tags = ", ".join(doc.get("tags", []) or [])
+            tu = ", ".join(doc.get("target_users", []) or [])
             body = "\n".join(filter(None, [
                 doc.get("short_description", "") or "",
                 doc.get("description", "") or "",
-                doc.get("problem", "") or "",
-                doc.get("solution", "") or "",
+                f"Purpose: {doc['purpose']}" if doc.get("purpose") else "",
+                f"Problem: {doc['problem']}" if doc.get("problem") else "",
+                f"Solution: {doc['solution']}" if doc.get("solution") else "",
+                f"Target users: {tu}" if tu else "",
+                doc.get("functional_details", "") or "",
                 f"Features: {', '.join(doc.get('features', []) or [])}" if doc.get("features") else "",
+                f"Workflow: {doc['workflow']}" if doc.get("workflow") else "",
+                f"Architecture: {doc['architecture']}" if doc.get("architecture") else "",
+                f"Role: {doc['role']}" if doc.get("role") else "",
+                f"Business value: {doc['business_value']}" if doc.get("business_value") else "",
+                f"Challenges: {doc['challenges']}" if doc.get("challenges") else "",
                 f"Technologies: {tech}" if tech else "",
                 f"Tags: {tags}" if tags else "",
                 f"Live: {doc['live_url']}" if doc.get("live_url") else "",
                 f"GitHub: {doc['github_url']}" if doc.get("github_url") else "",
+                f"Video: {doc['video_url']}" if doc.get("video_url") else "",
             ]))
             await rag_ingest.upsert_document(
                 "project" if coll == "portfolio" else "product", sid, title, body,
@@ -512,9 +525,12 @@ def portfolio_out(d: dict, public_list: bool = False) -> dict:
     base = {
         "id": oid(d), "title": d.get("title", ""), "slug": d.get("slug", ""),
         "shortDescription": d.get("short_description", ""), "description": d.get("description", ""),
-        "problem": d.get("problem", ""), "solution": d.get("solution", ""),
+        "purpose": d.get("purpose", ""), "problem": d.get("problem", ""), "solution": d.get("solution", ""),
+        "targetUsers": d.get("target_users", []), "functionalDetails": d.get("functional_details", ""),
+        "features": d.get("features", []), "workflow": d.get("workflow", ""),
         "role": d.get("role", ""), "architecture": d.get("architecture", ""),
-        "techStack": d.get("tech_stack", []), "aiCapabilities": d.get("ai_capabilities", []),
+        "businessValue": d.get("business_value", ""), "challenges": d.get("challenges", ""),
+        "category": d.get("category", ""), "techStack": d.get("tech_stack", []), "aiCapabilities": d.get("ai_capabilities", []),
         "cloudCapabilities": d.get("cloud_capabilities", []), "screenshots": d.get("screenshots", []),
         "demoUrl": d.get("demo_url"), "gitHubUrl": d.get("github_url"),
         "liveUrl": d.get("live_url"), "docsUrl": d.get("docs_url"),
@@ -539,10 +555,18 @@ class PortfolioIn(BaseModel):
     slug: Optional[str] = None
     short_description: Optional[str] = Field(default=None, alias="shortDescription")
     description: Optional[str] = None
+    purpose: Optional[str] = None
     problem: Optional[str] = None
     solution: Optional[str] = None
+    target_users: Optional[list[str]] = Field(default=None, alias="targetUsers")
+    functional_details: Optional[str] = Field(default=None, alias="functionalDetails")
+    features: Optional[list[str]] = None
+    workflow: Optional[str] = None
     role: Optional[str] = None
     architecture: Optional[str] = None
+    business_value: Optional[str] = Field(default=None, alias="businessValue")
+    challenges: Optional[str] = None
+    category: Optional[str] = None
     tech_stack: Optional[list[str]] = Field(default=None, alias="techStack")
     ai_capabilities: Optional[list[str]] = Field(default=None, alias="aiCapabilities")
     cloud_capabilities: Optional[list[str]] = Field(default=None, alias="cloudCapabilities")
@@ -612,8 +636,12 @@ async def portfolio_create(body: PortfolioIn, email: str = Depends(require_admin
     doc = {
         "legacy_id": uuid.uuid4().hex, "title": body.title.strip(), "slug": slug,
         "short_description": body.short_description or "", "description": body.description or "",
-        "problem": body.problem or "", "solution": body.solution or "",
+        "purpose": body.purpose or "", "problem": body.problem or "", "solution": body.solution or "",
+        "target_users": body.target_users or [], "functional_details": body.functional_details or "",
+        "features": body.features or [], "workflow": body.workflow or "",
         "role": body.role or "", "architecture": body.architecture or "",
+        "business_value": body.business_value or "", "challenges": body.challenges or "",
+        "category": body.category or "",
         "tech_stack": body.tech_stack or [], "ai_capabilities": body.ai_capabilities or [],
         "cloud_capabilities": body.cloud_capabilities or [], "screenshots": body.screenshots or [],
         "demo_url": body.demo_url, "github_url": body.github_url, "product_url": body.product_url,
@@ -715,6 +743,10 @@ def product_out(d: dict) -> dict:
         "id": oid(d), "name": d.get("name", ""), "slug": d.get("slug", ""),
         "category": d.get("category", ""), "description": d.get("description", ""),
         "shortDescription": d.get("short_description", ""),
+        "purpose": d.get("purpose", ""), "problem": d.get("problem", ""), "solution": d.get("solution", ""),
+        "targetUsers": d.get("target_users", []), "functionalDetails": d.get("functional_details", ""),
+        "workflow": d.get("workflow", ""), "role": d.get("role", ""),
+        "businessValue": d.get("business_value", ""), "challenges": d.get("challenges", ""),
         "logoUrl": d.get("logo_url"), "screenshots": d.get("screenshots", []),
         "features": d.get("features", []), "techStack": d.get("tech_stack", []),
         "aiCapabilities": d.get("ai_capabilities"), "architecture": d.get("architecture"),
@@ -740,6 +772,15 @@ class ProductLegacyIn(BaseModel):
     category: Optional[str] = None
     description: Optional[str] = None
     short_description: Optional[str] = Field(default=None, alias="shortDescription")
+    purpose: Optional[str] = None
+    problem: Optional[str] = None
+    solution: Optional[str] = None
+    target_users: Optional[list[str]] = Field(default=None, alias="targetUsers")
+    functional_details: Optional[str] = Field(default=None, alias="functionalDetails")
+    workflow: Optional[str] = None
+    role: Optional[str] = None
+    business_value: Optional[str] = Field(default=None, alias="businessValue")
+    challenges: Optional[str] = None
     logo_url: Optional[str] = Field(default=None, alias="logoUrl")
     screenshots: Optional[list[str]] = None
     features: Optional[list[str]] = None
@@ -823,6 +864,10 @@ async def product_create(body: ProductLegacyIn, email: str = Depends(require_adm
         "legacy_id": uuid.uuid4().hex, "name": body.name.strip(), "slug": slug,
         "category": body.category or "", "description": body.description or "",
         "short_description": body.short_description or "",
+        "purpose": body.purpose or "", "problem": body.problem or "", "solution": body.solution or "",
+        "target_users": body.target_users or [], "functional_details": body.functional_details or "",
+        "workflow": body.workflow or "", "role": body.role or "",
+        "business_value": body.business_value or "", "challenges": body.challenges or "",
         "logo_url": body.logo_url, "screenshots": body.screenshots or [],
         "features": body.features or [], "tech_stack": body.tech_stack or [],
         "ai_capabilities": body.ai_capabilities, "architecture": body.architecture,

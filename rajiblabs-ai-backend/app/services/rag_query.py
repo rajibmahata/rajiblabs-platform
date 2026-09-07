@@ -107,7 +107,7 @@ async def classify_intent_ai(text: str) -> str:
             messages=[
                 {"role": "system", "content": (
                     "Classify the visitor message into exactly one of: "
-                    + ", ".join(RAG_INTENTS) + ". Reply with only the label.")},
+                    + ", ".join(RAG_INTENTS) + ". Return JSON object with key \"intent\" and label as value.")},
                 {"role": "user", "content": text[:1000]}],
             response_format={"type": "json_object"})
         # gpt-5 family only supports default temperature=1

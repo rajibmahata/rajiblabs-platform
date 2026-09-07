@@ -187,7 +187,7 @@ async def _generate_project_draft(repo: dict) -> dict | None:
         if not svc.configured:
             raise RuntimeError("AI not configured")
         out = await svc._complete(
-            [{"role":"system","content":"Generate portfolio draft JSON: title, short_description (1 line), full_description (2-3 sentences), problem, solution, features[], architecture, technologies[], role. Mark missing fields as 'MISSING'. Return JSON only."},
+            [{"role":"system","content":"Generate portfolio draft JSON: title, short_description (1 line), purpose (one-line), full_description (2-3 sentences), problem, solution, target_users[], functional_details, features[], workflow (concise steps), architecture, technologies[], role, business_value, challenges. Mark missing fields as 'MISSING'. Return JSON only. Do not invent."},
              {"role":"user","content": context[:3500]}],
             max_tokens=700, temperature=0.3, tag="profile-project-draft")
         data = out.get("data",{})
