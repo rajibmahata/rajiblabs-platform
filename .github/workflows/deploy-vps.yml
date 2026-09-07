@@ -265,12 +265,14 @@ jobs:
             # ── SAFE DIAGNOSTICS: .env presence (no values) ──
             echo "== .env presence diagnostics =="
             for key in ADMIN_INITIAL_PASSWORD SECRET_KEY JWT_SECRET; do
-              if grep -q "^$key=" "$ENV_FILE" && [ -n "$(grep "^$key=" "$ENV_FILE" | tail -n1 | cut -d= -f2- | tr -d \"'\" | tr -d '\"' | tr -d ' ')" ]; then
+              line="$(grep "^$key=" "$ENV_FILE" | tail -n1 || true)"
+              stripped_val="$(printf '%s' "$line" | cut -d= -f2- | tr -d " '\"")"
+              if [ -n "$line" ] && [ -n "$stripped_val" ]; then
                 echo "$key .env entry: PRESENT"
                 # Length check without exposing value: count chars after stripping quotes
-                raw="$(grep "^$key=" "$ENV_FILE" | tail -n1 | cut -d= -f2-)"
+                raw="$(printf '%s' "$line" | cut -d= -f2-)"
                 # strip surrounding single quotes added by upsert
-                stripped="$(printf '%s' "$raw" | sed "s/^'//;s/'$//;s/'\\\\''/'/g")"
+                stripped="$(printf '%s' "$raw" | sed -e "s/^'//" -e "s/'\$//" -e "s/'\\\\''/'/g")"
                 # Check actual length that deploy-vps.sh will see (after sourcing)
                 len=${#stripped}
                 if [ "$len" -ge 16 ]; then
