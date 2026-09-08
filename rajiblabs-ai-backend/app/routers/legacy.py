@@ -178,6 +178,12 @@ async def _sync_catalog_rag(coll: str, doc: dict) -> None:
                 f"Role: {doc['role']}" if doc.get("role") else "",
                 f"Business value: {doc['business_value']}" if doc.get("business_value") else "",
                 f"Challenges: {doc['challenges']}" if doc.get("challenges") else "",
+                f"Goal: {doc['goal']}" if doc.get("goal") else "",
+                f"Objectives: {', '.join(doc.get('objectives', []) or [])}" if doc.get("objectives") else "",
+                f"User roles: {', '.join(doc.get('user_roles', []) or [])}" if doc.get("user_roles") else "",
+                f"Technology notes: {doc['tech_notes']}" if doc.get("tech_notes") else "",
+                f"Origin: {doc['origin']}" if doc.get("origin") else "",
+                f"Docs: {doc['docs_url']}" if doc.get("docs_url") else "",
                 f"Technologies: {tech}" if tech else "",
                 f"Tags: {tags}" if tags else "",
                 f"Live: {doc['live_url']}" if doc.get("live_url") else "",
@@ -560,6 +566,10 @@ def portfolio_out(d: dict, public_list: bool = False) -> dict:
         "features": d.get("features", []), "workflow": d.get("workflow", ""),
         "role": d.get("role", ""), "architecture": d.get("architecture", ""),
         "businessValue": d.get("business_value", ""), "challenges": d.get("challenges", ""),
+        "goal": d.get("goal", ""), "objectives": d.get("objectives", []),
+        "userRoles": d.get("user_roles", []), "techNotes": d.get("tech_notes", ""),
+        "architectureImage": d.get("architecture_image"),
+        "origin": d.get("origin", ""),
         "category": d.get("category", ""), "techStack": d.get("tech_stack", []), "aiCapabilities": d.get("ai_capabilities", []),
         "cloudCapabilities": d.get("cloud_capabilities", []), "screenshots": d.get("screenshots", []),
         "demoUrl": d.get("demo_url"), "gitHubUrl": d.get("github_url"),
@@ -596,6 +606,12 @@ class PortfolioIn(BaseModel):
     architecture: Optional[str] = None
     business_value: Optional[str] = Field(default=None, alias="businessValue")
     challenges: Optional[str] = None
+    goal: Optional[str] = None
+    objectives: Optional[list[str]] = None
+    user_roles: Optional[list[str]] = Field(default=None, alias="userRoles")
+    tech_notes: Optional[str] = Field(default=None, alias="techNotes")
+    architecture_image: Optional[str] = Field(default=None, alias="architectureImage")
+    origin: Optional[str] = None
     category: Optional[str] = None
     tech_stack: Optional[list[str]] = Field(default=None, alias="techStack")
     ai_capabilities: Optional[list[str]] = Field(default=None, alias="aiCapabilities")
@@ -680,6 +696,10 @@ async def portfolio_create(body: PortfolioIn, email: str = Depends(require_admin
         "features": body.features or [], "workflow": body.workflow or "",
         "role": body.role or "", "architecture": body.architecture or "",
         "business_value": body.business_value or "", "challenges": body.challenges or "",
+        "goal": body.goal or "", "objectives": body.objectives or [],
+        "user_roles": body.user_roles or [], "tech_notes": body.tech_notes or "",
+        "architecture_image": body.architecture_image,
+        "origin": body.origin or "",
         "category": body.category or "",
         "tech_stack": body.tech_stack or [], "ai_capabilities": body.ai_capabilities or [],
         "cloud_capabilities": body.cloud_capabilities or [], "screenshots": body.screenshots or [],
@@ -786,6 +806,10 @@ def product_out(d: dict) -> dict:
         "targetUsers": d.get("target_users", []), "functionalDetails": d.get("functional_details", ""),
         "workflow": d.get("workflow", ""), "role": d.get("role", ""),
         "businessValue": d.get("business_value", ""), "challenges": d.get("challenges", ""),
+        "goal": d.get("goal", ""), "objectives": d.get("objectives", []),
+        "userRoles": d.get("user_roles", []), "techNotes": d.get("tech_notes", ""),
+        "architectureImage": d.get("architecture_image"),
+        "origin": d.get("origin", ""),
         "logoUrl": d.get("logo_url"), "screenshots": d.get("screenshots", []),
         "features": d.get("features", []), "techStack": d.get("tech_stack", []),
         "aiCapabilities": d.get("ai_capabilities"), "architecture": d.get("architecture"),
@@ -820,6 +844,12 @@ class ProductLegacyIn(BaseModel):
     role: Optional[str] = None
     business_value: Optional[str] = Field(default=None, alias="businessValue")
     challenges: Optional[str] = None
+    goal: Optional[str] = None
+    objectives: Optional[list[str]] = None
+    user_roles: Optional[list[str]] = Field(default=None, alias="userRoles")
+    tech_notes: Optional[str] = Field(default=None, alias="techNotes")
+    architecture_image: Optional[str] = Field(default=None, alias="architectureImage")
+    origin: Optional[str] = None
     logo_url: Optional[str] = Field(default=None, alias="logoUrl")
     screenshots: Optional[list[str]] = None
     features: Optional[list[str]] = None
@@ -918,6 +948,10 @@ async def product_create(body: ProductLegacyIn, email: str = Depends(require_adm
         "target_users": body.target_users or [], "functional_details": body.functional_details or "",
         "workflow": body.workflow or "", "role": body.role or "",
         "business_value": body.business_value or "", "challenges": body.challenges or "",
+        "goal": body.goal or "", "objectives": body.objectives or [],
+        "user_roles": body.user_roles or [], "tech_notes": body.tech_notes or "",
+        "architecture_image": body.architecture_image,
+        "origin": body.origin or "",
         "logo_url": body.logo_url, "screenshots": body.screenshots or [],
         "features": body.features or [], "tech_stack": body.tech_stack or [],
         "ai_capabilities": body.ai_capabilities, "architecture": body.architecture,

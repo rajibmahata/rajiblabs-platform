@@ -25,6 +25,7 @@ type CmsPortfolio = {
   gallery: string[];
   liveUrl: string | null;
   gitHubUrl: string | null;
+  docsUrl?: string | null;
   videoUrl: string | null;
   videoEmbedUrl: string | null;
   displayOrder: number;
@@ -47,6 +48,8 @@ type UnifiedProject = {
   icon: string;
   liveUrl: string | null;
   githubUrl: string | null;
+  docsUrl: string | null;
+  status: string;
   featured: boolean;
   displayOrder: number;
   kind: "portfolio" | "product";
@@ -58,6 +61,7 @@ type UnifiedProject = {
 function ProjectLinks({ p }: { p: UnifiedProject }) {
   const hasLive = !!p.liveUrl;
   const hasGh = !!p.githubUrl;
+  const hasDocs = !!p.docsUrl;
   return (
     <div className="rlz-project-links" style={{ gap: 12 }}>
       {hasLive && (
@@ -70,7 +74,12 @@ function ProjectLinks({ p }: { p: UnifiedProject }) {
           <i className="material-symbols-outlined">code</i> GitHub
         </a>
       )}
-      {!hasLive && !hasGh && <span className="rlz-project-unavailable">Links unavailable</span>}
+      {hasDocs && (
+        <a href={p.docsUrl!} target="_blank" rel="noopener noreferrer" className="rlz-plink" aria-label={`${p.name} documentation`} onClick={(e) => e.stopPropagation()}>
+          <i className="material-symbols-outlined">description</i> Docs
+        </a>
+      )}
+      {!hasLive && !hasGh && !hasDocs && <span className="rlz-project-unavailable">Links unavailable</span>}
     </div>
   );
 }
@@ -91,6 +100,8 @@ function mapFallback(p: Project, idx: number): UnifiedProject {
     icon: p.icon,
     liveUrl: p.liveUrl ?? null,
     githubUrl: p.githubUrl ?? null,
+    docsUrl: null,
+    status: "published",
     featured: !!p.featured,
     displayOrder: idx,
     kind: "portfolio",
@@ -115,6 +126,8 @@ function mapCms(p: CmsPortfolio, kind: "portfolio" | "product"): UnifiedProject 
     icon: "deployed_code",
     liveUrl: p.liveUrl || null,
     githubUrl: p.gitHubUrl || null,
+    docsUrl: p.docsUrl || null,
+    status: p.status || "published",
     featured: !!p.featured,
     displayOrder: p.displayOrder ?? 0,
     kind,
@@ -182,6 +195,8 @@ export default function RlzProjects() {
             icon: "deployed_code",
             liveUrl: d.live_url || d.liveUrl || null,
             githubUrl: d.github_url || d.gitHubUrl || null,
+            docsUrl: (d as { docs_url?: string; docsUrl?: string }).docs_url || (d as { docsUrl?: string }).docsUrl || null,
+            status: d.status || "published",
             featured: !!d.featured,
             displayOrder: d.display_order ?? d.displayOrder ?? 0,
             kind,
@@ -282,6 +297,9 @@ export default function RlzProjects() {
                   <div className="rlz-project-body">
                     <div className="rlz-chip-row" style={{ margin: "0 0 10px" }}>
                       {p.featured && <span className="rlz-chip" style={{ background: "var(--rlz-violet)", color: "#fff" }}>Featured</span>}
+                      <span className="rlz-chip" style={{ background: p.liveUrl ? "rgba(16,185,129,0.12)" : "var(--rlz-bg-2)", border: "1px solid var(--rlz-border)", color: p.liveUrl ? "var(--rlz-green)" : undefined }}>
+                        {p.liveUrl ? "● Live" : (p.status || "Published").replace(/^\w/, (c) => c.toUpperCase())}
+                      </span>
                       <span className="rlz-chip" style={{ background: "var(--rlz-bg-2)", border: "1px solid var(--rlz-border)" }}>{p.category}</span>
                       {p.tech.slice(0, 3).map((c) => (
                         <span className="rlz-chip" key={c}>{c}</span>

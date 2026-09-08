@@ -27,6 +27,15 @@ type ProjectDetailData = {
   businessValue?: string;
   business_value?: string;
   challenges?: string;
+  goal?: string;
+  objectives?: string[];
+  userRoles?: string[];
+  user_roles?: string[];
+  techNotes?: string;
+  tech_notes?: string;
+  architectureImage?: string | null;
+  architecture_image?: string | null;
+  origin?: string;
   category?: string;
   techStack?: string[];
   technologies?: string[];
@@ -103,6 +112,33 @@ function getWorkflowSteps(workflow?: string): string[] {
     if (numbered.length > 1) return numbered;
   }
   return parts;
+}
+
+// Deterministic stack→layer classification for the architecture view.
+// Only groups technologies actually present in the project; layer blurbs
+// describe the layer in general terms, never project-specific claims.
+const TECH_LAYERS: { key: string; label: string; icon: string; blurb: string; match: RegExp }[] = [
+  { key: "frontend", label: "Frontend", icon: "web", blurb: "What visitors see and touch — screens, flows and interactions.", match: /react|typescript|tailwind|blazor|html|css|\bpwa\b|javascript|next|vite|flutter/i },
+  { key: "backend", label: "Backend & APIs", icon: "api", blurb: "Application services, business rules and API surface.", match: /fastapi|python|\.net|c#|asp\.net|node|express|\bapi\b|signalr|rest|hangfire/i },
+  { key: "ai", label: "AI & Intelligence", icon: "smart_toy", blurb: "Language models, retrieval and automation capabilities.", match: /openai|\bgpt\b|\bllm\b|\brag\b|embedding|agent|whisper|langchain|genai|\bai\b/i },
+  { key: "data", label: "Data", icon: "database", blurb: "Where application and knowledge data live.", match: /mongo|sql server|cosmos|postgres|sqlite|qdrant|chroma|vector|redis|database|entity framework/i },
+  { key: "integrations", label: "Integrations", icon: "hub", blurb: "Connections to external services.", match: /stripe|docusign|payment|webhook|firebase|\bfcm\b|sms|whatsapp|sendgrid|twilio/i },
+  { key: "infra", label: "Infrastructure", icon: "cloud", blurb: "Where it runs — cloud, containers and delivery.", match: /azure|docker|kubernetes|ci\/?cd|linux|nginx|devops|serverless|github actions/i },
+];
+
+function groupTechByLayer(techs: string[]): { layer: (typeof TECH_LAYERS)[number]; items: string[] }[] {
+  const rest: string[] = [];
+  const groups = TECH_LAYERS.map((layer) => ({ layer, items: [] as string[] }));
+  for (const t of techs) {
+    const g = groups.find((g) => g.layer.match.test(t));
+    if (g) g.items.push(t);
+    else rest.push(t);
+  }
+  const out = groups.filter((g) => g.items.length > 0);
+  if (rest.length) {
+    out.push({ layer: { key: "stack", label: "Supporting stack", icon: "construction", blurb: "Supporting technologies used by the project.", match: /(?:)/ }, items: rest });
+  }
+  return out;
 }
 
 export default function ProjectDetail({ kind }: { kind: DetailKind }) {
@@ -257,6 +293,16 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
   const architecture = d.architecture || "";
   const businessValue = d.businessValue || d.business_value || "";
   const challenges = d.challenges || "";
+  const goal = d.goal || "";
+  const objectives = d.objectives || [];
+  const userRoles = d.userRoles || d.user_roles || [];
+  const techNotes = d.techNotes || d.tech_notes || "";
+  const archImage = d.architectureImage || d.architecture_image || null;
+  const origin = (d.origin || "").toLowerCase();
+  const originLabel: Record<string, string> = {
+    client: "Client work", product: "Own product",
+    engineering: "Engineering R&D", exploration: "Product exploration",
+  };
   const techs = getTech(d);
   const tags = getTags(d);
   const gh = getGh(d);
@@ -293,6 +339,17 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
           <div style={{ maxWidth: 900 }}>
             <div className="rlz-section-tag" style={{ marginBottom: 16 }}>
               <i className="material-symbols-outlined">layers</i> {category.toUpperCase()} {d.featured ? "· FEATURED" : ""} {d.status ? `· ${d.status.toUpperCase()}` : ""}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: "0.8rem", fontWeight: 700, padding: "6px 14px", borderRadius: 100, background: live ? "rgba(16,185,129,0.12)" : "var(--rlz-bg-2)", border: "1px solid var(--rlz-border)", color: live ? "var(--rlz-green)" : "var(--rlz-text-dim)" }}>
+                {live && <span className="rlz-live-dot" aria-label="Live" />}
+                {live ? "Live" : ((d.status || "Published").charAt(0).toUpperCase() + (d.status || "Published").slice(1))}
+              </span>
+              {origin && originLabel[origin] && (
+                <span style={{ display: "inline-flex", alignItems: "center", fontSize: "0.8rem", padding: "6px 14px", borderRadius: 100, background: "var(--rlz-violet-soft)", border: "1px solid rgba(124,58,237,0.2)", color: "var(--rlz-violet)" }}>
+                  {originLabel[origin]}
+                </span>
+              )}
             </div>
             <h1 style={{ fontFamily: "Sora, sans-serif", fontSize: "clamp(2rem, 4.5vw, 3.4rem)", lineHeight: 1.1, letterSpacing: "-0.02em", margin: 0 }}>{title}</h1>
             {displayPurpose && <p style={{ marginTop: 16, fontSize: "1.25rem", color: "var(--rlz-text)", fontWeight: 600, lineHeight: 1.4 }}>{displayPurpose}</p>}
@@ -355,18 +412,31 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, alignItems: "start" }}>
           {/* Main column */}
           <div style={{ display: "grid", gap: 22 }}>
-            {/* Overview / Description */}
-            {desc && (
+            {/* What is this application? */}
+            {(desc || targetUsers.length > 0) && (
               <section style={{ background: "var(--rlz-surface-2)", border: "1px solid var(--rlz-border)", borderRadius: 20, padding: 28, boxShadow: "var(--rlz-shadow-sm)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                   <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--rlz-violet-soft)", display: "grid", placeItems: "center", color: "var(--rlz-violet)" }}>
                     <i className="material-symbols-outlined">info</i>
                   </span>
-                  <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.25rem", margin: 0 }}>Overview</h2>
+                  <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.25rem", margin: 0 }}>What is this application?</h2>
                 </div>
-                <div style={{ color: "var(--rlz-text-dim)", lineHeight: 1.7, fontSize: "0.98rem" }}>
-                  <Markdown text={desc} />
-                </div>
+                <p style={{ margin: "0 0 6px", fontSize: "0.9rem", color: "var(--rlz-text-faint)" }}>
+                  A {category.toLowerCase()} {targetUsers.length > 0 ? `for ${targetUsers.slice(0, 3).join(", ")}` : "built end-to-end by RajibLabs"}.
+                </p>
+                {!!targetUsers.length && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 4px" }}>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--rlz-text-dim)", alignSelf: "center" }}>Who it&apos;s for:</span>
+                    {targetUsers.map((u) => (
+                      <span key={u} style={{ fontSize: "0.78rem", padding: "5px 12px", borderRadius: 100, background: "var(--rlz-violet-soft)", color: "var(--rlz-violet)" }}>{u}</span>
+                    ))}
+                  </div>
+                )}
+                {desc && (
+                  <div style={{ color: "var(--rlz-text-dim)", lineHeight: 1.7, fontSize: "0.98rem", marginTop: 10 }}>
+                    <Markdown text={desc} />
+                  </div>
+                )}
               </section>
             )}
 
@@ -378,6 +448,11 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
                     <h3 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.05rem", display: "flex", alignItems: "center", gap: 8 }}>
                       <i className="material-symbols-outlined" style={{ color: "var(--rlz-fuchsia)" }}>report_problem</i> The Problem
                     </h3>
+                    {(origin === "engineering" || origin === "exploration") && (
+                      <p style={{ marginTop: 8, fontSize: "0.78rem", fontStyle: "italic", color: "var(--rlz-text-faint)" }}>
+                        Framed as an {origin === "engineering" ? "engineering problem" : "product exploration"} — a technical challenge, not a client engagement.
+                      </p>
+                    )}
                     <p style={{ marginTop: 10, color: "var(--rlz-text-dim)", lineHeight: 1.6, fontSize: "0.95rem" }}>{problem}</p>
                     {!!targetUsers.length && (
                       <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -399,6 +474,31 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
                   </section>
                 )}
               </div>
+            )}
+
+            {/* Goal */}
+            {goal && (
+              <section style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.09), rgba(255,255,255,0.9))", border: "1px solid var(--rlz-border)", borderRadius: 20, padding: 28 }}>
+                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: 10 }}>
+                  <i className="material-symbols-outlined" style={{ color: "var(--rlz-green)" }}>track_changes</i> Goal
+                </h2>
+                <p style={{ marginTop: 12, color: "var(--rlz-text)", fontSize: "1.02rem", lineHeight: 1.65 }}>{goal}</p>
+              </section>
+            )}
+
+            {/* Objectives */}
+            {!!objectives.length && (
+              <section>
+                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem", marginBottom: 14 }}>Objectives</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
+                  {objectives.map((o, idx) => (
+                    <div key={o} style={{ background: "var(--rlz-surface-2)", border: "1px solid var(--rlz-border)", borderRadius: 16, padding: 18 }}>
+                      <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "0.75rem", fontWeight: 700, color: "var(--rlz-green)" }}>{String(idx + 1).padStart(2, "0")}</div>
+                      <p style={{ margin: "8px 0 0", fontSize: "0.92rem", color: "var(--rlz-text)", lineHeight: 1.5 }}>{o}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
 
             {/* Functional Details */}
@@ -456,11 +556,69 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
               </section>
             )}
 
+            {/* User Roles */}
+            {!!userRoles.length && (
+              <section>
+                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem", marginBottom: 6 }}>User Roles</h2>
+                <p style={{ color: "var(--rlz-text-faint)", fontSize: "0.88rem", margin: "0 0 14px" }}>Who works in the system. Detailed capabilities live in Functional Details above.</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
+                  {userRoles.map((r) => (
+                    <div key={r} style={{ background: "var(--rlz-surface-2)", border: "1px solid var(--rlz-border)", borderRadius: 16, padding: 18, display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ width: 36, height: 36, borderRadius: 12, background: "var(--rlz-violet-soft)", color: "var(--rlz-violet)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                        <i className="material-symbols-outlined">person</i>
+                      </span>
+                      <p style={{ margin: 0, fontSize: "0.92rem", fontWeight: 600, color: "var(--rlz-text)" }}>{r}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Architecture */}
-            {architecture && (
+            {(architecture || archImage || groupTechByLayer(techs).length > 0) && (
               <section style={{ background: "var(--rlz-surface-2)", border: "1px solid var(--rlz-border)", borderRadius: 20, padding: 28 }}>
-                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem" }}>Architecture Overview</h2>
-                <p style={{ marginTop: 10, color: "var(--rlz-text-dim)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{architecture}</p>
+                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: 10 }}>
+                  <i className="material-symbols-outlined" style={{ color: "var(--rlz-violet)" }}>account_tree</i> Application Architecture
+                </h2>
+                {archImage ? (
+                  <a href={archImage} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 16, borderRadius: 16, overflow: "hidden", border: "1px solid var(--rlz-border)" }}>
+                    <img src={archImage} alt={`${title} architecture diagram`} loading="lazy" decoding="async" style={{ width: "100%", display: "block" }} />
+                  </a>
+                ) : (
+                  groupTechByLayer(techs).length > 0 && (
+                    <div style={{ marginTop: 18, display: "grid", gap: 0 }}>
+                      <p style={{ margin: "0 0 12px", fontSize: "0.8rem", color: "var(--rlz-text-faint)" }}>Stack-derived overview — layers grouped from the project&apos;s actual technologies.</p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 12, background: "var(--rlz-bg)", border: "1px solid var(--rlz-border)", fontSize: "0.85rem", fontWeight: 700 }}>
+                        <i className="material-symbols-outlined" style={{ color: "var(--rlz-violet)" }}>group</i> USERS
+                      </div>
+                      {groupTechByLayer(techs).map((g, gi, arr) => (
+                        <div key={g.layer.key}>
+                          <div style={{ width: 2, height: 12, marginLeft: 36, background: "linear-gradient(to bottom, var(--rlz-violet), var(--rlz-cyan-bright))", opacity: 0.5 }} />
+                          <div style={{ display: "flex", gap: 12, alignItems: "start", padding: "14px 16px", borderRadius: 12, background: "var(--rlz-bg)", border: "1px solid var(--rlz-border)" }}>
+                            <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--rlz-violet-soft)", color: "var(--rlz-violet)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                              <i className="material-symbols-outlined">{g.layer.icon}</i>
+                            </span>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9rem" }}>{g.layer.label}</p>
+                              <p style={{ margin: "2px 0 6px", fontSize: "0.8rem", color: "var(--rlz-text-faint)" }}>{g.layer.blurb}</p>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {g.items.map((t) => (
+                                  <span key={t} style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "0.72rem", padding: "4px 10px", borderRadius: 100, background: "#fff", border: "1px solid var(--rlz-border)" }}>{t}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          {gi === arr.length - 1 && <div style={{ width: 2, height: 12, marginLeft: 36, background: "linear-gradient(to bottom, var(--rlz-cyan-bright), transparent)", opacity: 0.5 }} />}
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, padding: "10px 16px", borderRadius: 12, background: "var(--rlz-bg)", border: "1px dashed var(--rlz-border)", fontSize: "0.85rem", fontWeight: 700, color: "var(--rlz-text-dim)" }}>
+                        <i className="material-symbols-outlined">dns</i> INFRASTRUCTURE
+                      </div>
+                    </div>
+                  )
+                )}
+                {architecture && <p style={{ marginTop: 16, color: "var(--rlz-text-dim)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{architecture}</p>}
+                {techNotes && <p style={{ marginTop: 12, color: "var(--rlz-text-dim)", lineHeight: 1.7 }}><b style={{ color: "var(--rlz-text)" }}>Technology notes: </b>{techNotes}</p>}
               </section>
             )}
           </div>
@@ -563,6 +721,11 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
                     <div style={{ padding: 16 }}>
                       <h3 style={{ fontFamily: "Sora, sans-serif", fontSize: "1rem", margin: 0 }}>{rt}</h3>
                       <p style={{ margin: "6px 0 0", color: "var(--rlz-text-dim)", fontSize: "0.85rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{rDesc || "View case study"}</p>
+                      {((r as ProjectDetailData).liveUrl || (r as ProjectDetailData).live_url) && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8, fontSize: "0.72rem", fontWeight: 700, color: "var(--rlz-green)" }}>
+                          <span className="rlz-live-dot" /> Live
+                        </span>
+                      )}
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: "0.85rem", fontWeight: 600, color: "var(--rlz-violet)" }}>
                         View <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>arrow_forward</i>
                       </span>

@@ -21,10 +21,14 @@ export interface CatalogKind {
   publicPath: string;
 }
 
+const ORIGINS = ["", "client", "product", "engineering", "exploration"] as const;
+
 const EMPTY_FORM: any = {
   title: "", name: "", slug: "", shortDescription: "", description: "",
   purpose: "", problem: "", solution: "", targetUsers: "", functionalDetails: "", features: "", workflow: "",
-  role: "", architecture: "", businessValue: "", challenges: "",
+  goal: "", objectives: "", userRoles: "",
+  role: "", architecture: "", techNotes: "", architectureImage: "", origin: "",
+  businessValue: "", challenges: "",
   category: "", status: "draft", featured: false, displayOrder: 0,
   techStack: "", tags: "",
   aiCapabilities: "", cloudCapabilities: "",
@@ -38,6 +42,10 @@ const EMPTY_FORM: any = {
 const toCSV = (v: any): string => Array.isArray(v) ? v.join(", ") : (v || "");
 const fromCSV = (s: string): string[] =>
   String(s || "").split(",").map((x) => x.trim()).filter(Boolean);
+// Objectives are one-per-line (multi-word items survive; CSV would split them).
+const toLines = (v: any): string => Array.isArray(v) ? v.join("\n") : (v || "");
+const fromLines = (s: string): string[] =>
+  String(s || "").split("\n").map((x) => x.trim()).filter(Boolean);
 
 export default function CatalogManager(cfg: CatalogKind) {
   const base = `/api/admin/${cfg.kind}`;
@@ -86,6 +94,8 @@ export default function CatalogManager(cfg: CatalogKind) {
       ...EMPTY_FORM, ...item,
       techStack: toCSV(item.techStack), tags: toCSV(item.tags),
       features: toCSV(item.features),
+      objectives: toLines(item.objectives),
+      userRoles: toCSV(item.userRoles),
       targetUsers: toCSV(item.targetUsers),
       aiCapabilities: toCSV(item.aiCapabilities), cloudCapabilities: toCSV(item.cloudCapabilities),
       gallery: item.gallery || item.screenshots || [],
@@ -101,10 +111,11 @@ export default function CatalogManager(cfg: CatalogKind) {
     if (form.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug.trim().toLowerCase()))
       errs.push("Slug may only contain lowercase letters, numbers and hyphens.");
     if (form.displayOrder !== "" && isNaN(Number(form.displayOrder))) errs.push("Display order must be a number.");
-    for (const [k, label] of [["liveUrl", "Live URL"], ["githubUrl", "GitHub URL"], ["docsUrl", "Docs URL"], ["ctaUrl", "CTA link"], ["productUrl", "Product URL"], ["demoUrl", "Demo URL"]] as const) {
+    for (const [k, label] of [["liveUrl", "Live URL"], ["githubUrl", "GitHub URL"], ["docsUrl", "Docs URL"], ["ctaUrl", "CTA link"], ["productUrl", "Product URL"], ["demoUrl", "Demo URL"], ["architectureImage", "Architecture diagram"]] as const) {
       const v = String(form[k] || "").trim();
       if (v && !/^https?:\/\/.+\..+/.test(v)) errs.push(`${label} must start with http(s)://`);
     }
+    if (form.origin && !(ORIGINS as readonly string[]).includes(form.origin)) errs.push("Origin must be client, product, engineering or exploration.");
     return errs;
   };
 
@@ -121,8 +132,14 @@ export default function CatalogManager(cfg: CatalogKind) {
       functionalDetails: form.functionalDetails || "",
       features: fromCSV(form.features),
       workflow: form.workflow || "",
+      goal: form.goal?.trim() || "",
+      objectives: fromLines(form.objectives),
+      userRoles: fromCSV(form.userRoles),
       role: form.role?.trim() || "",
       architecture: form.architecture || "",
+      techNotes: form.techNotes || "",
+      architectureImage: form.architectureImage?.trim() || null,
+      origin: (ORIGINS as readonly string[]).includes(form.origin) ? form.origin : "",
       businessValue: form.businessValue || "",
       challenges: form.challenges || "",
       category: form.category?.trim() || "",
@@ -289,12 +306,18 @@ export default function CatalogManager(cfg: CatalogKind) {
                 {form.description && <div className="mt-4 text-sm"><Markdown text={form.description} /></div>}
                 {form.problem && <div className="mt-4"><h4 className="font-semibold text-sm">Problem</h4><p className="text-sm mt-1">{form.problem}</p></div>}
                 {form.solution && <div className="mt-4"><h4 className="font-semibold text-sm">Solution</h4><p className="text-sm mt-1">{form.solution}</p></div>}
+                {form.goal && <div className="mt-4"><h4 className="font-semibold text-sm">Goal</h4><p className="text-sm mt-1">{form.goal}</p></div>}
+                {!!fromLines(form.objectives).length && <div className="mt-4"><h4 className="font-semibold text-sm">Objectives</h4><ol className="list-decimal ml-5 text-sm mt-1">{fromLines(form.objectives).map((o) => <li key={o}>{o}</li>)}</ol></div>}
+                {!!fromCSV(form.userRoles).length && <div className="mt-4"><h4 className="font-semibold text-sm">User Roles</h4><p className="text-sm mt-1">{fromCSV(form.userRoles).join(" · ")}</p></div>}
                 {!!fromCSV(form.targetUsers).length && <div className="mt-4"><h4 className="font-semibold text-sm">Target Users</h4><p className="text-sm mt-1">{fromCSV(form.targetUsers).join(" · ")}</p></div>}
                 {form.functionalDetails && <div className="mt-4"><h4 className="font-semibold text-sm">Functional Details</h4><div className="text-sm mt-1"><Markdown text={form.functionalDetails} /></div></div>}
                 {!!fromCSV(form.features).length && <div className="mt-4"><h4 className="font-semibold text-sm">Key Features</h4><ul className="list-disc ml-5 text-sm mt-1">{fromCSV(form.features).map((f) => <li key={f}>{f}</li>)}</ul></div>}
                 {form.workflow && <div className="mt-4"><h4 className="font-semibold text-sm">How It Works</h4><div className="text-sm mt-1"><Markdown text={form.workflow} /></div></div>}
                 {!!fromCSV(form.techStack).length && <p className="mt-4 text-sm"><b>Technology:</b> {fromCSV(form.techStack).join(" · ")}</p>}
                 {form.architecture && <p className="mt-2 text-sm"><b>Architecture:</b> {form.architecture}</p>}
+                {form.techNotes && <p className="mt-2 text-sm"><b>Technology notes:</b> {form.techNotes}</p>}
+                {form.architectureImage && <img src={form.architectureImage} alt="Architecture diagram" className="mt-2 rounded-xl w-full" loading="lazy" />}
+                {form.origin && <p className="mt-2 text-xs" style={{ color: "var(--rla-text-faint)" }}>Origin: {form.origin}</p>}
                 {form.role && <p className="mt-2 text-sm"><b>Rajib&apos;s Role:</b> {form.role}</p>}
                 {form.businessValue && <div className="mt-4"><h4 className="font-semibold text-sm">Outcome / Value</h4><p className="text-sm mt-1">{form.businessValue}</p></div>}
                 {form.challenges && <div className="mt-4"><h4 className="font-semibold text-sm">Challenges</h4><p className="text-sm mt-1">{form.challenges}</p></div>}
@@ -326,6 +349,11 @@ export default function CatalogManager(cfg: CatalogKind) {
                   <Field label="Slug (auto)"><input value={form.slug} onChange={(e) => set("slug", e.target.value)} className="rla-input" disabled={readOnly} placeholder="auto from title" /></Field>
                   <Field label="Category"><input value={form.category} onChange={(e) => set("category", e.target.value)} className="rla-input" disabled={readOnly} placeholder="e.g. SaaS, AI, Enterprise" /></Field>
                   <Field label="Display Order"><input type="number" value={form.displayOrder} onChange={(e) => set("displayOrder", e.target.value)} className="rla-input" disabled={readOnly} /></Field>
+                  <Field label="Origin — where did this come from?"><select value={form.origin || ""} onChange={(e) => set("origin", e.target.value)} className="rla-select" disabled={readOnly}>
+                    <option value="">— unset (no label shown) —</option>
+                    <option value="client">Client work</option><option value="product">Own product</option>
+                    <option value="engineering">Engineering R&amp;D</option><option value="exploration">Product exploration</option>
+                  </select></Field>
                   <Field label="Short Description — one-line purpose" span><input value={form.shortDescription} onChange={(e) => set("shortDescription", e.target.value)} className="rla-input" disabled={readOnly} placeholder="One-line purpose visible on homepage cards" /></Field>
                 </div>
                 <h4 className="rla-h4">Description</h4>
@@ -338,6 +366,10 @@ export default function CatalogManager(cfg: CatalogKind) {
                 <Field label="Target Users — who is it for? (comma separated)" span><input value={form.targetUsers || ""} onChange={(e) => set("targetUsers", e.target.value)} className="rla-input" disabled={readOnly} placeholder="e.g. Pest control operators, Field technicians, Admin, Customers" /></Field>
                 <h4 className="rla-h4">Solution</h4>
                 <Field label="Solution — what was built and how it solves the problem?" span><textarea value={form.solution} onChange={(e) => set("solution", e.target.value)} rows={3} className="rla-textarea" disabled={readOnly} placeholder="The platform connects customer requests, quotation generation, technician assignment and status tracking..." /></Field>
+                <h4 className="rla-h4">Goal & Objectives</h4>
+                <Field label="Goal — the desired high-level outcome" span><textarea value={form.goal || ""} onChange={(e) => set("goal", e.target.value)} rows={2} className="rla-textarea" disabled={readOnly} placeholder="e.g. A single platform managing the workflow from quotation through completion and payment." /></Field>
+                <Field label="Objectives — one per line (only verified ones; empty hides the section)" span><textarea value={form.objectives || ""} onChange={(e) => set("objectives", e.target.value)} rows={4} className="rla-textarea rla-mono" disabled={readOnly} placeholder={"Centralize operations\nImprove workflow visibility\nReduce manual processing"} /></Field>
+                <Field label="User roles — who uses it? (comma separated)" span><input value={form.userRoles || ""} onChange={(e) => set("userRoles", e.target.value)} className="rla-input" disabled={readOnly} placeholder="e.g. Customer, Technician, Admin, Manager" /></Field>
                 <h4 className="rla-h4">Functional Details</h4>
                 <Field label="Functional details — main workflows & capabilities (Markdown supported)" span><textarea value={form.functionalDetails || ""} onChange={(e) => set("functionalDetails", e.target.value)} rows={4} className="rla-textarea rla-mono" disabled={readOnly} placeholder="- Customer request management&#10;- Automated quotation&#10;- Technician assignment&#10;- Status tracking" /></Field>
                 <h4 className="rla-h4">Features</h4>
@@ -348,6 +380,8 @@ export default function CatalogManager(cfg: CatalogKind) {
                 <div className="rla-form-grid">
                   <Field label="Tech stack (comma separated)"><input value={form.techStack} onChange={(e) => set("techStack", e.target.value)} className="rla-input" disabled={readOnly} placeholder="React, FastAPI, MongoDB, AI, Docker" /></Field>
                   <Field label="Architecture summary"><input value={form.architecture} onChange={(e) => set("architecture", e.target.value)} className="rla-input" disabled={readOnly} placeholder="e.g. Event-driven microservices on Azure" /></Field>
+                  <Field label="Technology notes — what each tech does here" span><textarea value={form.techNotes || ""} onChange={(e) => set("techNotes", e.target.value)} rows={3} className="rla-textarea" disabled={readOnly} placeholder="e.g. React renders the responsive PWA · FastAPI serves the API layer · MongoDB stores operational data. Only describe what is actually used." /></Field>
+                  <Field label="Architecture diagram image URL" span><input value={form.architectureImage || ""} onChange={(e) => set("architectureImage", e.target.value)} className="rla-input" disabled={readOnly} placeholder="https://…/architecture.png (shown instead of the generated diagram)" /></Field>
                   {cfg.showAiCaps && (<>
                     <Field label="AI capabilities (comma separated)"><input value={form.aiCapabilities} onChange={(e) => set("aiCapabilities", e.target.value)} className="rla-input" disabled={readOnly} /></Field>
                     <Field label="Cloud capabilities (comma separated)"><input value={form.cloudCapabilities} onChange={(e) => set("cloudCapabilities", e.target.value)} className="rla-input" disabled={readOnly} /></Field>
