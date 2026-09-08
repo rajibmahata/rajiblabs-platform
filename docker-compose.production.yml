@@ -1,15 +1,12 @@
 # RajibLabs — Production Docker Compose (VPS 169.58.165.10, SHARED VPS)
 #
 # This box already runs PasteControl in production. RajibLabs coexists by
-# using NOTHING PasteControl uses: no host ports 80/443, no shared networks,
-# no shared volumes, no shared container names. Two-phase edge:
-#   Phase 1 (now, no DNS change): rajiblabs-gateway on host :8080
-#             → site live at http://169.58.165.10:8080 immediately.
-#   Phase 2 (rajiblabs.com → 169.58.165.10): add the server blocks from
-#             deploy/nginx/rajiblabs-behind-proxy.conf to the existing edge
-#             proxy (certbot cert first), reload it — RajibLabs stays on
-#             127.0.0.1:8080 loopback, reachable only via that proxy.
-#             Then restrict :8080 to localhost (see gateway ports below).
+# using NOTHING PasteControl uses: no host ports 80/443, no shared volumes,
+# no shared container names, no PestFlow Compose changes. Edge routing:
+#   - rajiblabs-gateway publishes host :8080 (direct + health checks).
+#   - pestflow-gateway (ports 80/443, PasteControl-owned) proxies the
+#     rajiblabs.com vhost here over the isolated `rajiblabs-edge-link`
+#     network, which carries ONLY the two gateway containers.
 #
 # Design:
 #   - MongoDB is bound to 127.0.0.1:27017 for host tooling only.
@@ -190,8 +187,18 @@ services:
       - /opt/rajiblabs/logs/nginx:/var/log/nginx
     networks:
       - rajiblabs-internal
+      # Shared ONLY with pestflow-gateway so the public edge (ports 80/443)
+      # can proxy rajiblabs.com here. No other service joins this network;
+      # PestFlow containers/networks/volumes are never referenced.
+      - edge-link
 
 networks:
   rajiblabs-internal:
     name: rajiblabs-internal
     driver: bridge
+  edge-link:
+    # Pre-created on the VPS (deploy-vps.sh ensures it exists). External so
+    # both Compose projects can share it without owning it; deleting the
+    # RajibLabs stack never deletes this network or touches PestFlow.
+    name: rajiblabs-edge-link
+    external: true

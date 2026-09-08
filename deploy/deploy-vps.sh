@@ -86,6 +86,10 @@ fi
 # build is restored via sh deploy/rollback-vps.sh [<sha>] — no git needed).
 echo "Deploying revision: ${DEPLOY_SHA:-unknown} (see $APP_DIR/.release after success)"
 docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' rajiblabs-ai-api rajiblabs-frontend 2>/dev/null || true
+# edge-link is the isolated network shared ONLY by rajiblabs-gateway and
+# pestflow-gateway (public edge proxies rajiblabs.com here). External: we
+# never delete it; creating an existing one is a harmless no-op.
+docker network inspect rajiblabs-edge-link >/dev/null 2>&1 || docker network create rajiblabs-edge-link
 docker compose -p rajiblabs -f "$COMPOSE" --env-file "$ENV_FILE" up -d --build
 # Gateway caches upstream container IPs at nginx startup — recreate it so it
 # picks up the just-(re)built frontend/ai-api instead of 502ing on stale IPs.
