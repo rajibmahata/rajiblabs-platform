@@ -239,14 +239,22 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   guarded by `test_29_chat_url_has_v1_prefix`. Rebuild/redeploy backend to apply.
 - P1 (fixed): `email_unique` partial index used illegal `$ne` (fails on ALL
   MongoDB versions) → replaced with `{"email": {"$gt": ""}}`, verified created.
-- Dead frontend code (NOT deleted — another surface may reference it; verify
-  before removing): `components/sections/*` (13 files), `components/projects/*`,
-  `components/activity/*`, `components/ui/{FloatingContact,ProjectCard,ProjectModal,
-  SectionLabel,StatusBadge,TechChip,CommitRow}`, `components/layout/{GlobalNav,
-  GlobalFooter}`, `types/index.ts`, `pages/Projects.tsx`, legacy `api.ts` fetchers
-  (`getProjects/getProject/getActivities/getProfile/submitContact/submitSubscribe`
-  + `fallbackData.ts`) — live code uses `api.*`/`getCms*`/`sendChat` only. Home
+- Dead frontend code (DELETED 2026-09-08 after verifying zero live importers,
+  no dynamic imports anywhere): `components/sections/*` (13),
+  `components/projects/*`, `components/activity/*`, `components/ui/
+  {FloatingContact,ProjectCard,ProjectModal,SectionLabel,StatusBadge,TechChip,
+  CommitRow}`, `components/layout/{GlobalNav,GlobalFooter}`,
+  `pages/Projects.tsx` (had no route), `services/fallbackData.ts` + legacy
+  `api.ts` fetchers. `types/index.ts` KEPT (live `api.ts`/admin use it). Home
   renders `rlz/*` exclusively.
+- Admin pages are route-split (`React.lazy` in `App.tsx`); main bundle ~352K.
+  New admin pages must be added as lazy imports, not eager.
+- SEO baseline: static JSON-LD + OG/Twitter + canonical in `index.html`;
+  dynamic `GET /sitemap.xml` (backend lists published slugs, static fallback);
+  nginx proxies `= /sitemap.xml` with `@sitemap_static` fallback. Detail pages
+  set per-route title/meta/OG/canonical in `ProjectDetail`.
+- Lead-chat tests use per-run phones (`PHONE_A`/`PHONE_B` from `TAG_NUM`);
+  never hardcode phone numbers in tests (phone-second dedup merges across runs).
 - Lead-chat tests are order/state-sensitive: hardcoded phones (`9876543210`,
   `9111111111`) collide across runs via phone-second dedup; run on a clean DB
   or expect `test_08/09`-style false failures. Full suite is too slow for one

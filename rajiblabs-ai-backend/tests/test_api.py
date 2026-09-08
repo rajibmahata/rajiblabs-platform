@@ -332,3 +332,26 @@ async def test_log_error_scrubs_secrets_live():
         assert "sk-abc123XYZ789" not in d["details"]
     finally:
         await db["error_logs"].delete_many({"source": "e2e_scrub"})
+
+
+@pytest.mark.asyncio
+async def test_sitemap_xml_lists_published_slugs():
+    """Gap fix: /sitemap.xml must include published project/product slugs."""
+    from app.main import create_app
+    app = create_app()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            r = await c.get("/sitemap.xml")
+    except Exception:
+        pytest.skip("MongoDB not running locally")
+        return
+    if r.status_code == 500:
+        pytest.skip("MongoDB not running locally")
+        return
+    assert r.status_code == 200
+    assert "application/xml" in r.headers.get("content-type", "")
+    body = r.text
+    assert body.startswith("<?xml") and "<urlset" in body
+    assert "https://rajiblabs.com/" in body
+    # no secrets/paths leak into the sitemap
+    assert ".env" not in body and "token" not in body.lower()

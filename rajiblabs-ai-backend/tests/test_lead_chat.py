@@ -13,6 +13,11 @@ from app.database import get_db
 from app.services.lead_ai import AIError, LeadAssistantOut
 
 TAG = "t_" + uuid.uuid4().hex[:8]
+# Unique-per-run phone numbers: phone-second dedup merges rows across runs,
+# so hardcoded phones make test_08/09 order- and residue-dependent.
+TAG_NUM = str(uuid.uuid4().int % 900000 + 100000)  # 6 digits
+PHONE_A = f"98{TAG_NUM}10"  # 10 digits, starts with 9
+PHONE_B = f"91{TAG_NUM}11"  # 10 digits, distinct from PHONE_A
 _created = {"leads": [], "sessions": [], "ideas": []}
 
 
@@ -127,14 +132,14 @@ def _track(body):
         _created["sessions"].append(body["session_id"])
 
 
-JOHN = ("My name is John, I own ABC Logistics, my email is "
-        "john@abc.com and my number is 9876543210. "
+JOHN = (f"My name is John, I own ABC Logistics, my email is "
+        f"john@abc.com and my number is {PHONE_A}. "
         "We need software to manage driver assignments.")
 
 
 def _john_turn(name="John", email=None, phone=None):
     email = email or f"{TAG}_john@abc.com"
-    phone = phone or "9876543210"
+    phone = phone or PHONE_A
     return {"reply": "Nice to meet you.",
             "lead": {"name": name, "email": email, "phone": phone,
                      "company_name": "ABC Logistics", "industry": "Logistics"},
@@ -251,7 +256,7 @@ async def test_08_multi_field_message(fake_ai):
         db = get_db()
         lead = await db["customer_leads"].find_one({"email": email})
         assert lead["name"] == "John" and lead["company_name"] == "ABC Logistics"
-        assert lead["phone"] == "9876543210" and lead["industry"] == "Logistics"
+        assert lead["phone"] == PHONE_A and lead["industry"] == "Logistics"
         assert lead["marketing_consent"] is False  # never auto-subscribed
         _created["leads"].append(str(lead["_id"]))
 
@@ -261,12 +266,12 @@ async def test_09_duplicate_email_reuses_lead(fake_ai):
     email = f"{TAG}_dup@abc.com"
     fake_ai.turns.append(_john_turn(email=email))
     fake_ai.turns.append({"reply": "Welcome back.",
-                          "lead": {"email": email, "phone": "9111111111"},
+                          "lead": {"email": email, "phone": PHONE_B},
                           "missing_fields": ["name", "idea"]})
     db = get_db()
     async with _client() as c:
         b1 = await _turn(c, "", JOHN.replace("john@abc.com", email))
-        b2 = await _turn(c, "", "hi again, new number 9111111111")
+        b2 = await _turn(c, "", f"hi again, new number {PHONE_B}")
         assert b1["session_id"] != b2["session_id"]
         assert await db["customer_leads"].count_documents({"email": email}) == 1
         lead = await db["customer_leads"].find_one({"email": email})
@@ -274,7 +279,7 @@ async def test_09_duplicate_email_reuses_lead(fake_ai):
         _track(b1)
         _track(b2)
         # manual name preserved, missing phone filled, both sessions attached
-        assert lead["name"] == "John" and lead["phone"] == "9111111111"
+        assert lead["name"] == "John" and lead["phone"] == PHONE_B
         assert set(lead["session_ids"]) == {b1["session_id"], b2["session_id"]}
 
 

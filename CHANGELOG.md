@@ -2,6 +2,50 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Full-stack QA audit: gap fixes (dead code, SEO, sitemap, tests)
+
+### Fixed (P0 — already live, verified in error_logs)
+- Covered by prior commit `d769522` (`/v1` chat URL). Verified live AI 404s are
+  gone from new turns; **backend rebuild still required to deploy it**.
+
+### Fixed (P1 — unique-email index never existed)
+- Covered by prior commit `08dbae9` (`$ne` → `$gt: ""` partial filter).
+
+### Removed (P2 — ~3.5k lines dead frontend, zero live importers verified)
+- `components/sections/*` (13), `components/projects/*`, `components/activity/*`,
+  `components/ui/{FloatingContact,ProjectCard,ProjectModal,SectionLabel,
+  StatusBadge,TechChip,CommitRow}`, `components/layout/{GlobalNav,GlobalFooter}`,
+  `pages/Projects.tsx` (no route), `services/fallbackData.ts` + legacy
+  `api.ts` fetchers (`getProjects/getProject/getActivities/getProfile/
+  submitContact/submitSubscribe/getGitHubSummary/getWorkInProgress`). Live code
+  uses `api.*`/`getCms*`/`sendChat` + `rlz/*` only. `types/index.ts` KEPT
+  (used by live `api.ts`/admin pages).
+
+### Added (P2 — SEO)
+- Static JSON-LD (`Organization` + `WebSite` + `Person`, verified facts only),
+  OG/Twitter base tags + canonical in `index.html` (detail pages already set
+  per-route title/meta/OG/canonical dynamically in `ProjectDetail`).
+- Dynamic `GET /sitemap.xml` (public, no auth): 3 static URLs + every published
+  project/product slug with `lastmod`; DB-down fallback serves static 3 URLs,
+  never 500s. `nginx.conf` proxies `= /sitemap.xml` to ai-api with
+  `@sitemap_static` fallback to the bundled static file. Regression test
+  `test_sitemap_xml_lists_published_slugs` added.
+
+### Fixed (P2 — test isolation + perf)
+- `test_lead_chat` hardcoded phones (`9876543210`/`9111111111`) collided across
+  runs via phone-second dedup → false `test_08/09` failures on dirty DBs.
+  Now `TAG_NUM`-derived `PHONE_A`/`PHONE_B` (unique per run).
+- Route-level code-splitting: all 21 admin pages `React.lazy` → main bundle
+  524K → 352K, admin chunks load on demand (`Suspense` fallback).
+- `RlzMarquee`: `innerHTML` self-duplication → declarative doubled render
+  (second copy `aria-hidden`).
+- Removed empty untracked `data/uploads/` (backend uses
+  `rajiblabs-ai-backend/data/uploads/`).
+
+### Verified
+- Backend chunks green (api 22 incl. sitemap test, lead_chat incl. isolation fix).
+- Frontend `tsc` + `eslint` clean, `vite build` OK (352K main + lazy admin chunks).
+
 ## [Unreleased] — Full-stack QA audit + P0 AI outage fix
 
 ### Fixed (P0 — all live AI calls were 404ing)
