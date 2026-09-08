@@ -39,7 +39,10 @@ async def chat(body: ChatMessageIn, request: Request):
             db, body.session_token or body.session_id, body.message,
             request.client.host if request.client else "unknown",
             explicit={"name": body.name, "email": body.email, "phone": body.phone},
-            language=body.language)
+            language=body.language,
+            source={"source": body.source, "source_url": body.source_url,
+                    "landing_page": body.landing_page, "campaign": body.campaign,
+                    "session_id": body.session_token or body.session_id})
         if (body.mode or "").lower() == "rag":
             resp["mode"] = "rag"
         return resp

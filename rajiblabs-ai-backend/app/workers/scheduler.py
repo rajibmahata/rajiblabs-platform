@@ -25,6 +25,16 @@ def start_scheduler() -> AsyncIOScheduler:
         log.info("Scheduler added profile-agent daily 06:00 %s", s.app_timezone)
     except Exception as e:
         log.warning("Profile agent scheduler not added: %s", e)
+    # Marketing Intelligence Agent — daily 09:00 Asia/Kolkata (draft-first;
+    # the agent itself enforces audience, cadence, duplicate and approval gates)
+    try:
+        from app.services.marketing_agent import run_daily as _mkt_daily
+        _sched.add_job(_mkt_daily, CronTrigger(hour=9, minute=0),
+                       id="marketing-agent", replace_existing=True, max_instances=1,
+                       kwargs={"triggered_by": "scheduler"})
+        log.info("Scheduler added marketing-agent daily 09:00 %s", s.app_timezone)
+    except Exception as e:
+        log.warning("Marketing agent scheduler not added: %s", e)
     _sched.start()
     log.info("Scheduler started daily %02d:%02d %s", s.daily_agent_hour, s.daily_agent_minute, s.app_timezone)
     return _sched

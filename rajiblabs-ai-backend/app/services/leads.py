@@ -8,8 +8,31 @@ from app.database import utcnow
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 VALID_STATUSES = {"new", "contacted", "qualified", "proposal", "won",
-                  "lost", "archived", "spam", "closed"}
+                  "lost", "archived", "spam", "closed",
+                  # marketing lifecycle (additive — old statuses keep working)
+                  "hot", "warm", "cold", "customer", "follow_up",
+                  "converted", "unsubscribed"}
 HOT_LEAD_THRESHOLD = 50
+
+# Lead origin channels. Stored on the lead; website_chat stays the default
+# so every existing row and flow keeps working.
+LEAD_SOURCES = frozenset({
+    "website_chat", "live_agent", "contact_form", "project_inquiry",
+    "service_inquiry", "proposal", "career", "direct", "other",
+})
+
+# Campaign / template lifecycles (admin-managed collections).
+CAMPAIGN_STATUSES = ("draft", "ready", "scheduled", "sending", "sent",
+                     "paused", "cancelled", "failed")
+TEMPLATE_STATUSES = ("draft", "active", "archived")
+
+# Audience segments resolvable against customer_leads without new infra.
+# Keys are stable identifiers used by campaigns and the marketing agent.
+SEGMENTS = (
+    "all_opted_in", "new_leads", "hot_leads", "warm_leads",
+    "project_interest", "ai_interest", "architecture_interest",
+    "saas_interest", "automation_interest", "previous_customer",
+)
 
 # Explicit marketing opt-in signals only — never auto-subscribe.
 CONSENT_PATTERNS = (
@@ -116,6 +139,51 @@ def score_lead(lead: dict, idea: dict, message_text: str = "") -> int:
 def wants_new_idea(message_text: str) -> bool:
     text = (message_text or "").lower()
     return any(re.search(p, text) for p in NEW_IDEA_PATTERNS)
+
+
+def score_lead_explained(lead: dict, idea: dict,
+                         message_text: str = "") -> tuple[int, list[str]]:
+    """Same thresholds as score_lead, plus human-readable reasons.
+
+    score_lead() stays the single numeric authority; this mirrors it so the
+    Admin UI can show *why* (e.g. Lead Score: 82 — contact info + requirements).
+    Keep both in sync when thresholds change.
+    """
+    reasons: list[str] = []
+    score = 0
+    if valid_email(lead.get("email")):
+        score += 10
+        reasons.append("Contact email provided")
+    if valid_phone(lead.get("phone")):
+        score += 10
+        reasons.append("Contact phone provided")
+    if idea_is_substantive(idea):
+        score += 15
+        reasons.append("Specific business requirement described")
+    if not blank(lead.get("company_name")):
+        score += 5
+        reasons.append("Company identified")
+    if not blank(lead.get("industry")):
+        score += 5
+        reasons.append("Industry identified")
+    if len((idea.get("problem_statement") or "").strip()) >= 40:
+        score += 10
+        reasons.append("Business use case identified")
+    if not blank(idea.get("desired_outcome")):
+        score += 10
+        reasons.append("Desired outcome stated")
+    text = (message_text or "").lower()
+    if any(re.search(p, text) for p in PROPOSAL_PATTERNS):
+        score += 15
+        reasons.append("Requested proposal/pricing discussion")
+    if any(re.search(p, text) for p in MEETING_PATTERNS):
+        score += 20
+        reasons.append("Requested consultation call")
+    return min(score, 100), reasons
+
+
+# High-intent language for engagement/FATIGUE signals (deterministic).
+REPEAT_ENGAGEMENT_MIN_MESSAGES = 6
 
 
 def gives_marketing_consent(message_text: str) -> bool:

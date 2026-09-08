@@ -16,6 +16,9 @@ const ProductsManage = lazy(() => import("./pages/admin/ProductsManage"));
 const ProfileManage = lazy(() => import("./pages/admin/ProfileManage"));
 const ContentManage = lazy(() => import("./pages/admin/ContentManage"));
 const LeadsManage = lazy(() => import("./pages/admin/LeadsManage"));
+const CustomersManage = lazy(() => import("./pages/admin/CustomersManage"));
+const CampaignsManage = lazy(() => import("./pages/admin/CampaignsManage"));
+const TemplatesManage = lazy(() => import("./pages/admin/TemplatesManage"));
 const KnowledgeManage = lazy(() => import("./pages/admin/KnowledgeManage"));
 const LanguagesManage = lazy(() => import("./pages/admin/LanguagesManage"));
 const TranslationsManage = lazy(() => import("./pages/admin/TranslationsManage"));
@@ -53,6 +56,9 @@ export default function App() {
             <Route path="profile" element={<ProfileManage />} />
             <Route path="content" element={<ContentManage />} />
             <Route path="leads" element={<LeadsManage />} />
+            <Route path="customers" element={<CustomersManage />} />
+            <Route path="campaigns" element={<CampaignsManage />} />
+            <Route path="templates" element={<TemplatesManage />} />
             <Route path="knowledge" element={<KnowledgeManage />} />
             <Route path="agents" element={<AgentsManage />} />
             <Route path="profile-agent" element={<ProfileAgent />} />

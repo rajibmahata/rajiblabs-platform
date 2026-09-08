@@ -444,6 +444,23 @@ async def subscribe(body: EmailIn, response: Response):
     await db["subscribers"].insert_one(
         {"legacy_id": uuid.uuid4().hex, "email": email, "is_active": True,
          "subscribed_at": utcnow(), "unsubscribed_at": None})
+    # Link the newsletter silo to the canonical lead: same email → one person.
+    # Subscribe IS an explicit marketing opt-in (timestamp + source recorded).
+    try:
+        from app.services.lead_pipeline import find_or_create_lead
+        lead, _ = await find_or_create_lead(db, {"email": email}, "", message_text="")
+        now_sub = utcnow()
+        await db["customer_leads"].update_one(
+            {"_id": lead["_id"]},
+            {"$set": {"marketing_consent": True, "consent_timestamp": now_sub,
+                      "consent_source": "subscribe_form", "unsubscribe": False,
+                      "unsubscribe_timestamp": None, "updated_at": now_sub}})
+        from app.services.notify import audit as _audit
+        await _audit("subscribe_form", "CONSENT_GRANTED", str(lead["_id"]),
+                     {"consent_source": "subscribe_form"},
+                     event_type="CONSENT_GRANTED", lead_id=str(lead["_id"]))
+    except Exception:
+        pass
     response.status_code = 201
     return {"message": "Subscribed! Thank you."}
 
@@ -454,9 +471,21 @@ async def unsubscribe(body: EmailIn):
     db = get_db()
     sub = await db["subscribers"].find_one({"email": email, "is_active": True})
     if not sub:
-        raise HTTPException(404, {"error": "Email not found"})
-    await db["subscribers"].update_one(
-        {"_id": sub["_id"]}, {"$set": {"is_active": False, "unsubscribed_at": utcnow()}})
+        # Still honor lead-level opt-out even without a subscriber row.
+        lead = await db["customer_leads"].find_one({"email": email})
+        if not lead:
+            raise HTTPException(404, {"error": "Email not found"})
+    else:
+        await db["subscribers"].update_one(
+            {"_id": sub["_id"]}, {"$set": {"is_active": False, "unsubscribed_at": utcnow()}})
+    # Mirror to the canonical lead so campaigns stop immediately.
+    try:
+        from app.services.marketing import unsubscribe_lead
+        lead = await db["customer_leads"].find_one({"email": email})
+        if lead:
+            await unsubscribe_lead(db, str(lead["_id"]), source="unsubscribe_form")
+    except Exception:
+        pass
     return {"message": "Unsubscribed. We'll miss you!"}
 
 

@@ -40,6 +40,52 @@ def validate_outgoing(to_email: str, subject: str, body: str) -> str:
     return to_email
 
 
+def send_html_email(to_email: str, subject: str, body_text: str,
+                      body_html: str | None = None, *,
+                      reply_to: str | None = None,
+                      unsubscribe_url: str | None = None) -> dict:
+    """Send a multipart (text + optional HTML) email through the same SMTP
+    connection path as send_application_email. Promotional callers MUST pass
+    unsubscribe_url (enforced at the campaign layer). Raises EmailError on
+    failure. Never logs bodies or secrets."""
+    s = get_settings()
+    if not is_configured(s):
+        raise EmailError("SMTP is not configured (smtp_host/user/password)")
+    to_email = validate_outgoing(to_email, subject, body_text)
+    msg = EmailMessage()
+    msg["From"] = s.smtp_from or s.smtp_user
+    msg["To"] = to_email
+    msg["Subject"] = subject.strip()[:MAX_SUBJECT]
+    if reply_to and _EMAIL_RE.match(reply_to.strip()):
+        msg["Reply-To"] = reply_to.strip()
+    if unsubscribe_url and unsubscribe_url.startswith("https://"):
+        # RFC 2369/8058: one-click + HTTPS URL. Clients render native unsubscribe.
+        msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
+        msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+    msg.set_content(body_text.strip()[:MAX_BODY])
+    if (body_html or "").strip():
+        msg.add_alternative(body_html.strip()[:MAX_BODY * 4], subtype="html")
+    try:
+        if int(s.smtp_port) == 465:
+            smtp: smtplib.SMTP = smtplib.SMTP_SSL(s.smtp_host, 465, timeout=30)
+        else:
+            smtp = smtplib.SMTP(s.smtp_host, int(s.smtp_port or 587), timeout=30)
+        with smtp:
+            try:
+                smtp.starttls()
+            except smtplib.SMTPException:
+                pass  # 465/implicit-TLS servers reject STARTTLS; already encrypted
+            smtp.login(s.smtp_user, s.smtp_password)
+            smtp.send_message(msg)
+    except EmailError:
+        raise
+    except Exception:
+        raise EmailError("SMTP delivery failed")
+    domain = to_email.split("@")[-1]
+    return {"to_domain": domain, "subject_len": len(subject.strip()),
+            "html": bool((body_html or "").strip())}
+
+
 def send_application_email(to_email: str, subject: str, body_text: str,
                            *, reply_to: str | None = None) -> dict:
     """Send one plain-text email through SMTP. Raises EmailError on failure."""

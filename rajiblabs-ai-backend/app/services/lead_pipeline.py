@@ -132,15 +132,26 @@ async def find_or_create_lead(db, fields: dict, session_token: str,
                     event_type="LEAD_UPDATED", session_id=session_token,
                     lead_id=str(lead["_id"]))
         return lead, False
+    source = (fields.get("source") or "website_chat").strip()[:40]
+    if source not in rules.LEAD_SOURCES:
+        source = "website_chat"
     doc = {
         "name": (fields.get("name") or "").strip()[:120],
         "email": email, "phone": phone,
         "company_name": (fields.get("company_name") or "").strip()[:200],
         "industry": (fields.get("industry") or "").strip()[:120],
-        "status": "new", "lead_score": 0, "source": "website_chat",
-        "marketing_consent": False, "tags": [], "campaigns": [], "email_history": [],
+        "status": "new", "lead_score": 0, "score_reasons": [],
+        "status_history": [{"status": "new", "at": now, "by": "system"}],
+        "score_history": [],
+        "source": source,
+        "source_detail": fields.get("source_detail") or {},
+        "marketing_consent": False, "consent_timestamp": None,
+        "consent_source": None, "tags": [], "interests": [],
+        "campaigns": [], "email_history": [],
         "workflow_enrollment": None, "opens": 0, "clicks": 0,
+        "emails_sent": 0, "last_email_at": None,
         "last_contacted_at": None, "unsubscribe": False,
+        "unsubscribe_timestamp": None,
         "session_ids": [session_token] if session_token else [], "conversation_id": None,
         "description": "", "product": None,
         "created_at": now, "updated_at": now,
@@ -265,7 +276,8 @@ async def maybe_auto_analyze(db, lead: dict, idea: dict) -> dict | None:
 async def process_chat_message(db, session_token: str | None, message: str,
                                client_ip: str,
                                explicit: dict | None = None,
-                               language: str | None = None) -> dict:
+                               language: str | None = None,
+                               source: dict | None = None) -> dict:
     """Full 18-step turn. Returns the public response dict (legacy-compatible).
 
     `language` localizes the reply only — lead capture, scoring and storage
@@ -372,12 +384,20 @@ async def process_chat_message(db, session_token: str | None, message: str,
         ai_lead, ai_idea = {}, {}
 
     # 10/11. backend validation — explicit body fields win, then AI extraction
+    src = source or {}
+    src_name = (src.get("source") or "website_chat").strip()[:40]
+    if src_name not in rules.LEAD_SOURCES:
+        src_name = "website_chat"
     fields = {
         "name": (explicit.get("name") or ai_lead.get("name") or "").strip()[:120],
         "email": (explicit.get("email") or ai_lead.get("email") or "").strip(),
         "phone": (explicit.get("phone") or ai_lead.get("phone") or "").strip(),
         "company_name": (explicit.get("company_name") or ai_lead.get("company_name") or "").strip()[:200],
         "industry": (ai_lead.get("industry") or "").strip()[:120],
+        "source": src_name,
+        "source_detail": {k: str(src.get(k) or "")[:500] for k in
+                          ("source_url", "landing_page", "campaign", "session_id")
+                          if src.get(k)},
     }
     if fields["email"] and not rules.valid_email(fields["email"]):
         fields["email"] = ""
@@ -416,28 +436,41 @@ async def process_chat_message(db, session_token: str | None, message: str,
         await db["customer_conversations"].update_one(
             {"_id": sess["_id"]}, {"$set": {"lead_id": str(lead["_id"])}})
 
-    # marketing consent: explicit opt-in only, with evidence
+    # marketing consent: explicit opt-in only, with evidence + timestamp.
+    # Lead capture and consent stay separate: this sets consent ONLY on
+    # opt-in language, and records when/where it happened.
     if rules.gives_marketing_consent(message) and not lead.get("marketing_consent"):
+        now_c = utcnow()
         await db["customer_leads"].update_one(
             {"_id": lead["_id"]},
-            {"$set": {"marketing_consent": True, "updated_at": utcnow()}})
-        await audit("website_chat", "LEAD_UPDATED", str(lead["_id"]),
-                    {"marketing_consent": True, "evidence": message[:200]},
-                    event_type="LEAD_UPDATED", session_id=token,
+            {"$set": {"marketing_consent": True, "consent_timestamp": now_c,
+                      "consent_source": "website_chat", "updated_at": now_c}})
+        await audit("website_chat", "CONSENT_GRANTED", str(lead["_id"]),
+                    {"marketing_consent": True, "consent_source": "website_chat",
+                     "evidence": message[:200]},
+                    event_type="CONSENT_GRANTED", session_id=token,
                     lead_id=str(lead["_id"]))
         lead["marketing_consent"] = True
+        lead["consent_timestamp"] = now_c
+        lead["consent_source"] = "website_chat"
 
     # 13. create/update idea
     idea, idea_created, _ = await upsert_idea(db, token, lead["_id"], incoming_idea, message)
     idea = idea or {}
 
-    # 14. score (+ hot-lead event on upward crossing)
+    # 14. score (+ hot-lead event on upward crossing), with reasons/history
     old_score = int(lead.get("lead_score") or 0)
-    new_score = rules.score_lead(lead, idea, message)
-    if new_score != old_score:
+    new_score, score_reasons = rules.score_lead_explained(lead, idea, message)
+    assert new_score == rules.score_lead(lead, idea, message), "score mirror drift"
+    if new_score != old_score or score_reasons != (lead.get("score_reasons") or []):
         await db["customer_leads"].update_one(
-            {"_id": lead["_id"]}, {"$set": {"lead_score": new_score, "updated_at": utcnow()}})
+            {"_id": lead["_id"]},
+            {"$set": {"lead_score": new_score, "score_reasons": score_reasons,
+                      "updated_at": utcnow()},
+             "$push": {"score_history": {"score": new_score, "at": utcnow(),
+                                         "reasons": score_reasons[:10]}}})
         lead["lead_score"] = new_score
+        lead["score_reasons"] = score_reasons
     if old_score < rules.HOT_LEAD_THRESHOLD <= new_score:
         await notify("HotLeadDetected", f"Hot lead: {lead.get('name') or lead.get('email') or 'visitor'} "
                                         f"(score {new_score})", (idea.get("description") or "")[:200],

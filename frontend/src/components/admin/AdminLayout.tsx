@@ -21,6 +21,11 @@ const NAV: { label: string; items: NavEntry[] }[] = [
   { label: "Engagement", items: [
     { to: "/admin/leads", label: "Leads", icon: "fas fa-user-plus" },
   ]},
+  { label: "Growth", items: [
+    { to: "/admin/customers", label: "Customers", icon: "fas fa-users" },
+    { to: "/admin/campaigns", label: "Campaigns", icon: "fas fa-envelopes-bulk" },
+    { to: "/admin/templates", label: "Templates", icon: "fas fa-file-contract" },
+  ]},
   { label: "Career", items: [
     { to: "/admin/career", label: "Workspace", icon: "fas fa-briefcase" },
     { to: "/admin/career/jobs", label: "Job Openings", icon: "fas fa-list-check" },

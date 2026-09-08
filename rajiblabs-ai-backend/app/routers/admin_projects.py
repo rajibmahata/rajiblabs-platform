@@ -101,8 +101,14 @@ async def leads(status: str | None = None, q: str | None = None,
 @router.put("/leads/{lid}")
 async def lead_status(lid: str, status: str, email: str = Depends(require_admin)):
     from bson import ObjectId
+    from app.services import leads as rules
     db = get_db()
-    await db["customer_leads"].update_one({"_id": ObjectId(lid)}, {"$set": {"status": status}})
+    if status not in rules.VALID_STATUSES:
+        raise HTTPException(400, f"Invalid status (valid: {sorted(rules.VALID_STATUSES)})")
+    await db["customer_leads"].update_one(
+        {"_id": ObjectId(lid)},
+        {"$set": {"status": status, "updated_at": utcnow()},
+         "$push": {"status_history": {"status": status, "at": utcnow(), "by": email}}})
     await audit(email, "LEAD_STATUS_CHANGE", lid, {"status": status})
     return {"ok": True}
 
@@ -169,6 +175,8 @@ async def lead_patch(lid: str, body: LeadPatch, email: str = Depends(require_adm
             raise HTTPException(400, "Invalid phone")
         patch["phone"] = ph
     if data.get("status") is not None:
+        if data["status"] not in rules.VALID_STATUSES:
+            raise HTTPException(400, f"Invalid status (valid: {sorted(rules.VALID_STATUSES)})")
         patch["status"] = data["status"]
     if not patch:
         raise HTTPException(400, "Nothing to update")
@@ -178,7 +186,11 @@ async def lead_patch(lid: str, body: LeadPatch, email: str = Depends(require_adm
         {"_id": oid}, {"locked_fields": 1}) or {}).get("locked_fields") or [])
     locked |= {k for k in patch if k not in ("status", "updated_at")}
     patch["locked_fields"] = sorted(locked)
-    await db["customer_leads"].update_one({"_id": oid}, {"$set": patch})
+    update: dict = {"$set": patch}
+    if "status" in patch:
+        update["$push"] = {"status_history": {"status": patch["status"],
+                                              "at": utcnow(), "by": email}}
+    await db["customer_leads"].update_one({"_id": oid}, update)
     await audit(email, "LEAD_STATUS_CHANGE" if set(patch) == {"status", "updated_at"}
                 else "LEAD_UPDATED", lid, {"fields": sorted(patch.keys())})
     return {"ok": True}

@@ -80,6 +80,12 @@ class ChatMessageIn(BaseModel):
     mode: Optional[str] = Field(default=None, max_length=16)
     # Response language (BCP-47-ish code, e.g. bn, zh-CN). Same KB, localized answer.
     language: Optional[str] = Field(default=None, max_length=12)
+    # Lead origin (additive — old clients omit; defaults to website_chat).
+    # source: live_agent|contact_form|project_inquiry|service_inquiry|proposal|career|direct|other
+    source: Optional[str] = Field(default=None, max_length=40)
+    source_url: Optional[str] = Field(default=None, max_length=500)
+    landing_page: Optional[str] = Field(default=None, max_length=500)
+    campaign: Optional[str] = Field(default=None, max_length=200)
 
 
 class LoginIn(BaseModel):
@@ -538,3 +544,48 @@ class ApplicationPatch(BaseModel):
     email_body: Optional[str] = None
     cover_letter: Optional[str] = None
     summary: Optional[str] = None
+
+
+# ── Customer marketing (templates, campaigns, sends) ──
+
+class EmailTemplateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    subject: str = Field(min_length=2, max_length=200)
+    preheader: str = Field(default="", max_length=300)
+    html: str = Field(default="", max_length=80000)
+    text: str = Field(default="", max_length=20000)
+    category: str = Field(default="general", max_length=80)
+    status: str = Field(default="draft", max_length=20)
+
+
+class EmailTemplatePatch(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    subject: Optional[str] = Field(default=None, min_length=2, max_length=200)
+    preheader: Optional[str] = Field(default=None, max_length=300)
+    html: Optional[str] = Field(default=None, max_length=80000)
+    text: Optional[str] = Field(default=None, max_length=20000)
+    category: Optional[str] = Field(default=None, max_length=80)
+    status: Optional[str] = Field(default=None, max_length=20)
+
+
+class CampaignAudience(BaseModel):
+    segment: str = Field(default="all_opted_in", max_length=40)
+    tags: list[str] = []
+    statuses: list[str] = []
+
+
+class EmailCampaignIn(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    template_id: Optional[str] = Field(default=None, max_length=64)
+    subject: str = Field(min_length=2, max_length=200)
+    html: str = Field(default="", max_length=80000)
+    text: str = Field(default="", max_length=20000)
+    audience: CampaignAudience = CampaignAudience()
+    max_per_7_days: int = Field(default=2, ge=1, le=10)
+    min_interval_hours: int = Field(default=48, ge=1, le=720)
+    schedule_at: Optional[str] = Field(default=None, max_length=40)
+    auto_send: bool = False
+
+
+class CampaignDecision(BaseModel):
+    action: str = Field(max_length=20)  # approve|send|pause|cancel

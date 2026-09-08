@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.core_logging import setup_logging
 from app.database import init_db
-from app.routers import health, public, admin_auth, admin_projects, admin_logs, github, ai, agent, chat, resume, legacy, lead_chat, rag, admin_rag, admin_workbench, languages, admin_languages, concierge, admin_agents, admin_career, admin_profile_agent
+from app.routers import health, public, admin_auth, admin_projects, admin_logs, github, ai, agent, chat, resume, legacy, lead_chat, rag, admin_rag, admin_workbench, languages, admin_languages, concierge, admin_agents, admin_career, admin_profile_agent, admin_marketing, public_email
 
 setup_logging()
 settings = get_settings()
@@ -93,6 +93,8 @@ def create_app() -> FastAPI:
         (admin_agents.router, ["Admin Agents"]),
         (admin_career.router, ["Admin Career"]),
         (admin_profile_agent.router, ["Admin Profile Agent"]),
+        (admin_marketing.router, ["Admin Marketing"]),
+        (public_email.router, ["Public Email"]),
     ):
         app.include_router(r, tags=tags)
     return app

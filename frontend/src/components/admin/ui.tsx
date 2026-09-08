@@ -28,10 +28,10 @@ export function Panel({ title, sub, linkTo, linkLabel, action, children }: {
   );
 }
 
-const OK = new Set(["published", "active", "live", "synced", "ok", "online", "ready", "healthy", "submitted", "won", "success"]);
-const ERR = new Set(["failed", "error", "down", "lost", "not synced", "missing", "denied"]);
-const WARN = new Set(["draft", "review", "pending", "stale", "warn", "new", "spam", "archived", "hidden", "ignored"]);
-const INFO = new Set(["info", "proposal", "qualified", "contacted"]);
+const OK = new Set(["published", "active", "live", "synced", "ok", "online", "ready", "healthy", "submitted", "won", "success", "sent", "delivered", "subscribed", "customer", "converted", "hot"]);
+const ERR = new Set(["failed", "error", "down", "lost", "not synced", "missing", "denied", "unsubscribed", "cancelled", "bounced"]);
+const WARN = new Set(["draft", "review", "pending", "stale", "warn", "new", "spam", "archived", "hidden", "ignored", "scheduled", "sending", "paused", "queued", "skipped", "warm", "cold", "follow_up"]);
+const INFO = new Set(["info", "proposal", "qualified", "contacted", "opened", "clicked"]);
 
 export function StatusPill({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
