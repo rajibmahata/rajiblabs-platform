@@ -42,11 +42,11 @@ export default function LogsManage() {
     if (level !== "all") params.set("level", level);
     if (dateFrom) params.set("date_from", new Date(dateFrom).toISOString());
     if (dateTo) params.set("date_to", new Date(dateTo).toISOString());
-    api.get<LogPage>(`${BASE}/api/admin/logs?${params}`)
+    api.get<LogPage>(`/api/admin/logs?${params}`)
       .then((r) => setPage(r && Array.isArray(r.items) ? r : null))
       .catch((e) => setErr(String((e as Error)?.message || e)))
       .finally(() => setLoading(false));
-    api.get<Stats>(`${BASE}/api/admin/logs/stats`).then(setStats).catch(() => {});
+    api.get<Stats>(`/api/admin/logs/stats`).then(setStats).catch(() => {});
   };
 
   // Debounced reload (page resets to 1 in the input handlers below).
@@ -70,7 +70,7 @@ export default function LogsManage() {
 
   const purge = async () => {
     if (!confirm(`Delete ALL system logs now? (Entries older than ${stats?.retention_days ?? 7} days expire automatically.)`)) return;
-    try { await api.del(`${BASE}/api/admin/logs`); load(1); setPageNo(1); } catch (e: any) { alert(String(e.message || e)); }
+    try { await api.del(`/api/admin/logs`); load(1); setPageNo(1); } catch (e: any) { alert(String(e.message || e)); }
   };
 
   const totalPages = page ? Math.max(1, Math.ceil(page.total / page.page_size)) : 1;
