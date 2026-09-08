@@ -38,7 +38,7 @@ ADMIN_ONLY_TOOLS = frozenset({
 })
 
 PUBLIC_TOOL_NAMES = frozenset({
-    "search_knowledge", "get_rajib_profile", "get_projects",
+    "search_knowledge", "get_rajib_profile", "get_projects", "get_domains",
     "get_project_details", "get_project_live_url", "get_products",
     "get_services", "get_github_projects", "get_contact_information",
     "get_relevant_sources",
@@ -230,6 +230,7 @@ async def run_public_tool(name: str, db=None, **args):
 
 _IMPL = {
     "search_knowledge": search_knowledge,
+    "get_domains": get_domains,
     "get_rajib_profile": get_rajib_profile,
     "get_projects": get_projects,
     "get_project_details": get_project_details,
@@ -240,3 +241,25 @@ _IMPL = {
     "get_contact_information": get_contact_information,
     "get_relevant_sources": get_relevant_sources,
 }
+
+async def get_domains(db, query: str | None = None, min_confidence: int = 50) -> list[dict]:
+    """Return verified professional domains, optionally filtered by query text."""
+    filt = {"status": "active", "confidence_score": {"$gte": int(min_confidence or 50)}}
+    if query:
+        import re
+        rx = {"$regex": re.escape(query[:80]), "$options": "i"}
+        filt["$or"] = [{"name": rx}, {"short_description": rx}, {"technologies": rx}]
+    cur = db["professional_domains"].find(filt).sort([("confidence_score", -1)]).limit(20)
+    out = []
+    async for d in cur:
+        out.append(_clean({
+            "name": d.get("name"), "slug": d.get("slug"),
+            "short_description": d.get("short_description"),
+            "confidence_score": d.get("confidence_score"),
+            "confidence_label": d.get("confidence_label"),
+            "technologies": d.get("technologies", [])[:6],
+            "projects": d.get("projects", [])[:3],
+            "portfolio_items": d.get("portfolio_items", [])[:3],
+            "github_repositories": d.get("github_repositories", [])[:3],
+        }))
+    return out

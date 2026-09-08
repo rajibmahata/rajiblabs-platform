@@ -34,6 +34,7 @@ const NAV: { label: string; items: NavEntry[] }[] = [
   ]},
   { label: "Intelligence", items: [
     { to: "/admin/profile-agent", label: "Profile Agent", icon: "fas fa-user-gear" },
+    { to: "/admin/domains", label: "Domains", icon: "fas fa-layer-group" },
     { to: "/admin/knowledge", label: "Knowledge Base", icon: "fas fa-brain" },
     { to: "/admin/agents", label: "AI Agents", icon: "fas fa-robot" },
   ]},

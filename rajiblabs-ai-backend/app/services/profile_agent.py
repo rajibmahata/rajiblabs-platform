@@ -246,6 +246,19 @@ async def run_profile_agent(triggered_by: str = "scheduler") -> dict:
         health = await check_configuration_health(db)
         sources_inspected.append("health")
 
+        # 3b. Domain intelligence (professional domains -> RAG)
+        try:
+            from app.services.domain_intelligence import run_domain_discovery
+            dom_res = await run_domain_discovery(triggered_by=triggered_by)
+            sources_inspected.append("domains")
+            # count active domains as proposed evidence
+            proposed += len(dom_res.get("domains", []))
+        except Exception as e:
+            log.warning("domain discovery failed: %s", e)
+            try:
+                await log_error("profile_agent", "Domain discovery failed", str(e)[:1000])
+            except: pass
+
         # 4. Knowledge sync for approved changes (only changed docs)
         if policy.get("knowledge_sync"):
             from app.services import rag_ingest

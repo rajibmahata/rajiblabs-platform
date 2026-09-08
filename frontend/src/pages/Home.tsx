@@ -6,6 +6,7 @@ import RlzNeuralCanvas from "../rlz/RlzNeuralCanvas";
 import RlzHero from "../rlz/RlzHero";
 import RlzMarquee from "../rlz/RlzMarquee";
 import RlzExpertise from "../rlz/RlzExpertise";
+import RlzDomains from "../rlz/RlzDomains";
 import RlzArchitecture from "../rlz/RlzArchitecture";
 import RlzProjects from "../rlz/RlzProjects";
 import RlzDemos from "../rlz/RlzDemos";
@@ -35,6 +36,7 @@ export default function Home() {
         <RlzHero scopeRef={scopeRef} />
         <RlzMarquee />
         <RlzExpertise />
+        <RlzDomains />
         <RlzArchitecture />
         <RlzProjects />
         <RlzDemos />

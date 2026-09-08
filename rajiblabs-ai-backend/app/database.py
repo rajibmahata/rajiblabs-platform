@@ -285,6 +285,10 @@ async def ensure_indexes(db=None) -> None:
                                     [("created_at", -1)]],
         "profile_agent_runs": [[("started_at", -1)], [("status", 1)]],
         "profile_agent_tasks": [[("status", 1)], [("created_at", -1)]],
+        # Professional domain intelligence (Profile Manager Agent)
+        "professional_domains": [[("slug", 1)], [("status", 1)], [("featured", 1)],
+                                 [("confidence_score", -1)], [("updated_at", -1)]],
+        "professional_sources": [[("type", 1)], [("enabled", 1)], [("status", 1)]],
         # Multilingual framework: language master + translation records + hot cache
         "languages": [[("enabled", 1)], [("sort_order", 1)]],
         "translations": [[("key", 1), ("target_language", 1)],

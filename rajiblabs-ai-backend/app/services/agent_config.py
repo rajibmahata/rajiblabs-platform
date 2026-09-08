@@ -46,7 +46,7 @@ DEFAULT_CONCIERGE = {
         "Use only the URLs present in the tool results."
     ),
     "allowed_tools": [
-        "search_knowledge", "get_rajib_profile", "get_projects",
+        "search_knowledge", "get_rajib_profile", "get_projects", "get_domains",
         "get_project_details", "get_project_live_url", "get_products",
         "get_services", "get_github_projects", "get_contact_information",
         "get_relevant_sources",
@@ -100,7 +100,7 @@ DEFAULT_CAREER = {
         "candidate, concise and personalized. Use only the URLs provided."
     ),
     "allowed_tools": [
-        "search_knowledge", "get_rajib_profile", "get_projects",
+        "search_knowledge", "get_rajib_profile", "get_projects", "get_domains",
         "get_project_details", "get_github_projects", "get_relevant_sources",
     ],
     "knowledge_sources": list(DEFAULT_SOURCE_POLICY),
@@ -181,6 +181,9 @@ DEFAULT_PROFILE_AGENT = {
         "health_check_frequency": "daily",
         "approval_required_for": ["publish", "delete", "identity", "urls", "seo"],
         "run_frequency": "daily",
+        "domain_publish_threshold": 50,
+        "domain_lookback_days": 90,
+        "linkedin_enabled": True,
     },
     "schedule": {"cron": "0 6 * * *", "timezone": "Asia/Kolkata"},
 }

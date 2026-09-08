@@ -28,6 +28,8 @@ const CareerJobs = lazy(() => import("./pages/admin/CareerJobs"));
 const CareerWorkspace = lazy(() => import("./pages/admin/CareerWorkspace"));
 const CareerApplications = lazy(() => import("./pages/admin/CareerApplications"));
 const ProfileAgent = lazy(() => import("./pages/admin/ProfileAgent"));
+const DomainsManage = lazy(() => import("./pages/admin/DomainsManage"));
+const DomainDetail = lazy(() => import("./pages/DomainDetail"));
 const Workbench = lazy(() => import("./pages/admin/Workbench"));
 const LogsManage = lazy(() => import("./pages/admin/LogsManage"));
 const Settings = lazy(() => import("./pages/admin/Settings"));
@@ -43,6 +45,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/portfolio/:slug" element={<PortfolioDetail />} />
           <Route path="/products/:slug" element={<ProductDetail />} />
+          <Route path="/domains/:slug" element={<DomainDetail />} />
           <Route path="/admin/login" element={<Login />} />
           <Route
             path="/admin"
@@ -60,6 +63,7 @@ export default function App() {
             <Route path="campaigns" element={<CampaignsManage />} />
             <Route path="templates" element={<TemplatesManage />} />
             <Route path="knowledge" element={<KnowledgeManage />} />
+            <Route path="domains" element={<DomainsManage />} />
             <Route path="agents" element={<AgentsManage />} />
             <Route path="profile-agent" element={<ProfileAgent />} />
             <Route path="career" element={<CareerWorkspace />} />
