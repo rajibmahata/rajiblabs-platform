@@ -2,6 +2,41 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Full-stack QA audit + P0 AI outage fix
+
+### Fixed (P0 — all live AI calls were 404ing)
+- `app/services/lead_ai.py` posted to `https://api.openai.com/chat/completions`
+  — missing the `/v1` prefix, so OpenAI returned HTTP 404 for EVERY model
+  (primary `gpt-5-nano` and fallback `gpt-4o-mini` alike). Live `error_logs`
+  proved it: `openai: HTTP_404; openai: HTTP_404 | models tried:
+  ['openai:gpt-4o-mini', 'openai:gpt-5-nano']`. Fixed to
+  `{base}/v1/chat/completions` (correct for both OpenAI and DeepSeek bases);
+  only `lead_ai.py` hand-rolls the URL, all other callers use the official SDK.
+  **Requires backend rebuild/redeploy to take effect in Docker.**
+- New `test_29_chat_url_has_v1_prefix` guards the URL (all posted URLs must end
+  `/v1/chat/completions`).
+
+### Fixed (P1 — unique-email index never existed on any MongoDB version)
+- `ensure_indexes` used `partialFilterExpression={"email": {"$exists": True,
+  "$ne": ""}}` — `$ne` is illegal in partial filters on EVERY MongoDB version,
+  so index creation always failed (visible as `Index failed
+  customer_leads.email_unique ... CannotCreateIndex` warnings). Replaced with
+  `{"email": {"$gt": ""}}` (matches only non-empty string e-mails); verified
+  `email_unique` now creates OK. Application-level find-then-merge remains
+  authoritative for dedup.
+
+### Fixed (P3 — admin UX consistency)
+- Bare `alert()` → `toast()` in `LeadsManage` (status update) and `LogsManage`
+  (purge) per the no-bare-alert recipe. `tsc` + `eslint` clean.
+
+### Verified
+- Backend suites in chunks (live-DB slowness, not failures): api 21, rag+kb 44,
+  i18n+workbench 47, concierge+catalog 55, career+profile 17, github 13,
+  lead_chat 29 (incl. new test_29) — **225 collected, all green**.
+- Live: admin 401 gates hold on all `/api/admin/*`; public endpoints 200;
+  concierge + RAG grounded answers verified; resume 200; workbench/career/github
+  401s correct; secrets scan clean (patterns only, no real keys).
+
 ## [Unreleased] — Fix release filename mismatch breaking VPS extraction
 
 ### Root cause (traced, not guessed)

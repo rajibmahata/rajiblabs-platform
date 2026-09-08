@@ -776,3 +776,44 @@ async def test_28_http_404_retries_once_with_fallback_model(monkeypatch, fake_ai
     assert result.reply == "Nice to meet you."
     assert meta["ai_model"] == fallback
     assert seen_models[0] != fallback and seen_models[-1] == fallback
+
+
+@pytest.mark.asyncio
+async def test_29_chat_url_has_v1_prefix(monkeypatch, fake_ai_key):
+    """Regression: POST must go to {base}/v1/chat/completions.
+    Without /v1 the API 404s for every model (live incident)."""
+    import httpx
+    import json as _json
+    from app.services import lead_ai
+    seen_urls: list[str] = []
+
+    class UrlResp:
+        status_code = 200
+        headers = {}
+        text = ""
+
+        def json(self):
+            return {"choices": [{"message": {"content": "{}"}}]}
+
+    class UrlClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, *a, **k):
+            seen_urls.append(url)
+            return UrlResp()
+
+    monkeypatch.setattr(httpx, "AsyncClient", UrlClient)
+    svc = lead_ai.AIService()
+    try:
+        await svc._complete([{"role": "user", "content": "hi"}], 50, 0.2, tag="t")
+    except Exception:
+        pass  # empty payload may fail validation — only the URL matters here
+    assert seen_urls, "expected at least one HTTP call"
+    assert all(u.rstrip("/").endswith("/v1/chat/completions") for u in seen_urls), seen_urls

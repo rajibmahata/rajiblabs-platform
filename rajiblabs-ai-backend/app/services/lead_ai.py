@@ -218,7 +218,9 @@ class AIService:
                         payload["max_tokens"] = max_tokens
                         payload["temperature"] = temperature
                     r = await client.post(
-                        f"{base}/chat/completions",
+                        # Both OpenAI and DeepSeek serve chat at /v1/chat/completions;
+                        # without /v1 the API 404s for every model.
+                        f"{base}/v1/chat/completions",
                         headers={"Authorization": f"Bearer {key}",
                                  "Content-Type": "application/json"},
                         json=payload)

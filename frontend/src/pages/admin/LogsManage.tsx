@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
+import { toast } from "../../components/admin/toast";
 
 type LogEntry = {
   id: string; level: string; source: string; logger?: string | null;
@@ -70,7 +71,7 @@ export default function LogsManage() {
 
   const purge = async () => {
     if (!confirm(`Delete ALL system logs now? (Entries older than ${stats?.retention_days ?? 7} days expire automatically.)`)) return;
-    try { await api.del(`/api/admin/logs`); load(1); setPageNo(1); } catch (e: any) { alert(String(e.message || e)); }
+    try { await api.del(`/api/admin/logs`); load(1); setPageNo(1); } catch (e: any) { toast("Purge failed", String(e.message || e).slice(0, 160)); }
   };
 
   const totalPages = page ? Math.max(1, Math.ceil(page.total / page.page_size)) : 1;

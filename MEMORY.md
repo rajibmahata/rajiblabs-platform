@@ -231,3 +231,36 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - Frontend: `npx tsc --noEmit`, `npx eslint src/pages/admin/ src/components/admin/`,
   `npm run build` from `frontend/`.
 - Update this file + `CHANGELOG.md` with what was actually done.
+
+## QA audit 2026-09-08 (full-stack, live Docker) — known gaps, do not regress
+
+- P0 (fixed): `lead_ai._complete` posted to `{base}/chat/completions` without
+  `/v1` → every live AI call 404'd. Only hand-rolled URL in the codebase;
+  guarded by `test_29_chat_url_has_v1_prefix`. Rebuild/redeploy backend to apply.
+- P1 (fixed): `email_unique` partial index used illegal `$ne` (fails on ALL
+  MongoDB versions) → replaced with `{"email": {"$gt": ""}}`, verified created.
+- Dead frontend code (NOT deleted — another surface may reference it; verify
+  before removing): `components/sections/*` (13 files), `components/projects/*`,
+  `components/activity/*`, `components/ui/{FloatingContact,ProjectCard,ProjectModal,
+  SectionLabel,StatusBadge,TechChip,CommitRow}`, `components/layout/{GlobalNav,
+  GlobalFooter}`, `types/index.ts`, `pages/Projects.tsx`, legacy `api.ts` fetchers
+  (`getProjects/getProject/getActivities/getProfile/submitContact/submitSubscribe`
+  + `fallbackData.ts`) — live code uses `api.*`/`getCms*`/`sendChat` only. Home
+  renders `rlz/*` exclusively.
+- Lead-chat tests are order/state-sensitive: hardcoded phones (`9876543210`,
+  `9111111111`) collide across runs via phone-second dedup; run on a clean DB
+  or expect `test_08/09`-style false failures. Full suite is too slow for one
+  shot (~110s+ on live DB) — run per-file chunks.
+- SEO gaps (open): no JSON-LD anywhere; `sitemap.xml` lists only 3 URLs (no
+  project/product detail URLs); OG tags only set dynamically in `ProjectDetail`;
+  no canonical tags; no per-route meta beyond index.html.
+- Rate limits are in-memory per-process (`chat.py`/`lead_chat.py` `_limit`) —
+  correct for single-container VPS, lost on restart, not shared across replicas.
+- `bn` translations `count: 0` — no data yet, fallback-to-English path verified
+  correct; generate via admin Translations page when ready.
+- `RlzMarquee` uses `innerHTML += innerHTML` self-duplication (benign — own
+  static nodes, StrictMode-guarded) — leave unless rewritten.
+- `data/uploads/` (repo root) is an empty leftover; backend uses
+  `rajiblabs-ai-backend/data/uploads/`. `app/static/` + `app/templates/` are
+  empty dirs. `scripts/sync_linkedin_learning.py` is cron-style manual, unwired
+  to any scheduler.

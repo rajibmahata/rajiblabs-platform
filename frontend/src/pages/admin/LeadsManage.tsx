@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
+import { toast } from "../../components/admin/toast";
 
 const STATUSES = ["all", "new", "contacted", "qualified", "proposal", "won", "lost", "archived", "spam"];
 const SETTABLE = ["new", "contacted", "qualified", "proposal", "won", "lost", "archived", "spam"];
@@ -29,7 +30,7 @@ export default function LeadsManage() {
     if (d) { setSelected(d.lead); setDetail(d); setMessages([]); setOpenSession(null); }
   };
   const setStatus = async (id: string, status: string) => {
-    await api.patch(`/api/admin/leads/${id}`, { status }).catch((e) => alert(String(e.message || e)));
+    await api.patch(`/api/admin/leads/${id}`, { status }).catch((e) => toast("Status update failed", String(e.message || e).slice(0, 160)));
     openLead(id); load();
   };
   const openConversation = async (sid: string) => {
