@@ -21,8 +21,8 @@ export default function DomainsManage(){
   };
   const loadSources=()=> api.get<any[]>("/api/admin/domains/sources/list").then(setSources).catch(()=>{});
   const loadHealth=()=> api.get<any>("/api/admin/domains/health/overview").then(setHealth).catch(()=>{});
-  useEffect(()=>{ loadDomains(); },[status]);
-  useEffect(()=>{ const t=setTimeout(loadDomains,400); return ()=>clearTimeout(t);},[q]);
+  useEffect(()=>{ loadDomains(); },[status]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ const t=setTimeout(loadDomains,400); return ()=>clearTimeout(t);},[q]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{ loadSources(); loadHealth(); },[]);
   const runNow=async()=>{
     setBusy(true);
