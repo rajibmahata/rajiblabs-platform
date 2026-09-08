@@ -61,6 +61,8 @@ export async function fetchLanguages(): Promise<UILanguage[]> {
 }
 export interface RagSource {
   title: string; source_type: string; url?: string | null; score?: number;
+  // rich card data (backend attaches for project/product sources)
+  desc?: string; tech?: string[];
 }
 export interface ChatTurn {
   reply: string; session_token: string;
@@ -72,9 +74,13 @@ export interface ChatTurn {
   intent?: string | null; sources?: RagSource[]; mode?: string;
 }
 export async function sendChat(message: string, session_token?: string, extra?: { name?: string; email?: string; phone?: string; mode?: string; language?: string }) {
+  let page: Record<string, string> = {};
+  try {
+    page = { source_url: window.location.href.slice(0, 500), landing_page: window.location.pathname.slice(0, 200) };
+  } catch { /* non-browser */ }
   const res = await fetch(`${ADMIN_BASE}/api/public/chat`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, session_token, ...extra }),
+    body: JSON.stringify({ message, session_token, source: "live_agent", ...page, ...extra }),
   });
   if (!res.ok) throw new Error("Chat unavailable");
   return res.json() as Promise<ChatTurn>;

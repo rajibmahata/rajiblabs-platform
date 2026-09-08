@@ -37,6 +37,23 @@ SUGGESTED_STARTERS = (
     "About RajibLabs",
 )
 
+# House conversational rules, applied in code so they hold regardless of the
+# admin-editable prompt. Keeps replies human: no AI-stock openers, adaptive
+# length, paragraphs over bullets unless structure genuinely helps.
+RESPONSE_GUIDANCE = (
+    "Sound like a knowledgeable person, not a chatbot. Never open with "
+    "'Certainly', 'Absolutely', 'Great question', 'Based on the information', "
+    "'In conclusion', or similar stock phrases, and never call yourself an AI "
+    "model. Match length to the question: 1-3 sentences for simple questions, "
+    "1-3 short paragraphs normally, structured detail only for technical or "
+    "business-deep questions. Prefer natural paragraphs; use bullets only when "
+    "they genuinely improve readability. Answer this visitor specifically, "
+    "grounded only in the verified results. When the visitor asks a follow-up "
+    "(tell me more, that one, yes, no), resolve it against the conversation "
+    "history first — it holds verified answers already given. Never ask them "
+    "to clarify what the history already makes clear."
+)
+
 TECH_VOCAB = (
     ".net", "azure", "react", "python", "fastapi", "mongodb", "sql server",
     "sql", "blazor", "typescript", "javascript", "docker", "rag", "llm",
@@ -62,6 +79,12 @@ INTENT_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("services", (r"\bservice", r"what .*do (you|rajiblabs)", r"\boffer\b",
                   r"capabilit", r"what can you")),
     ("github_work", (r"github", r"\brepo\b", r"open source", r"\bcode\b")),
+    ("career", (r"\bcareer\b", r"employment( history)?", r"work history",
+                r"where (has|did|does) (he|rajib) work", r"previous (jobs?|roles?|work)",
+                r"professional background")),
+    ("technical", (r"\barchitect(ure|ing)?\b", r"how (would|do|should|can|to)",
+                   r"\bcompar", r"\bvs\.?\b", r"scalab", r"best practice",
+                   r"trade-?off", r"which .* better", r"design (pattern|principle|approach)")),
     ("products", (r"\bproduct", r"page[\s-]?flow", "docuflow", r"\bsaas\b")),
     ("about_rajib", (r"\brajib\b.*(who|about|experience|background|career|resume)",
                      r"who (is|are) (rajib|he)", r"about (him|rajib)\b",
@@ -70,9 +93,19 @@ INTENT_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
                          r"what (is|does) rajiblabs", r"do you know about rajiblabs")),
     ("project_detail", (r"tell me about", r"what is (the|this|that)",
                        r"technolog", r"problem.*solv", r"what .* (built|used|made)",
-                       r"architecture of", r"how .* built", r"is there a github")),
+                       r"architecture of", r"how .* built", r"is there a github",
+                       r"what is ([a-z]\w[\w\s.&-]{1,38})\??$")),
     ("projects_list", (r"\bprojects?\b", r"portfolio", r"\bbuilt\b", r"completed",
                        r"show .*work", r"case stud")),
+    ("recruiter", (r"\brecruit", r"\bhiring\b", r"job opening", r"\bvancanc",
+                   r"hiring manager", r"talent acquisition", r"looking to hire",
+                   r"open (role|position)", r"\broles?\b")),
+    ("idea_discovery", (r"\bidea\b", r"\bexplore\b", r"prototype", r"\bmvp\b",
+                        r"brainstorm", r"validate .* idea", r"thinking of building",
+                        r"side project")),
+    ("general_conversation", (r"^(thanks|thank you|great|awesome|cool|nice|ok(ay)?|"
+                              r"yes|sure|nope?|bye|goodbye|see you|that one)\b",
+                              r"tell me more", r"^go on$", r"^continue$", r"^that one$")),
 )
 
 
@@ -100,6 +133,16 @@ def detect_intent(message: str) -> tuple[str, dict]:
     if quoted:
         entities["project_ref"] = (quoted[0][0] or quoted[0][1]).strip()
     else:
+        m2 = re.search(r"what is ([A-Za-z][\w\s.&-]{1,40}?)\s*[?.!,]*$",
+                       (message or "").strip(), re.IGNORECASE)
+        if m2:
+            cand2 = m2.group(1).strip()
+            low2 = cand2.lower()
+            if len(cand2) > 2 and low2 not in (
+                    "rajib", "rajiblabs", "it", "this", "that", "you", "your") \
+                    and "email" not in low2 and "phone" not in low2:
+                entities["project_ref"] = cand2
+                return intent, entities
         m = re.search(
             r"(?:about|for|of|called|named)\s+([A-Za-z][\w\s.&-]{1,40}?)(?:\s+project)?\s*[?.!,]*$",
             (message or "").strip(), re.IGNORECASE)
@@ -135,6 +178,17 @@ def select_tools(intent: str, entities: dict, allowed: list[str] | None) -> list
         "about_rajib": [("get_rajib_profile", {})],
         "about_rajiblabs": [("search_knowledge", {"top_k": 6}),
                             ("get_rajib_profile", {})],
+        "recruiter": [("get_rajib_profile", {}),
+                      ("get_projects", {"tech": tech} if tech else {}),
+                      ("search_knowledge", {"top_k": 6})],
+        "career": [("get_rajib_profile", {}),
+                   ("search_knowledge", {"top_k": 6})],
+        "technical": [("search_knowledge", {"top_k": 8}),
+                      ("get_projects", {"tech": tech} if tech else {})],
+        "idea_discovery": [("search_knowledge", {"top_k": 6}),
+                           ("get_projects", {"tech": tech} if tech else {}),
+                           ("get_relevant_sources", {})],
+        "general_conversation": [("search_knowledge", {"top_k": 4})],
         "fallback": [("search_knowledge", {"top_k": 6})],
     }
     return [(n, a) for n, a in mapping.get(intent, mapping["fallback"])
@@ -205,12 +259,25 @@ def filter_policy_sources(hits: list[dict], policy: dict | None) -> list[dict]:
 
 
 def compose_tool_only(intent: str, results: dict, contact: dict,
-                      fallback_message: str) -> tuple[str, list[dict]]:
+                      fallback_message: str,
+                      message: str = "") -> tuple[str, list[dict]]:
     """Deterministic reply from verified tool output — no LLM, no invention."""
     sources = results.get("__sources__", [])
+    if intent == "general_conversation":
+        # Social glue (thanks/goodbye) gets a warm deterministic ack — burning
+        # an LLM call on it would be wasteful, and the fallback would be rude.
+        low = (message or "").lower()
+        if re.search(r"thank", low):
+            return ("You're welcome! If anything else comes up — a project, "
+                    "an idea, or just curiosity about the work here — I'm around."), []
+        if re.search(r"\b(bye|goodbye|see you)\b", low):
+            return ("Goodbye for now! The chat stays here whenever you'd like "
+                    "to pick things up again."), []
     if intent == "greeting":
-        return ("Hi — I'm the RajibLabs Concierge Agent. Ask me about Rajib, "
-                "projects, services, or GitHub work — or tell me about your project idea."), []
+        return ("Hi! Good to have you here. I'm the RajibLabs Live Agent — "
+                "I can help you explore Rajib's work, understand the projects "
+                "behind RajibLabs, or talk through a software idea you're "
+                "working on. What would you like to know?"), []
     if intent == "contact":
         c = results.get("get_contact_information", {}) or {}
         bits = [x for x in [
@@ -234,25 +301,33 @@ def compose_tool_only(intent: str, results: dict, contact: dict,
     if intent == "about_rajib":
         p = results.get("get_rajib_profile") or {}
         if p.get("full_name") or p.get("bio"):
-            bits = [p.get("full_name") or "", p.get("title") or ""]
+            name = p.get("full_name") or "Rajib Mahata"
+            txt = name
+            if p.get("title"):
+                txt += f" is {p['title'].rstrip('.')}."
             if p.get("bio"):
-                bits.append(p["bio"][:500])
+                txt += f" {p['bio'][:500]}".rstrip()
             if p.get("skills"):
-                bits.append("Skills: " + ", ".join(p["skills"][:10]))
-            txt = "\n".join(b for b in bits if b)
+                txt += (" His work spans " + ", ".join(p["skills"][:8]) + ".")
+            txt += (" If you'd like, I can walk you through some of the "
+                    "projects where those ideas are applied.")
             # attach search sources if any, else tool-derived source
-            src = sources if sources else [{"title": p.get("full_name") or "Rajib Mahata", "url": "https://rajiblabs.com/#about", "source_type": "profile"}]
+            src = sources if sources else [{"title": name, "url": "https://rajiblabs.com/#about", "source_type": "profile"}]
             return (txt or fallback_message), src
     if intent == "project_detail":
         d = results.get("get_project_details")
         if d and d.get("name"):
-            txt = f"{d['name']}: {d.get('description','')[:500]}"
+            txt = d["name"]
+            if d.get("description"):
+                txt += f" is {(d['description'][:500]).rstrip()}."
             if d.get("tech_stack"):
-                txt += "\nTech: " + ", ".join(d["tech_stack"][:8])
-            if d.get("github_url"):
-                txt += f"\nGitHub: {d['github_url']}"
-            if d.get("live_url"):
-                txt += f"\nLive: {d['live_url']}"
+                txt += (" Built with " + ", ".join(d["tech_stack"][:8]) + ".")
+            links = [x for x in (f"GitHub: {d['github_url']}" if d.get("github_url") else "",
+                                 f"Live: {d['live_url']}" if d.get("live_url") else "") if x]
+            if links:
+                txt += " " + " ".join(links)
+            txt += (" If you'd like, I can walk through how the workflow "
+                    "works and which parts are automated.")
             src = sources if sources else [{"title": d["name"], "url": d.get("live_url") or d.get("github_url") or "", "source_type": "project"}]
             return txt, src
     if intent in ("projects_list", "github_work", "products", "services",
@@ -335,33 +410,40 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
     for s in (results.get("get_relevant_sources") or [])[:6]:
         if s.get("title") and all(x.get("title") != s["title"] for x in sources):
             sources.append(s)
-    # tool-derived sources: verified DB records also ground answers/URLs
+    # tool-derived sources: verified DB records also ground answers/URLs.
+    # desc/tech ride along so the UI can render rich cards without extra calls.
     for key in ("get_projects", "get_github_projects", "get_products"):
         for item in (results.get(key) or [])[:6]:
             url = item.get("live_url") or item.get("url") or item.get("product_url")
             title = item.get("name") or item.get("title", "")
             if title and all(x.get("title") != title for x in sources):
+                techs = item.get("tech_stack") or item.get("technologies") or []
                 sources.append({"title": title, "url": url,
-                                "source_type": "tool:" + key})
+                                "source_type": "tool:" + key,
+                                "desc": (item.get("description") or "")[:220],
+                                "tech": list(techs)[:6]})
     _detail = results.get("get_project_details") or {}
     if _detail.get("name"):
         url = _detail.get("live_url") or _detail.get("github_url")
         if all(x.get("title") != _detail["name"] for x in sources):
+            techs = _detail.get("tech_stack") or []
             sources.append({"title": _detail["name"], "url": url,
-                            "source_type": "tool:get_project_details"})
+                            "source_type": "tool:get_project_details",
+                            "desc": (_detail.get("description") or "")[:220],
+                            "tech": list(techs)[:6]})
     results["__sources__"] = sources
 
     # lead flow: gradual, one field at a time (pipeline owns storage rules)
     lead_captured, missing, lead, idea, just_captured = False, [], {}, {}, False
     lead_mode = bool(agent.get("lead_capture_enabled")) and (
-        intent in ("hire_lead", "contact") or wants_lead_flow(
+        intent in ("hire_lead", "idea_discovery", "contact") or wants_lead_flow(
             message, bool((sess.get("lead_id") if isinstance(sess, dict) else None)
                           or (await _lp.get_active_idea(db, token) if not preview else None))))
     if lead_mode and not preview:
         bits = extract_contact_bits(message)
         fields = {"name": bits.get("name", ""), "email": bits.get("email", ""),
                   "phone": bits.get("phone", "")}
-        if any(fields.values()) or intent in ("hire_lead", "contact"):
+        if any(fields.values()) or intent in ("hire_lead", "idea_discovery", "contact"):
             had_email = False
             try:
                 if sess.get("lead_id"):
@@ -372,7 +454,7 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
             except Exception:
                 pass
             lead, _ = await _lp.find_or_create_lead(db, fields, token, message)
-            if len(message) > 10 and intent == "hire_lead":
+            if len(message) > 10 and intent in ("hire_lead", "idea_discovery"):
                 idea, _, _ = await _lp.upsert_idea(
                     db, token, str(lead["_id"]), {"description": message}, message)
             else:
@@ -394,8 +476,11 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
     # compose: tool-only fast paths, else one small LLM call, else fallback
     fallback = agent.get("fallback_message") or "I don't have verified information about that."
     reply, used_llm, meta = fallback, False, {"ai_provider": None, "ai_model": None}
-    if intent in ("greeting", "contact", "live_url") or (lead_mode and missing and not has_answer):
-        reply, _ = compose_tool_only(intent, results, contact0, fallback)
+    _social_ack = intent == "general_conversation" and bool(
+        re.search(r"thank|\b(bye|goodbye|see you)\b", (message or "").lower()))
+    if intent in ("greeting", "contact", "live_url") or _social_ack or (lead_mode and missing and not has_answer):
+        reply, _ = compose_tool_only(intent, results, contact0, fallback,
+                                   message=message)
         if lead_mode and missing and question and intent not in ("contact",):
             reply = (reply.rstrip() + f"\n\n{question}") if reply != fallback else question
         elif lead_mode and missing and question and intent == "contact" and reply == fallback:
@@ -414,7 +499,8 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
             except Exception:
                 history = []
         system = ((agent.get("system_prompt") or "") + "\nStyle: "
-                  + str(agent.get("response_style") or "") + "\nHallucination policy: "
+                  + str(agent.get("response_style") or "") + "\nHouse rules: "
+                  + RESPONSE_GUIDANCE + "\nHallucination policy: "
                   + str(agent.get("hallucination_policy") or "verified-only")
                   + "\nVerified URLs you may use (never invent others): "
                   + (", ".join(allowed_urls) if allowed_urls else "(none)")
@@ -425,13 +511,24 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
             out = await svc._complete(
                 [{"role": "system", "content": system[:2500]},
                  *history,
-                 {"role": "user", "content": f"Intent: {intent}\nVerified tool results:\n{context}"}],
+                 {"role": "user", "content": (
+                     f"Intent: {intent}\nVerified tool results:\n{context}\n"
+                     + ("The visitor just shared a NEW business/software idea. "
+                        "Your first job is a short warm acknowledgement plus ONE "
+                        "natural discovery question about the idea itself (what "
+                        "they want to make easier, or how they handle it today). "
+                        "Do NOT pitch services, summarize capabilities, or ask "
+                        "for contact details yet.\n"
+                        if intent in ("hire_lead", "idea_discovery") else "")
+                     + "Reply as a JSON object with a single key 'reply' "
+                     "containing your answer text.")}],
                 max_tokens=400, temperature=0.2, tag="concierge-reply")
             reply = str((out.get("data") or {}).get("reply") or "").strip() or fallback
             meta = {"ai_provider": out.get("provider"), "ai_model": out.get("model")}
             used_llm = True
         except (AIError, Exception):
-            reply, _ = compose_tool_only(intent, results, contact0, fallback)
+            reply, _ = compose_tool_only(intent, results, contact0, fallback,
+                                   message=message)
             if lead_mode and missing and question and reply == fallback:
                 reply = question
     reply, _removed = validate_reply_urls(reply, set(collect_allowed_urls(results)))

@@ -26,7 +26,7 @@
   ],
   "chat.title": "Hablar con RajibLabs",
   "chat.online": "En línea — responde al instante",
-  "chat.greeting": "Hola — soy el asistente de RajibLabs. Cuénteme qué quiere mejorar o construir en su negocio.",
+  "chat.greeting": "¡Hola! Qué bueno verte por aquí. Soy el agente en vivo de RajibLabs — puedo ayudarte a explorar el trabajo de Rajib, entender sus proyectos o hablar de tu idea de software. ¿Qué quieres saber?",
   "chat.placeholder": "Preguntar sobre proyectos…",
   "chat.ask": "Preguntar sobre RajibLabs",
   "chat.plan": "Planificar un proyecto",
@@ -63,5 +63,17 @@
   "common.loading": "Cargando…",
   "contact.lede": "¿Un sistema por diseñar, un producto de IA por lanzar o una plataforma heredada por modernizar? Hablemos.",
   "contact.instantChat": "Chat instantáneo",
-  "contact.downloadPdf": "Descargar PDF"
+  "contact.downloadPdf": "Descargar PDF",
+  "agent.eyebrow": "AGENTE EN VIVO",
+  "agent.titleA": "Chatea con Rajib",
+  "agent.titleB": "en vivo",
+  "agent.lede": "¿Tienes alguna pregunta? Hablemos. Explora el trabajo de Rajib, entiende un proyecto, discute un reto de arquitectura o comparte una idea de software.",
+  "agent.cta": "Chatear con Rajib en vivo",
+  "agent.starters": [
+    "Cuéntame sobre Rajib.",
+    "Muéstrame proyectos.",
+    "Tengo una idea de software.",
+    "¿Puede Rajib ayudar con arquitectura?",
+    "¿Cómo puedo trabajar con RajibLabs?"
+  ]
 }

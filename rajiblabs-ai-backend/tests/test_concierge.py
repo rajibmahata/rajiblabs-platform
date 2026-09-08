@@ -309,3 +309,110 @@ async def test_admin_endpoints_require_auth():
                              json={"message": "hi"})).status_code == 401
         r = await c.get("/api/public/agent/config")
         assert r.status_code in (200, 503)
+
+
+# ── live-agent UX: intents, greeting warmth, card data (pure, no LLM) ──
+
+LIVE_AGENT_INTENT_CASES = [
+    ("Are you hiring developers?", "recruiter"),
+    ("Is Rajib open to new roles?", "recruiter"),
+    ("Tell me about Rajib's career", "career"),
+    ("Where did Rajib work before?", "career"),
+    ("How would you design a SaaS platform?", "technical"),
+    ("Can Rajib build an AI agent system?", "hire_lead"),
+    ("How does PestFlow compare to alternatives?", "technical"),
+    ("I have an idea for a restaurant app", "hire_lead"),
+    ("Help me explore a prototype", "idea_discovery"),
+    ("thanks!", "general_conversation"),
+    ("tell me more", "general_conversation"),
+    ("yes", "general_conversation"),
+    # existing behavior must not shift
+    ("Tell me about Rajib", "about_rajib"),
+    ("I have a project idea", "hire_lead"),
+    ("What is PestFlow?", "project_detail"),
+    ("What is Docusign Hub?", "project_detail"),
+]
+
+
+@pytest.mark.parametrize("message,expected", LIVE_AGENT_INTENT_CASES)
+def test_live_agent_intents(message, expected):
+    from app.services.concierge import detect_intent
+    assert detect_intent(message)[0] == expected
+
+
+def test_live_agent_tool_mapping():
+    from app.services.concierge import select_tools
+    names = [n for n, _ in select_tools("recruiter", {}, None)]
+    assert "get_rajib_profile" in names
+    names = [n for n, _ in select_tools("technical", {"tech": "azure"}, None)]
+    assert "search_knowledge" in names
+    names = [n for n, _ in select_tools("idea_discovery", {}, None)]
+    assert "get_projects" in names
+    names = [n for n, _ in select_tools("general_conversation", {}, None)]
+    assert "search_knowledge" in names
+    names = [n for n, _ in select_tools("career", {}, None)]
+    assert "get_rajib_profile" in names
+
+
+def test_greeting_is_warm_not_robotic():
+    from app.services.concierge import compose_tool_only
+    reply, sources = compose_tool_only("greeting", {}, {}, "FB")
+    assert sources == []
+    assert "Live Agent" in reply
+    assert "Concierge Agent" not in reply
+    for banned in ("How can I assist you", "How may I", "As an AI"):
+        assert banned not in reply
+
+
+def test_about_composer_stays_verified_and_offers_next_step():
+    from app.services.concierge import compose_tool_only
+    p = {"full_name": "Rajib Mahata", "title": "Architect",
+         "bio": "Builds systems.", "skills": ["A", "B"]}
+    reply, sources = compose_tool_only("about_rajib", {"get_rajib_profile": p}, {}, "FB")
+    assert "Rajib Mahata is" in reply and "Builds systems." in reply
+    assert "walk you through" in reply
+    assert sources and sources[0]["source_type"] == "profile"
+
+
+def test_project_composer_no_marketing_voice():
+    from app.services.concierge import compose_tool_only
+    d = {"name": "PestFlow", "description": "Manages pest-control ops.",
+         "tech_stack": [".NET"], "github_url": "https://github.com/x/y",
+         "live_url": ""}
+    reply, sources = compose_tool_only("project_detail", {"get_project_details": d}, {}, "FB")
+    assert reply.startswith("PestFlow is")
+    assert "comprehensive end-to-end" not in reply.lower()
+    assert "GitHub: https://github.com/x/y" in reply
+    assert "Live:" not in reply  # no live URL invented
+
+
+def test_response_guidance_bans_stock_phrases():
+    from app.services.concierge import RESPONSE_GUIDANCE
+    for banned in ("Certainly", "Absolutely", "Great question", "Based on the information",
+                   "In conclusion", "AI model"):
+        assert banned in RESPONSE_GUIDANCE
+
+
+def test_social_ack_needs_no_llm():
+    from app.services.concierge import compose_tool_only
+    reply, sources = compose_tool_only("general_conversation", {}, {}, "FB",
+                                       message="thanks a lot!")
+    assert "welcome" in reply.lower() and sources == []
+    reply, _ = compose_tool_only("general_conversation", {}, {}, "FB",
+                                 message="bye for now")
+    assert "Goodbye" in reply
+    # non-social general turns still fall through honestly
+    reply, _ = compose_tool_only("general_conversation", {}, {}, "FB",
+                                 message="ok")
+    assert reply == "FB"
+
+
+def test_social_ack_is_deterministic():
+    from app.services.concierge import compose_tool_only
+    # thanks/bye short-circuit without tools or LLM-shaped content
+    r, s = compose_tool_only("general_conversation", {}, {}, "FB",
+                             message="thanks so much")
+    assert "welcome" in r.lower() and s == []
+    r, _ = compose_tool_only("general_conversation", {}, {}, "FB",
+                             message="bye!")
+    assert "Goodbye" in r

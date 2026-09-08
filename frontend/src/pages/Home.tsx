@@ -10,6 +10,7 @@ import RlzArchitecture from "../rlz/RlzArchitecture";
 import RlzProjects from "../rlz/RlzProjects";
 import RlzDemos from "../rlz/RlzDemos";
 import RlzExperience from "../rlz/RlzExperience";
+import RlzAgent from "../rlz/RlzAgent";
 import RlzContact from "../rlz/RlzContact";
 import RlzFooter from "../rlz/RlzFooter";
 import MobileBottomBar from "../components/layout/MobileBottomBar";
@@ -38,6 +39,7 @@ export default function Home() {
         <RlzProjects />
         <RlzDemos />
         <RlzExperience />
+        <RlzAgent />
         <RlzContact />
         <RlzFooter />
         <ChatWidget />

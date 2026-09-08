@@ -534,3 +534,28 @@ overflow-x: clip;
 }
 /* RTL: logical margins already used above (margin-inline-start); keep dropdown anchored */
 [dir="rtl"] .rlz .rlz-lang-drop { right: auto; left: 0; }
+
+/* Homepage live-agent section */
+.rlz .rlz-agent-actions { display: flex; justify-content: center; margin: 26px 0 18px; }
+.rlz .rlz-agent-starters { justify-content: center; max-width: 640px; margin: 0 auto; }
+
+/* Rich source cards inside chat */
+.rlz .rlz-chat-card {
+  background: var(--rlz-bg-2); border: 1px solid var(--rlz-border);
+  border-radius: 14px; padding: 10px 12px; max-width: 100%;
+}
+.rlz .rlz-chat-card-title { font-weight: 700; font-size: 13px; margin: 0 0 4px; color: var(--rlz-text); }
+.rlz .rlz-chat-card-desc { font-size: 12px; line-height: 1.5; color: var(--rlz-text-dim); margin: 0 0 6px; }
+.rlz .rlz-chat-card-tech { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.rlz .rlz-chat-card-link { font-size: 12px; font-weight: 600; color: var(--rlz-violet); text-decoration: none; }
+.rlz .rlz-chat-card-link:hover { text-decoration: underline; }
+
+/* Mobile: near-full-screen chat so the keyboard never covers input */
+@media (max-width: 640px) {
+  .rlz .rlz-chat-panel {
+    width: calc(100vw - 1.5rem); max-width: calc(100vw - 1.5rem);
+    height: min(86dvh, 620px); display: flex; flex-direction: column;
+  }
+  .rlz .rlz-chat-log { flex: 1; height: auto; min-height: 0; }
+  .rlz .rlz-chat-input { font-size: 16px; }
+}

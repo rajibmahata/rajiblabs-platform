@@ -26,7 +26,7 @@
   ],
   "chat.title": "与 RajibLabs 交谈",
   "chat.online": "在线 — 即时回复",
-  "chat.greeting": "你好——我是 RajibLabs 助手。请告诉我您想改善或构建的业务内容。",
+  "chat.greeting": "你好！很高兴见到你。我是 RajibLabs 实时助手——可以帮你了解 Rajib 的工作、理解项目，或讨论你的软件想法。想了解什么？",
   "chat.placeholder": "询问项目…",
   "chat.ask": "了解 RajibLabs",
   "chat.plan": "规划项目",
@@ -63,5 +63,17 @@
   "common.loading": "加载中…",
   "contact.lede": "有需要设计的系统、需要交付的 AI 产品，或需要现代化的遗留平台吗？聊一聊吧。",
   "contact.instantChat": "即时聊天",
-  "contact.downloadPdf": "下载 PDF"
+  "contact.downloadPdf": "下载 PDF",
+  "agent.eyebrow": "实时助手",
+  "agent.titleA": "与 Rajib 畅聊",
+  "agent.titleB": "实时在线",
+  "agent.lede": "有问题吗？让我们聊聊。了解 Rajib 的工作、理解项目、讨论架构挑战，或分享您的软件想法。",
+  "agent.cta": "与 Rajib 实时畅聊",
+  "agent.starters": [
+    "介绍一下 Rajib。",
+    "看看项目。",
+    "我有一个软件想法。",
+    "Rajib 能帮忙做架构吗？",
+    "如何与 RajibLabs 合作？"
+  ]
 }

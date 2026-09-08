@@ -26,7 +26,7 @@
   ],
   "chat.title": "RajibLabs와 상담",
   "chat.online": "온라인 — 즉시 답변",
-  "chat.greeting": "안녕하세요 — RajibLabs 어시스턴트입니다. 비즈니스에서 개선하거나 만들고 싶은 내용을 알려주세요.",
+  "chat.greeting": "안녕하세요! 만나서 반가워요. RajibLabs 라이브 에이전트입니다 — Rajib의 작업 탐색, 프로젝트 이해, 소프트웨어 아이디어 논의를 도와드릴게요. 무엇이 궁금하세요?",
   "chat.placeholder": "프로젝트에 대해 질문…",
   "chat.ask": "RajibLabs에 대해 질문",
   "chat.plan": "프로젝트 계획",
@@ -63,5 +63,17 @@
   "common.loading": "불러오는 중…",
   "contact.lede": "설계할 시스템, 출시할 AI 제품, 현대화할 레거시 플랫폼이 있나요? 상담하세요.",
   "contact.instantChat": "인스턴트 채팅",
-  "contact.downloadPdf": "PDF 다운로드"
+  "contact.downloadPdf": "PDF 다운로드",
+  "agent.eyebrow": "라이브 에이전트",
+  "agent.titleA": "Rajib와 채팅하기",
+  "agent.titleB": "라이브",
+  "agent.lede": "질문이 있으신가요? 이야기해요. Rajib의 작업 탐색, 프로젝트 이해, 아키텍처 과제 논의, 소프트웨어 아이디어 공유가 가능합니다.",
+  "agent.cta": "Rajib 라이브와 채팅",
+  "agent.starters": [
+    "Rajib에 대해 알려줘.",
+    "프로젝트를 보여줘.",
+    "소프트웨어 아이디어가 있어.",
+    "Rajib이 아키텍처를 도와줄 수 있어?",
+    "RajibLabs와 어떻게 일할 수 있어?"
+  ]
 }

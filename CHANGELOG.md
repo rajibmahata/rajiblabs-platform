@@ -2,6 +2,56 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Live human-like agent + chat UX (concierge upgrade)
+
+### Fixed first (found live while validating)
+- `gpt-5-nano` 400s every LLM-composed concierge reply: `response_format:
+  json_object` requires the word "json" in the messages — the concierge user
+  message lacked it. The user content now ends with an explicit "Reply as a
+  JSON object with a single key 'reply'" instruction. Proven live: LLM replies
+  flow again (`used_llm: True`).
+
+### Added — backend (`app/services/concierge.py`, existing architecture only)
+- New intents (rule-based, zero LLM): `recruiter`, `career`, `technical`,
+  `idea_discovery`, `general_conversation` (thanks/bye/tell-me-more/yes/no),
+  plus `what is <Name>?` → `project_detail` with entity extraction. Business
+  intents still route to the lead flow (`hire_lead` + `idea_discovery` capture
+  ideas; progressive one-field-at-a-time questioning unchanged).
+- `RESPONSE_GUIDANCE` appended to every LLM system message in code (holds
+  regardless of the admin-editable prompt): no AI-stock openers, adaptive
+  length (1–3 sentences → paragraphs → structured detail), paragraphs over
+  bullets, follow-ups resolved against conversation history first.
+- Warmer deterministic composers (greeting is now "RajibLabs Live Agent",
+  `about_rajib`/`project_detail` read as prose with a natural next-step
+  offer — same verified fields, no new claims).
+- Social glue (`thanks`/`bye`) answered deterministically with zero LLM cost;
+  `thanks` no longer falls into the "no verified information" fallback.
+- Discovery-first behavior for fresh ideas: warm ack + ONE discovery question,
+  no pitch, no premature contact ask.
+- Tool-derived sources now carry `desc`/`tech` so the UI renders rich
+  project/product cards without extra calls.
+
+### Added — frontend (existing ChatWidget + rlz tokens)
+- Homepage `RlzAgent` section (live indicator, localized title/lede, CTA +
+  5 starters) between Experience and Contact; starter click opens chat and
+  auto-sends via `OPEN_CHAT_EVENT` message detail.
+- Starters hide after the first user message (clean conversation UI).
+- Rich source cards (title + purpose + tech chips + in-app `View project →`
+  deep link for `rajiblabs.com/portfolio|products/*`, external links else);
+  plain chips remain for non-project sources. `RagSource` gains `desc`/`tech`.
+- Mobile: near-full-screen chat panel (`86dvh`, flexible log, 16px input
+  against iOS zoom).
+- i18n: warmer `chat.greeting` + new `agent.*` keys (section + 5 starters)
+  across all 12 bundles (57 keys each, parity preserved).
+
+### Verified
+- Backend `test_concierge.py` 69 passed (new: 6 intent cases incl. `What is
+  PestFlow?` → `project_detail`, tool mappings, greeting warmth, composer
+  purity, guidance bans, social acks).
+- Live turns (real OpenAI): greeting/about/project/technical/hire/thanks/
+  follow-up/token-refusal all behave per spec; token request refused cleanly.
+- Frontend `tsc` + `eslint` clean, `vite build` OK.
+
 ## [Unreleased] — Detail 404 fallback (split-brain portfolio/products stores)
 
 ### Fixed (P1 — console 404 on every CMS detail view, proven live)

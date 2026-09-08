@@ -239,6 +239,23 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   rows so no valid slug 404s; guarded by
   `test_detail_falls_back_to_projects_collection`. Admin CRUD stays per-store.
 
+- Concierge voice rules (do not regress): `RESPONSE_GUIDANCE` is code-appended
+  to every LLM system message (admin prompt stays editable); `gpt-5-nano`
+  REQUIRES the literal word "json" somewhere in messages when using
+  `response_format: json_object` (HTTP 400 otherwise — diagnosed live via the
+  classified error log); new intents `recruiter/career/technical/
+  idea_discovery/general_conversation` are rule-ordered (career+technical sit
+  before products/about_rajib; general is last); `what is <Name>?` needs the
+  lowercase-tolerant rule because matching runs on lowercased text; social
+  acks (thanks/bye) short-circuit with zero LLM cost; fresh-idea turns lead
+  with ONE discovery question, never a contact ask.
+- Homepage agent section is `rlz/RlzAgent.tsx` (between Experience and
+  Contact); starter clicks dispatch `OPEN_CHAT_EVENT` with `{detail: message}`
+  which `ChatWidget` auto-sends via a `sendTextRef` (stale-closure safe).
+  Chat starters hide after the first user message; project/product sources
+  render as rich cards (`desc`/`tech` ride the source objects); mobile chat
+  is near-full-screen (`86dvh`).
+
 ## QA audit 2026-09-08 (full-stack, live Docker) — known gaps, do not regress
 
 - P0 (fixed): `lead_ai._complete` posted to `{base}/chat/completions` without

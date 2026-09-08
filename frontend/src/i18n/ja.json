@@ -26,7 +26,7 @@
   ],
   "chat.title": "RajibLabsに相談",
   "chat.online": "オンライン — すぐ返信します",
-  "chat.greeting": "こんにちは — RajibLabsアシスタントです。ビジネスの改善・構築したい内容を教えてください。",
+  "chat.greeting": "こんにちは！お越しいただき嬉しいです。RajibLabsライブエージェントです — Rajibの仕事やプロジェクトの理解、ソフトウェアのアイデア相談をお手伝いします。何を知りたいですか？",
   "chat.placeholder": "プロジェクトについて質問…",
   "chat.ask": "RajibLabsについて質問",
   "chat.plan": "プロジェクトを計画",
@@ -63,5 +63,17 @@
   "common.loading": "読み込み中…",
   "contact.lede": "設計すべきシステム、出荷すべきAIプロダクト、モダナイズすべきレガシー基盤はありますか？ご相談ください。",
   "contact.instantChat": "インスタントチャット",
-  "contact.downloadPdf": "PDFをダウンロード"
+  "contact.downloadPdf": "PDFをダウンロード",
+  "agent.eyebrow": "ライブエージェント",
+  "agent.titleA": "Rajibとチャット",
+  "agent.titleB": "ライブ",
+  "agent.lede": "ご質問がありますか？お話ししましょう。Rajibの仕事やプロジェクトを理解し、アーキテクチャの課題を相談したり、ソフトウェアのアイデアを共有できます。",
+  "agent.cta": "Rajibライブとチャット",
+  "agent.starters": [
+    "Rajibについて教えて。",
+    "プロジェクトを見せて。",
+    "ソフトウェアのアイデアがある。",
+    "Rajibはアーキテクチャを手伝える？",
+    "RajibLabsとはどう仕事ができる？"
+  ]
 }

@@ -32,6 +32,60 @@ type Msg =
 
 type ChatMode = "ask" | "plan";
 
+// Verified-source rendering: project/product sources become rich cards
+// (title + short purpose + tech + view link); everything else stays chips.
+function toAppPath(url: string): string | null {
+  const m = /^https:\/\/rajiblabs\.com\/(portfolio|products)\/([\w-]+)\/?$/.exec(url || "");
+  return m ? `/${m[1]}/${m[2]}` : null;
+}
+
+function SourceCards({ sources }: { sources: RagSource[] }) {
+  const cards = sources.filter(
+    (s) => /project|product/.test(s.source_type || "") && s.title
+  ).slice(0, 2);
+  const rest = sources.filter((s) => !cards.includes(s)).slice(0, 4);
+  return (
+    <div className="mt-1 grid gap-1" aria-label="Verified sources">
+      {cards.map((s, j) => {
+        const appPath = s.url ? toAppPath(s.url) : null;
+        return (
+          <div key={s.title + j} className="rlz-chat-card">
+            <p className="rlz-chat-card-title">{s.title}</p>
+            {s.desc ? <p className="rlz-chat-card-desc">{s.desc}</p> : null}
+            {s.tech && s.tech.length > 0 ? (
+              <div className="rlz-chat-card-tech">
+                {s.tech.slice(0, 4).map((tech) => (
+                  <span key={tech} className="rlz-chip">{tech}</span>
+                ))}
+              </div>
+            ) : null}
+            {s.url ? (
+              appPath ? (
+                <a className="rlz-chat-card-link" href={appPath}>View project →</a>
+              ) : (
+                <a className="rlz-chat-card-link" href={s.url} target="_blank" rel="noreferrer">Open link →</a>
+              )
+            ) : null}
+          </div>
+        );
+      })}
+      {rest.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {rest.map((s, j) => (
+            s.url ? (
+              <a key={j} className="rlz-chip" href={s.url} target="_blank" rel="noreferrer">
+                {s.title || s.source_type}
+              </a>
+            ) : (
+              <span key={j} className="rlz-chip">{s.title || s.source_type}</span>
+            )
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChatWidget() {
   const { t, tArr, lang } = useLang();
   const [open, setOpen] = useState(false);
@@ -49,6 +103,8 @@ export default function ChatWidget() {
   // ask = grounded knowledge Q&A (mode=rag), plan = lead/business discovery.
   const [mode, setMode] = useState<ChatMode>("plan");
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Latest sendText for the OPEN_CHAT_EVENT listener (avoids stale closures).
+  const sendTextRef = useRef<(raw: string) => Promise<void>>(async () => {});
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -59,7 +115,14 @@ export default function ChatWidget() {
     if (restored) return;
     setRestored(true);
     getAgentCard().then((c) => { if (c?.starters?.length) setStarters(c.starters); }).catch(() => {});
-    const onOpen = () => setOpen(true);
+    // Homepage agent section opens the chat, optionally auto-sending a starter.
+    const onOpen = (e: Event) => {
+      setOpen(true);
+      const msg = (e as CustomEvent<string | undefined>).detail;
+      if (typeof msg === "string" && msg.trim()) {
+        window.setTimeout(() => void sendTextRef.current(msg), 350);
+      }
+    };
     window.addEventListener(OPEN_CHAT_EVENT, onOpen);
     const saved = (() => { try { return localStorage.getItem(SESSION_KEY); } catch { return null; } })();
     if (!saved) return;
@@ -110,6 +173,9 @@ export default function ChatWidget() {
       setBusy(false);
     }
   };
+
+  // Keep the event-listener ref pointing at the latest sendText every render.
+  sendTextRef.current = sendText;
 
   const runBlueprint = async () => {
     if (!session || scopeBusy) return;
@@ -192,17 +258,7 @@ export default function ChatWidget() {
                 <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
                   <span className={`rlz-chat-msg ${m.role === "user" ? "rlz-chat-user" : "rlz-chat-ai"}`}>{m.text}</span>
                   {m.role !== "user" && m.sources && m.sources.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1" aria-label="Verified sources">
-                      {m.sources.slice(0, 4).map((s, j) => (
-                        s.url ? (
-                          <a key={j} className="rlz-chip" href={s.url} target="_blank" rel="noreferrer">
-                            {s.title || s.source_type}
-                          </a>
-                        ) : (
-                          <span key={j} className="rlz-chip">{s.title || s.source_type}</span>
-                        )
-                      ))}
-                    </div>
+                    <SourceCards sources={m.sources} />
                   )}
                 </div>
               )
@@ -226,13 +282,15 @@ export default function ChatWidget() {
             </div>
           )}
 
-          <div className="rlz-chat-quick">
-            {starters.map((q) => (
-              <button key={q} className="rlz-chip" onClick={() => void sendText(q)} disabled={busy}>
-                {q}
-              </button>
-            ))}
-          </div>
+          {!msgs.some((m) => m.kind === "text" && m.role === "user") && (
+            <div className="rlz-chat-quick">
+              {starters.slice(0, 6).map((q) => (
+                <button key={q} className="rlz-chip" onClick={() => void sendText(q)} disabled={busy}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="rlz-chat-bar">
             <input
