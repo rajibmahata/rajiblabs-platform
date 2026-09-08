@@ -2,6 +2,21 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — Detail 404 fallback (split-brain portfolio/products stores)
+
+### Fixed (P1 — console 404 on every CMS detail view, proven live)
+- `GET /api/portfolio/{slug}` read ONLY the legacy `portfolio` collection while
+  current CMS items live in `projects` (and `/api/products/{slug}` likewise
+  missed `projects` rows with `category: "product"`). Every detail page fired a
+  failing request before the client-side fallback kicked in. Both endpoints now
+  fall back to published `projects` rows server-side (same shape as
+  `/api/public/projects/{slug}`, which the frontend already normalizes);
+  genuine unknown slugs still 404. Verified live shapes:
+  `portfolio/pestflow`, `products/pestflow` → PestFlow; legacy slugs unchanged.
+- New `test_detail_falls_back_to_projects_collection` guards it.
+
+## [Unreleased] — Fix release filename mismatch breaking VPS extraction
+
 ## [Unreleased] — Full-stack QA audit: gap fixes (dead code, SEO, sitemap, tests)
 
 ### Fixed (P0 — already live, verified in error_logs)

@@ -281,3 +281,23 @@ async def test_rag_sync_lifecycle_live(monkeypatch):
         app.dependency_overrides.clear()
         await db["portfolio"].delete_many({"slug": "e2e-rag-app"})
         await db["knowledge_documents"].delete_many({"source_id": "portfolio:e2e-rag-app"})
+
+
+@pytest.mark.asyncio
+async def test_detail_falls_back_to_projects_collection():
+    """Gap fix: /api/portfolio|products/{slug} must serve published CMS items
+    living in `projects` instead of forcing a client-side fallback (console
+    404s on every detail view). Genuine unknowns still 404."""
+    from app.main import create_app
+    await _live_db()
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get("/api/portfolio/pestflow")
+        assert r.status_code == 200, r.text[:200]
+        assert r.json().get("name") == "PestFlow" or r.json().get("title") == "PestFlow"
+        r = await c.get("/api/products/pestflow")
+        assert r.status_code == 200, r.text[:200]
+        r = await c.get("/api/portfolio/docsignerhub")
+        assert r.status_code == 200, r.text[:200]
+        r = await c.get("/api/portfolio/definitely-not-a-slug-xyz")
+        assert r.status_code == 404

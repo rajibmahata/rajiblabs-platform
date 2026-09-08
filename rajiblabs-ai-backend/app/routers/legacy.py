@@ -21,6 +21,7 @@ from app.auth.dependencies import require_admin
 from app.auth.utils import hash_password, verify_password
 from app.config import get_settings
 from app.database import get_db, utcnow
+from app.models import oid_str
 from app.services.notify import audit, log_error, notify
 
 router = APIRouter()
@@ -603,9 +604,18 @@ async def portfolio_list(status: Optional[str] = None):
 async def portfolio_detail(slug: str):
     db = get_db()
     d = await db["portfolio"].find_one({"slug": slug})
+    if d:
+        return portfolio_out(d)
+    # Current CMS items live in `projects` (legacy `portfolio` holds only the
+    # .NET-parity imports). Serve published ones here too so detail pages
+    # never 404 on a valid slug — same shape as /api/public/projects/{slug},
+    # which the frontend already normalizes.
+    d = await db["projects"].find_one({"slug": slug, "published": True})
     if not d:
         raise HTTPException(404, {"error": "Not found"})
-    return portfolio_out(d)
+    d = oid_str(d)
+    d.pop("locked_fields", None)
+    return d
 
 
 @router.get("/api/admin/portfolio")
@@ -826,11 +836,22 @@ async def product_detail(slug: str, lang: str | None = None):
     from app.services.translation_service import TranslationService
     db = get_db()
     d = await db["products"].find_one({"slug": slug})
+    if d:
+        if lang:
+            d, _ = await TranslationService.localize_doc("products", d, lang, db)
+        return product_out(d)
+    # Same split-brain as portfolio_detail: CMS items with category=product
+    # live in `projects`. Serve published ones here (public shape, translated
+    # when requested) instead of forcing a client-side fallback round-trip.
+    d = await db["projects"].find_one(
+        {"slug": slug, "category": "product", "published": True})
     if not d:
         raise HTTPException(404, {"error": "Not found"})
     if lang:
-        d, _ = await TranslationService.localize_doc("products", d, lang, db)
-    return product_out(d)
+        d, _ = await TranslationService.localize_doc("projects", d, lang, db)
+    d = oid_str(d)
+    d.pop("locked_fields", None)
+    return d
 
 
 @router.get("/api/admin/products")

@@ -232,6 +232,13 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `npm run build` from `frontend/`.
 - Update this file + `CHANGELOG.md` with what was actually done.
 
+- Catalog split-brain (do not reintroduce): THREE content stores exist —
+  legacy `portfolio` (4 .NET-parity imports), current CMS `projects` (5 items,
+  `category` product|project), legacy `products` (page-flow, docuflow). Detail
+  endpoints `/api/portfolio|products/{slug}` fall back to published `projects`
+  rows so no valid slug 404s; guarded by
+  `test_detail_falls_back_to_projects_collection`. Admin CRUD stays per-store.
+
 ## QA audit 2026-09-08 (full-stack, live Docker) — known gaps, do not regress
 
 - P0 (fixed): `lead_ai._complete` posted to `{base}/chat/completions` without
