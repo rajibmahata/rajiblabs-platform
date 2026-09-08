@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
-import { toast } from "../../components/admin/toast";
 
 type LogEntry = {
   id: string; level: string; source: string; logger?: string | null;
