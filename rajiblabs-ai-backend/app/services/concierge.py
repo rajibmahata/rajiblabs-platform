@@ -85,7 +85,7 @@ INTENT_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("technical", (r"\barchitect(ure|ing)?\b", r"how (would|do|should|can|to)",
                    r"\bcompar", r"\bvs\.?\b", r"scalab", r"best practice",
                    r"trade-?off", r"which .* better", r"design (pattern|principle|approach)")),
-    ("products", (r"\bproduct", r"page[\s-]?flow", "docuflow", r"\bsaas\b")),
+    ("products", (r"\bproduct", r"\bsaas\b")),
     ("about_rajib", (r"\brajib\b.*(who|about|experience|background|career|resume)",
                      r"who (is|are) (rajib|he)", r"about (him|rajib)\b",
                      r"\bresume\b", r"\bcv\b", r"experience", r"job history")),

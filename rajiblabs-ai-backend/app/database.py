@@ -51,24 +51,9 @@ INDEXES: dict[str, list[tuple]] = {
     "website_contents": [("key", 1)],
 }
 
-# Legacy (.NET-parity) seeds: Page Flow + DocuFlow products, home_order content,
-# and the Rajib Mahata profile (mirrors the removed .NET SeedData/SeedCms).
-SEED_PRODUCTS = [
-    {"name": "Page Flow", "slug": "page-flow", "category": "RajibLabs Product",
-     "description": "Visual workflow builder for document-intensive business processes — drag-drop pipeline designer, sequential/parallel approvals, HMAC-SHA256 token auth, audit trail, white-label API. Powers DocSignerHub and Solicitor CMS.",
-     "features": ["Visual workflow designer", "Sequential & parallel approvals",
-                  "HMAC-SHA256 secure tokens", "Full audit trail", "White-label API",
-                  "140+ REST endpoints"],
-     "tech_stack": [".NET 8", "React", "Blazor", "Azure", "SQL Server", "OpenAI"],
-     "architecture": "Microservices + CQRS + Event-driven",
-     "ai_capabilities": "AI clause analysis, document intelligence",
-     "status": "published", "featured": True, "display_order": 1},
-    {"name": "DocuFlow", "slug": "docuflow", "category": "SaaS",
-     "description": "Enterprise document automation platform — template-driven generation, deadline tracking, client portal.",
-     "features": ["Template engine", "Deadline tracking"],
-     "tech_stack": [".NET 8", "Blazor", "Cosmos DB"],
-     "status": "published", "featured": False, "display_order": 2},
-]
+# Legacy (.NET-parity) seeds: profile/home_order and the Rajib Mahata profile
+# (mirrors the removed .NET SeedData/SeedCms). Product seeds removed — managed via Admin.
+SEED_PRODUCTS: list[dict] = []
 
 SEED_PROFILE = {
     "full_name": "Rajib Mahata",
@@ -400,8 +385,8 @@ async def init_db() -> None:
                 "primary_phone": "+918420249020", "secondary_phone": "+919100184730",
                 "whatsapp": "https://wa.me/918420249020"}, "updated_at": utcnow()},
         ])
-    # Legacy (.NET-parity) seeds — only when collections are empty.
-    if await db["products"].count_documents({}) == 0:
+    # Legacy product seeds removed — Admin manages products. Keep empty-collection guard for future seeds.
+    if False and await db["products"].count_documents({}) == 0:  # noqa: SIM114 — intentional no-op guard
         for p in SEED_PRODUCTS:
             await db["products"].insert_one(
                 {**p, "screenshots": [], "logo_url": None, "product_url": None,
