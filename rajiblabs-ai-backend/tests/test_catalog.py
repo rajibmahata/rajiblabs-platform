@@ -287,17 +287,34 @@ async def test_rag_sync_lifecycle_live(monkeypatch):
 async def test_detail_falls_back_to_projects_collection():
     """Gap fix: /api/portfolio|products/{slug} must serve published CMS items
     living in `projects` instead of forcing a client-side fallback (console
-    404s on every detail view). Genuine unknowns still 404."""
+    404s on every detail view). Genuine unknowns still 404.
+    Self-sufficient: inserts its own fixtures (unique e2e slugs), cleans up."""
+    from app.database import get_db
     from app.main import create_app
-    await _live_db()
+    from app.database import utcnow
+    db = await _live_db()
     app = create_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        r = await c.get("/api/portfolio/pestflow")
-        assert r.status_code == 200, r.text[:200]
-        assert r.json().get("name") == "PestFlow" or r.json().get("title") == "PestFlow"
-        r = await c.get("/api/products/pestflow")
-        assert r.status_code == 200, r.text[:200]
-        r = await c.get("/api/portfolio/docsignerhub")
-        assert r.status_code == 200, r.text[:200]
-        r = await c.get("/api/portfolio/definitely-not-a-slug-xyz")
-        assert r.status_code == 404
+    legacy_slug, cms_slug = "e2e-legacy-app", "e2e-cms-app"
+    try:
+        await db["portfolio"].insert_one({
+            "title": "E2E Legacy App", "slug": legacy_slug, "status": "published",
+            "short_description": "legacy", "display_order": 1,
+            "created_at": utcnow(), "updated_at": utcnow()})
+        await db["projects"].insert_one({
+            "name": "E2E CMS App", "slug": cms_slug, "category": "product",
+            "status": "published", "published": True,
+            "short_description": "cms", "created_at": utcnow(),
+            "updated_at": utcnow()})
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            r = await c.get(f"/api/portfolio/{cms_slug}")
+            assert r.status_code == 200, r.text[:200]
+            assert r.json().get("name") == "E2E CMS App"
+            r = await c.get(f"/api/products/{cms_slug}")
+            assert r.status_code == 200, r.text[:200]
+            r = await c.get(f"/api/portfolio/{legacy_slug}")
+            assert r.status_code == 200, r.text[:200]
+            r = await c.get("/api/portfolio/definitely-not-a-slug-xyz")
+            assert r.status_code == 404
+    finally:
+        await db["portfolio"].delete_many({"slug": legacy_slug})
+        await db["projects"].delete_many({"slug": cms_slug})
