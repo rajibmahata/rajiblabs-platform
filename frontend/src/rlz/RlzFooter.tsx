@@ -23,6 +23,9 @@ export default function RlzFooter() {
           <a href={siteConfig.emailLink} aria-label="Email">
             <i className="material-symbols-outlined">mail</i>
           </a>
+          <a href="/admin/login" aria-label="Admin login" title="Admin login">
+            <i className="material-symbols-outlined">login</i>
+          </a>
         </div>
       </div>
     </footer>
