@@ -32,6 +32,7 @@ const LearningManage = lazy(() => import("./pages/admin/LearningManage"));
 const Learning = lazy(() => import("./pages/Learning"));
 const LearningPathDetail = lazy(() => import("./pages/LearningPathDetail"));
 const DomainsManage = lazy(() => import("./pages/admin/DomainsManage"));
+const SkillsManage = lazy(() => import("./pages/admin/SkillsManage"));
 const DomainDetail = lazy(() => import("./pages/DomainDetail"));
 const Workbench = lazy(() => import("./pages/admin/Workbench"));
 const LogsManage = lazy(() => import("./pages/admin/LogsManage"));
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="campaigns" element={<CampaignsManage />} />
             <Route path="templates" element={<TemplatesManage />} />
             <Route path="knowledge" element={<KnowledgeManage />} />
+            <Route path="skills" element={<SkillsManage />} />
             <Route path="learning" element={<LearningManage />} />
             <Route path="domains" element={<DomainsManage />} />
             <Route path="agents" element={<AgentsManage />} />

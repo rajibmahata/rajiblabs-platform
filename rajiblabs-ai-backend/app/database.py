@@ -50,6 +50,7 @@ INDEXES: dict[str, list[tuple]] = {
     "products": [("slug", 1)],
     "website_contents": [("key", 1)],
     "resumes": [("status", 1), ("active", 1), ("version", -1), ("uploaded_at", -1)],
+    "skills": [("category", 1), ("status", 1), ("normalized_name", 1), ("display_order", 1), ("confidence", -1)],
 }
 
 # Legacy (.NET-parity) seeds: profile/home_order and the Rajib Mahata profile
@@ -376,8 +377,15 @@ async def init_db() -> None:
         for category, names in SEED_SKILLS:
             for name in names:
                 n += 1
+                normalized = name.strip().lower()
                 await db["skills"].insert_one({
-                    "category": category, "name": name, "display_order": n, "status": "published"})
+                    "category": category, "name": name, "normalized_name": normalized,
+                    "slug": normalized.replace(" ", "-").replace("/", "-").replace(".", "").replace("#", "sharp").replace("+", "plus"),
+                    "display_order": n, "status": "published",
+                    "evidence": {"sources": [{"type": "seed", "id": "seed"}]},
+                    "evidence_count": 1, "confidence": 0.9, "version": 1,
+                    "first_detected": utcnow(), "last_used": utcnow(), "last_validated": utcnow(),
+                    "created_at": utcnow(), "updated_at": utcnow()})
     if await db["experience"].count_documents({}) == 0:
         for i, (company, role, dates, desc) in enumerate(SEED_EXPERIENCE, 1):
             await db["experience"].insert_one({

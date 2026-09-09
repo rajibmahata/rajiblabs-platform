@@ -14,6 +14,7 @@ const NAV: { label: string; items: NavEntry[] }[] = [
   ]},
   { label: "Content", items: [
     { to: "/admin/resume", label: "Resume", icon: "fas fa-file-lines" },
+    { to: "/admin/skills", label: "Skills", icon: "fas fa-code" },
     { to: "/admin/portfolio", label: "Portfolio", icon: "fas fa-briefcase" },
     { to: "/admin/github", label: "GitHub Projects", icon: "fab fa-github" },
     { to: "/admin/products", label: "Products", icon: "fas fa-cube" },

@@ -237,6 +237,19 @@ async def run_profile_agent(triggered_by: str = "scheduler") -> dict:
                 # update hash
                 await db["ai_agents"].update_one({"slug": agent_config.PROFILE_SLUG}, {"$set":{"last_resume_hash": h}})
 
+        # 1b. Skill intelligence (autonomous, evidence-backed)
+        try:
+            from app.services.skill_intelligence import sync_skills
+            skill_stats = await sync_skills(triggered_by=triggered_by)
+            sources_inspected.append("skills")
+            # skill sync creates/updates skills collection and profiles.skills cache
+            log.info("Skill sync: %s", skill_stats)
+        except Exception as e:
+            log.warning("skill sync failed: %s", e)
+            try:
+                await log_error("profile_agent", "Skill sync failed", str(e)[:1000])
+            except: pass
+
         # 2. GitHub sync
         sources_inspected.append("github")
         gh_result = await sync_github(db, policy)

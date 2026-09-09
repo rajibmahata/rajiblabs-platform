@@ -33,8 +33,20 @@ async def home(lang: str | None = None):
 @router.get("/skills")
 async def skills():
     db = get_db()
-    cur = db["skills"].find({"status": "published"}).sort("display_order", 1)
-    return [oid_str(d) async for d in cur]
+    cur = db["skills"].find({"status": "published"}).sort([("display_order", 1), ("category", 1), ("name", 1)])
+    out = []
+    async for d in cur:
+        # Public: only display name/category, hide backend-only metadata (last_used, confidence, evidence, version, etc.)
+        out.append({
+            "id": str(d.get("_id")),
+            "name": d.get("name", ""),
+            "slug": d.get("slug", ""),
+            "category": d.get("category", "Other"),
+            "display_order": d.get("display_order", 999),
+            "status": d.get("status", "published"),
+        })
+    # Grouping is done client-side, but we ensure sort stability for categories
+    return out
 
 
 @router.get("/experience")
