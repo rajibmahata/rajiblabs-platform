@@ -146,12 +146,32 @@ async def retrieve(question: str, top_k: int = 0, intent: str = "GENERAL",
     s = get_settings()
     if not s.rag_enabled:
         return []
+    db0 = get_db()
+    vec, _hit = None, False
+    _emb_svc = None
     try:
-        emb = EmbeddingService()
-        vec = await emb.generate_embedding(question)
+        from app.services import ai_economy as _eco
+        vec, _hit = await _eco.cached_embed(question, db0)
+        try:
+            from app.services.rag_embeddings import EmbeddingService as _ES
+            _emb_svc = _ES()
+            await _eco.record_usage(
+                db0, provider=_emb_svc.provider, model=_emb_svc.model,
+                tag="rag-embed",
+                reason=("query embedding (cache hit)" if _hit
+                        else "query embedding (cache miss)"),
+                in_text="" if _hit else question, latency_ms=0,
+                cache_hit=bool(_hit))
+        except Exception:
+            pass
     except EmbeddingError as e:
-        log.warning("retrieval skipped (embeddings): %s", e)
-        return []
+        log.warning("retrieval degraded to keyword search (embeddings): %s", e)
+        try:
+            from app.services import ai_economy as _eco2
+            return await _eco2.keyword_search(question, db0, top_k or s.rag_top_k,
+                                              consumer)
+        except Exception:
+            return []
     must = {"status": "active", "visibility": "public"}
     if repository:
         must["repository"] = repository
@@ -254,10 +274,53 @@ async def answer_question(question: str, history: list[dict] | None = None,
         language, _lang_ins = "en", ""
     started = time.monotonic()
     s = get_settings()
+    db0 = get_db()
+    # LEVEL 1 cache: identical question + kb version → zero retrieval, zero LLM.
+    try:
+        from app.services import ai_economy as _eco0
+        _cached = await _eco0.response_cache_get(
+            db0, question, f"{top_k}|{language}")
+        if _cached:
+            try:
+                await audit("rag", "RAG_CACHE_HIT", session_id[:32] if session_id else "",
+                            {"intent": _cached.get("intent"),
+                             "latency_ms": int((time.monotonic() - started) * 1000)})
+            except Exception:
+                pass
+            return RagAnswer(answer=_cached.get("answer", NO_RESULT_REPLY),
+                             intent=_cached.get("intent", "GENERAL"),
+                             sources=[RetrievedChunk(**c) for c in
+                                      (_cached.get("sources") or [])],
+                             grounded=bool(_cached.get("grounded", True)))
+    except Exception:
+        pass
     intent = intent_hint if intent_hint in RAG_INTENTS else None
     method = "hint"
     if not intent:
         intent, method = await classify_intent(question)
+    # LEVEL 0: structured MongoDB answer — no embeddings, no LLM.
+    try:
+        from app.services import ai_economy as _eco1
+        _direct = await _eco1.structured_answer(question, db0)
+        if _direct:
+            _sources = [RetrievedChunk(
+                chunk_id=f"l0-{i}", document_id="",
+                score=_direct["confidence"], source_type=s.get("source_type", ""),
+                title=s.get("title", ""), url=s.get("url")) for i, s in
+                enumerate(_direct.get("sources", []))]
+            try:
+                await audit("rag", "RAG_DIRECT", session_id[:32] if session_id else "",
+                            {"intent": _direct.get("intent", intent), "method": method,
+                             "retrieved": len(_sources),
+                             "latency_ms": int((time.monotonic() - started) * 1000),
+                             "level": 0})
+            except Exception:
+                pass
+            return RagAnswer(answer=_direct["answer"],
+                             intent=_direct.get("intent", intent),
+                             sources=_sources, grounded=True)
+    except Exception as e:
+        log.warning("structured answer skipped: %s", e)
     chunks = await retrieve(question, top_k=top_k, intent=intent)
     ok, flag = _retrieval_quality(question, chunks)
     sources = [RetrievedChunk(**{k: c.get(k) for k in
@@ -274,6 +337,43 @@ async def answer_question(question: str, history: list[dict] | None = None,
         pass
     if not ok or not sources:
         return RagAnswer(answer=NO_RESULT_REPLY, intent=intent, sources=[], grounded=False)
+    # LEVEL 1 extractive: top hit far above threshold → quote verified
+    # chunks directly, no LLM call at all.
+    try:
+        _direct_min = float(s.rag_direct_answer_min_score or 0.80)
+    except Exception:
+        _direct_min = 0.80
+    _top_score = max([c.score for c in sources] or [0])
+    if _top_score >= _direct_min:
+        _parts, _used = [], 0
+        for c in chunks:
+            if c.score < _direct_min:
+                continue
+            txt = (c.get("content") or "").strip()[:600]
+            if txt:
+                _parts.append(txt)
+                _used += len(txt)
+            if len(_parts) >= 3 or _used >= 1200:
+                break
+        if _parts:
+            _ans = RagAnswer(answer="\n\n".join(_parts), intent=intent,
+                             sources=sources, grounded=True)
+            try:
+                await audit("rag", "RAG_ANSWER", session_id[:32] if session_id else "",
+                            {"intent": intent, "sources": len(sources),
+                             "latency_ms": int((time.monotonic() - started) * 1000),
+                             "level": 1, "mode": "extractive",
+                             "top_score": _top_score})
+                from app.services import ai_economy as _eco4
+                await _eco4.response_cache_set(
+                    db0, question, {"answer": _ans.answer, "sources": [
+                        {"chunk_id": c.chunk_id, "document_id": c.document_id,
+                         "score": c.score, "source_type": c.source_type,
+                         "title": c.title, "url": c.url} for c in sources],
+                        "intent": intent, "grounded": True}, f"{top_k}|{language}")
+            except Exception:
+                pass
+            return _ans
     context = "\n\n---\n\n".join(
         f"[{c['title']}] ({c['source_type']})\n{c['content'][:1500]}" for c in chunks)
     history_txt = ""
@@ -301,10 +401,34 @@ async def answer_question(question: str, history: list[dict] | None = None,
         answer = (resp.choices[0].message.content or "").strip()
         if not answer:
             raise RuntimeError("empty answer")
+        _usage_obj = {}
+        try:
+            _usage_obj = (getattr(resp, "usage", None) and
+                          resp.usage.model_dump()) if hasattr(
+                              getattr(resp, "usage", None), "model_dump") else (
+                              dict(getattr(resp, "usage", {}) or {}))
+        except Exception:
+            _usage_obj = {}
+        _lat = int((time.monotonic() - started) * 1000)
         try:
             await audit("rag", "RAG_ANSWER", session_id[:32] if session_id else "",
                         {"intent": intent, "sources": len(sources),
-                         "latency_ms": int((time.monotonic() - started) * 1000)})
+                         "latency_ms": _lat, "level": 3})
+        except Exception:
+            pass
+        try:
+            from app.services import ai_economy as _eco5
+            await _eco5.record_usage(
+                db0, provider="openai", model=s.openai_model, tag="rag-answer",
+                reason=f"synthesis intent={intent}", in_text=context[:4000],
+                out_text=answer, latency_ms=_lat, usage_obj=_usage_obj,
+                retrieval_hit=True)
+            await _eco5.response_cache_set(
+                db0, question, {"answer": answer, "sources": [
+                    {"chunk_id": c.chunk_id, "document_id": c.document_id,
+                     "score": c.score, "source_type": c.source_type,
+                     "title": c.title, "url": c.url} for c in sources],
+                    "intent": intent, "grounded": True}, f"{top_k}|{language}")
         except Exception:
             pass
         return RagAnswer(answer=answer, intent=intent, sources=sources, grounded=True)

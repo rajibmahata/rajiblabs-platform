@@ -176,18 +176,24 @@ class AIService:
         return self._chain
 
     async def _complete(self, messages: list[dict], max_tokens: int,
-                        temperature: float, tag: str) -> dict:
+                        temperature: float, tag: str, db=None,
+                        reason: str = "") -> dict:
         """Try providers in order with exponential backoff. Returns parsed JSON.
 
         Failures are recorded with precise causes (HTTP_401, NonJsonBody,
         EmptyContent, Refusal, BadJson, network errors) plus a scrubbed raw
         snippet, so the admin log diagnoses instead of just saying
         "JSONDecodeError". Deterministic failures (refusal, auth/config)
-        break early instead of burning retries on identical input."""
+        break early instead of burning retries on identical input.
+
+        When `db` is given, token/latency/cost usage is recorded
+        (ai_economy.record_usage) for the admin usage dashboard."""
         from app.services.notify import scrub_text
         s = get_settings()
         if not self.configured:
             raise AIError("AI not configured")
+        import time as _time
+        _t0 = _time.monotonic()
         chain = self._active_chain()
         attempts = max(1, s.openai_max_retries)
         errors: list[str] = []
@@ -253,7 +259,29 @@ class AIService:
                 except Exception:
                     data = _extract_json_object(content)
                     log.warning("AI %s repaired prose-wrapped JSON for %s", name, tag)
-                return {"provider": name, "model": model, "data": data}
+                _usage: dict = {}
+                try:
+                    _u = payload.get("usage") or {}
+                    if isinstance(_u, dict):
+                        _usage = {k: _u.get(k, 0) for k in
+                                  ("prompt_tokens", "completion_tokens", "total_tokens")}
+                except Exception:
+                    _usage = {}
+                if db is not None:
+                    try:
+                        from app.services import ai_economy as _eco
+                        _in_txt = "\n".join(
+                            str(m.get("content", "")) for m in messages)[:6000]
+                        await _eco.record_usage(
+                            db, provider=name, model=model, tag=tag,
+                            reason=reason or tag, in_text=_in_txt,
+                            out_text=content, latency_ms=int(
+                                (_time.monotonic() - _t0) * 1000),
+                            usage_obj=_usage)
+                    except Exception:
+                        pass
+                return {"provider": name, "model": model, "data": data,
+                        "usage": _usage}
             except _Refusal as e:
                 # Same input → same refusal. Don't burn remaining retries.
                 errors.append(f"{name}: {e}")
@@ -301,7 +329,7 @@ class AIService:
 
     async def chat_with_lead(self, history: list[dict], user_message: str,
                              knowledge: str, known: dict,
-                             language: str = "en") -> tuple[LeadAssistantOut, dict]:
+                             language: str = "en", db=None) -> tuple[LeadAssistantOut, dict]:
         """One discovery turn. Returns (validated result, usage meta).
 
         `language` localizes ONLY the free-text reply (same English knowledge,
@@ -330,7 +358,9 @@ class AIService:
             {"role": "user", "content": user_message[:2000]},
         ]
         try:
-            out = await self._complete(messages, max_tokens=500, temperature=0.4, tag="lead-chat")
+            out = await self._complete(messages, max_tokens=500, temperature=0.4,
+                                       tag="lead-chat", db=db,
+                                       reason="lead discovery turn")
         except AIError:
             raise
         try:
@@ -340,7 +370,8 @@ class AIService:
             raise AIError("Invalid AI response")
         return result, {"ai_provider": out["provider"], "ai_model": out["model"], "usage": {}}
 
-    async def analyze_idea(self, lead: dict, idea: dict) -> tuple[ScopeSection, dict]:
+    async def analyze_idea(self, lead: dict, idea: dict,
+                           db=None) -> tuple[ScopeSection, dict]:
         """Generate the 10-section preliminary scope. Evidence-only, no fabrication."""
         evidence = (
             f"Contact: {lead.get('name','')} <{lead.get('email','')}> {lead.get('phone','')}\n"
@@ -357,7 +388,9 @@ class AIService:
                 "technology_direction, risks_assumptions[], discovery_questions[].")},
         ]
         try:
-            out = await self._complete(messages, max_tokens=1200, temperature=0.3, tag="idea-analyze")
+            out = await self._complete(messages, max_tokens=1200, temperature=0.3,
+                                       tag="idea-analyze", db=db,
+                                       reason="preliminary scope generation")
         except AIError:
             raise
         try:

@@ -237,7 +237,8 @@ async def generate_and_store_scope(db, lead: dict, idea: dict,
         {"description": idea.get("description"),
          "problem_statement": idea.get("problem_statement"),
          "current_process": idea.get("current_process"),
-         "desired_outcome": idea.get("desired_outcome")})
+         "desired_outcome": idea.get("desired_outcome")},
+        db=db)
     payload = scope.model_dump()
     markdown = rules.render_scope_markdown(payload)
     await db["ideas"].update_one(
@@ -354,7 +355,8 @@ async def process_chat_message(db, session_token: str | None, message: str,
         await audit("website_chat", "AI_REQUEST", token, {},
                     event_type="AI_REQUEST", session_id=token)
         result, ai_meta = await AIService().chat_with_lead(
-            history, message, knowledge, known, language=language or "en")
+            history, message, knowledge, known, language=language or "en",
+            db=db)
         await audit("website_chat", "AI_RESPONSE", token,
                     {"provider": ai_meta.get("ai_provider", ""),
                      "next_action": result.next_action},

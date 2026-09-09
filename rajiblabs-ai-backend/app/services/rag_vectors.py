@@ -46,13 +46,36 @@ class VectorStoreError(Exception):
     pass
 
 
+def resolve_collection() -> tuple[str, int]:
+    """(collection, dim) for the ACTIVE embedding descriptor.
+
+    OpenAI default config → the historic base collection (zero behavior
+    change). Any other provider/model/dim gets an isolated collection so
+    mixed-dim points can never corrupt an index; switching models triggers
+    an incremental re-index via content-hash dedup.
+    """
+    import re
+    from app.services.rag_embeddings import EmbeddingService
+    s = get_settings()
+    try:
+        desc = EmbeddingService().descriptor()
+    except Exception:
+        return s.qdrant_collection, s.embedding_dim or 1536
+    if (desc["embedding_provider"] == "openai"
+            and desc["embedding_model"] == (s.embedding_model or "text-embedding-3-small")
+            and int(desc["embedding_dim"] or 0) == (s.embedding_dim or 1536)):
+        return s.qdrant_collection, s.embedding_dim or 1536
+    slug = re.sub(r"[^a-z0-9]+", "-", desc["embedding_model"].lower()).strip("-")
+    dim = int(desc["embedding_dim"] or 384)
+    return f"{s.qdrant_collection}__{desc['embedding_provider']}_{slug}_{dim}", dim
+
+
 class QdrantVectorStore(VectorStore):
     def __init__(self):
         s = get_settings()
         self.url = s.qdrant_url
         self.api_key = s.qdrant_api_key or None
-        self.collection = s.qdrant_collection
-        self.dim = s.embedding_dim or 1536
+        self.collection, self.dim = resolve_collection()
         self._client = None
 
     def _client_or_raise(self):

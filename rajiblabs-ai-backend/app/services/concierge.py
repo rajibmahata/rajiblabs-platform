@@ -478,7 +478,16 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
     reply, used_llm, meta = fallback, False, {"ai_provider": None, "ai_model": None}
     _social_ack = intent == "general_conversation" and bool(
         re.search(r"thank|\b(bye|goodbye|see you)\b", (message or "").lower()))
-    if intent in ("greeting", "contact", "live_url") or _social_ack or (lead_mode and missing and not has_answer):
+    # LEVEL 0/1 fast path: deterministic tool answers skip the LLM entirely.
+    # List/detail intents with verified tool output compose extractively;
+    # the LLM runs only when tools came back empty or a lead question needs
+    # natural phrasing around missing tool data.
+    _list_intents = ("projects_list", "github_work", "products", "services",
+                     "about_rajib", "about_rajiblabs", "project_detail")
+    _tool_answer_ok = (has_answer and intent in _list_intents
+                       and not (lead_mode and missing and question))
+    if intent in ("greeting", "contact", "live_url") or _social_ack or (
+            lead_mode and missing and not has_answer) or _tool_answer_ok:
         reply, _ = compose_tool_only(intent, results, contact0, fallback,
                                    message=message)
         if lead_mode and missing and question and intent not in ("contact",):
@@ -522,7 +531,8 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
                         if intent in ("hire_lead", "idea_discovery") else "")
                      + "Reply as a JSON object with a single key 'reply' "
                      "containing your answer text.")}],
-                max_tokens=400, temperature=0.2, tag="concierge-reply")
+                max_tokens=400, temperature=0.2, tag="concierge-reply",
+                db=None if preview else db, reason="concierge grounded reply")
             reply = str((out.get("data") or {}).get("reply") or "").strip() or fallback
             meta = {"ai_provider": out.get("provider"), "ai_model": out.get("model")}
             used_llm = True

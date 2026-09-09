@@ -101,6 +101,14 @@ class Settings(BaseSettings):
     rag_top_k: int = 5
     rag_min_score: float = 0.35
     rag_cache_ttl_seconds: int = 3600
+    # LEVEL 0→1 economy: direct answers + caches (reuse-first, LLM last).
+    response_cache_ttl_seconds: int = 3600
+    rag_direct_answer_min_score: float = 0.80
+    # Local embeddings (LEVEL 1 without API spend). Requires the optional
+    # `sentence-transformers` package; when absent the provider reports
+    # unconfigured and callers degrade (keyword fallback), never 500.
+    local_embedding_model: str = "all-MiniLM-L6-v2"
+    local_embedding_dim: int = 384
     rag_chunk_size: int = 1200
     rag_chunk_overlap: int = 150
     github_rag_repos: str = ""  # comma-separated allowlist; empty = all public

@@ -101,6 +101,11 @@ async def upsert_document(source_type: str, source_id: str, title: str,
         raise
     await db["knowledge_documents"].update_one(
         {"_id": doc_id}, {"$set": {"status": "active", "indexed_at": utcnow()}})
+    try:
+        from app.services.ai_economy import bump_kb_version
+        await bump_kb_version(db)
+    except Exception:
+        pass
     return {"document_id": str(doc_id),
             "status": "updated" if existing else "created"}
 
@@ -176,6 +181,11 @@ async def deactivate_document(document_id: str) -> bool:
     await db["knowledge_documents"].update_one(
         {"_id": oid}, {"$set": {"status": "inactive", "updated_at": utcnow()}})
     await db["knowledge_chunks"].delete_many({"document_id": str(oid)})
+    try:
+        from app.services.ai_economy import bump_kb_version
+        await bump_kb_version(db)
+    except Exception:
+        pass
     return True
 
 
