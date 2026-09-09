@@ -49,6 +49,7 @@ INDEXES: dict[str, list[tuple]] = {
     "portfolio": [("slug", 1)],
     "products": [("slug", 1)],
     "website_contents": [("key", 1)],
+    "resumes": [("status", 1), ("active", 1), ("version", -1), ("uploaded_at", -1)],
 }
 
 # Legacy (.NET-parity) seeds: profile/home_order and the Rajib Mahata profile
@@ -434,9 +435,14 @@ async def init_db() -> None:
             except Exception as e:
                 log.warning("Resume seed copy failed: %s", e)
             import os
+            rel = f"uploads/resumes/{dest.name}"
             await db["resumes"].insert_one({
-                "file_name": "Rajib-Mahata-Resume-2026.pdf", "stored_path": str(dest),
+                "legacy_id": uuid.uuid4().hex,
+                "filename": "Rajib-Mahata-Resume-2026.pdf",
+                "file_name": "Rajib-Mahata-Resume-2026.pdf",
+                "stored_path": str(dest), "stored_rel": rel,
                 "content_type": "application/pdf", "size_bytes": os.path.getsize(dest),
-                "version": 1, "status": "published",
+                "version": 1, "status": "published", "active": True,
+                "extracted_text": "",
                 "uploaded_at": utcnow(), "published_at": utcnow()})
             log.info("Seeded legacy resume v1")

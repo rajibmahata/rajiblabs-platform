@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { siteConfig } from "../config/site";
 import { HERO_STATS } from "./data";
 import { useLang } from "../i18n/langContext";
@@ -74,6 +74,17 @@ export default function RlzHero({ scopeRef }: { scopeRef: React.RefObject<HTMLEl
   useTyping(typingRef, tArr("hero.typing"));
   useCounters(scopeRef);
   const statLabels = [t("hero.statYears"), t("hero.statRepos"), t("hero.statProducts")];
+  const [resumeUrl, setResumeUrl] = useState<string>("/Rajib-Mahata-Resume-2026.pdf");
+  useEffect(() => {
+    fetch("/api/public/resume").then(r=>r.ok?r.json():null).then(d=>{
+      if(d && d.download_url) setResumeUrl(d.download_url);
+      else if(d && d.active) setResumeUrl("/api/public/resume/download");
+    }).catch(()=>{});
+    // also try legacy
+    fetch("/api/resume/current").then(r=>r.ok?r.json():null).then(d=>{
+      if(d && d.url) setResumeUrl(d.url);
+    }).catch(()=>{});
+  }, []);
  
   return (
     <section className="rlz-hero rlz-section" id="home" style={{ paddingTop: 160, paddingBottom: 80 }}>
@@ -99,7 +110,7 @@ export default function RlzHero({ scopeRef }: { scopeRef: React.RefObject<HTMLEl
               <a href="#projects" className="rlz-btn rlz-btn-primary">
                 {t("hero.explore")} <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>arrow_forward</i>
               </a>
-              <a href="/Rajib-Mahata-Resume-2026.pdf" download className="rlz-btn rlz-btn-ghost">
+              <a href={resumeUrl} download className="rlz-btn rlz-btn-ghost">
                 <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>download</i> {t("hero.resume")}
               </a>
             </div>

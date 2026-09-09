@@ -1,8 +1,19 @@
+import { useEffect, useState } from "react";
 import { siteConfig } from "../config/site";
 import { useLang } from "../i18n/langContext";
 
 export default function RlzContact() {
   const { t } = useLang();
+  const [resumeUrl, setResumeUrl] = useState<string>("/Rajib-Mahata-Resume-2026.pdf");
+  useEffect(() => {
+    fetch("/api/public/resume").then(r=>r.ok?r.json():null).then(d=>{
+      if(d && d.download_url) setResumeUrl(d.download_url);
+      else if(d && d.active) setResumeUrl("/api/public/resume/download");
+    }).catch(()=>{});
+    fetch("/api/resume/current").then(r=>r.ok?r.json():null).then(d=>{
+      if(d && d.url) setResumeUrl(d.url);
+    }).catch(()=>{});
+  }, []);
   return (
     <section className="rlz-cta-section rlz-section" id="contact" style={{ paddingTop: 40 }}>
       <div className="rlz-cta-card rlz-reveal">
@@ -23,7 +34,7 @@ export default function RlzContact() {
             <span className="rlz-ct-icon rlz-icon-cyan"><i className="material-symbols-outlined">mail</i></span>
             <h4>{t("contact.email")}</h4><p>{siteConfig.contact.email}</p>
           </a>
-          <a href="/Rajib-Mahata-Resume-2026.pdf" download className="rlz-contact-tile">
+          <a href={resumeUrl} download className="rlz-contact-tile">
             <span className="rlz-ct-icon rlz-icon-fuchsia"><i className="material-symbols-outlined">download</i></span>
             <h4>{t("contact.resume")}</h4><p>{t("contact.downloadPdf")}</p>
           </a>

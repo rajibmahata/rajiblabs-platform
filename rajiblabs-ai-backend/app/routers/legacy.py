@@ -1387,8 +1387,8 @@ async def resume_upload(request: Request, email: str = Depends(require_admin)):
     if ext not in (".pdf", ".docx"):
         raise HTTPException(400, {"error": "Only PDF/DOCX allowed"})
     data = await file.read()
-    if len(data) > 10 * 1024 * 1024:
-        raise HTTPException(400, {"error": "Max 10MB"})
+    if len(data) > s.max_resume_mb * 1024 * 1024:
+        raise HTTPException(400, {"error": f"Max {s.max_resume_mb}MB"})
     safe = f"{uuid.uuid4().hex}{ext}"
     updir = Path(s.upload_dir) / "resumes"
     updir.mkdir(parents=True, exist_ok=True)
@@ -1396,13 +1396,21 @@ async def resume_upload(request: Request, email: str = Depends(require_admin)):
     db = get_db()
     version = await db["resumes"].count_documents({}) + 1
     doc = {"legacy_id": uuid.uuid4().hex, "filename": file.filename,
+           "file_name": file.filename,
            "stored_path": str(updir / safe), "stored_rel": f"uploads/resumes/{safe}",
            "content_type": file.content_type or "application/octet-stream",
            "size_bytes": len(data), "version": version, "status": "published",
-           "active": True, "uploaded_at": utcnow(), "published_at": utcnow()}
+           "active": True, "extracted_text": "",
+           "uploaded_at": utcnow(), "published_at": utcnow()}
     await db["resumes"].update_many({}, {"$set": {"status": "archived", "active": False}})
     await db["resumes"].insert_one(doc)
     await audit(email, "RESUME_UPLOAD", str(doc["legacy_id"]))
+    # Best-effort extraction + RAG (archived resumes stay internal, not indexed)
+    try:
+        from app.services.resume_text import extract_and_store
+        await extract_and_store(doc["legacy_id"])
+    except Exception:
+        pass
     return resume_out(doc)
 
 
@@ -1435,6 +1443,9 @@ async def resume_public_download(rid: str):
     d = await by_id("resumes", rid)
     if not d:
         raise HTTPException(404, {"error": "Not found"})
+    # Public: only the currently published/active resume
+    if d.get("status") != "published" or not d.get("active"):
+        raise HTTPException(404, {"error": "Not found"})
     path = _resume_file_path(d)
     if not path:
         raise HTTPException(404, {"error": "Not found"})
@@ -1448,13 +1459,42 @@ async def resume_publish(rid: str, email: str = Depends(require_admin)):
     if not d:
         raise HTTPException(404, {"error": "Not found"})
     db = get_db()
+    # Enforce single published: archive all others (both status and active)
     await db["resumes"].update_many(
-        {"_id": {"$ne": d["_id"]}, "status": "published"},
+        {"_id": {"$ne": d["_id"]}},
         {"$set": {"status": "archived", "active": False}})
     await db["resumes"].update_one(
         {"_id": d["_id"]},
         {"$set": {"status": "published", "active": True, "published_at": utcnow()}})
     await audit(email, "RESUME_PUBLISH", rid)
+    # Ensure extracted_text + RAG for the newly published (no duplicate processing via hash dedup)
+    try:
+        from app.services.resume_text import extract_and_store
+        # Only extract if missing
+        fresh = await db["resumes"].find_one({"_id": d["_id"]})
+        if not (fresh.get("extracted_text") or "").strip():
+            await extract_and_store(oid(fresh) if fresh.get("legacy_id") else str(fresh["_id"]))
+        else:
+            # Still trigger RAG to ensure published is indexed (hash dedup prevents duplicate)
+            from app.services.rag_ingest import ingest_resume
+            await ingest_resume()
+    except Exception:
+        pass
+    # Deactivate RAG for archived resumes (prevent public AI leaks)
+    try:
+        from app.services.rag_ingest import deactivate_document
+        # Find knowledge docs for archived resumes and deactivate
+        async for arch in db["resumes"].find({"status": "archived"}):
+            # Resume RAG source_id is resume:file:<ObjectId> or legacy_id
+            for sid in [f"resume:file:{arch['_id']}", f"resume:file:{arch.get('legacy_id')}"]:
+                kd = await db["knowledge_documents"].find_one({"source_id": sid, "status": "active"})
+                if kd:
+                    try:
+                        await deactivate_document(str(kd["_id"]))
+                    except Exception:
+                        pass
+    except Exception:
+        pass
     return resume_out({**d, "status": "published", "active": True, "published_at": utcnow()})
 
 
@@ -1505,14 +1545,40 @@ async def extraction_create(rid: str, email: str = Depends(require_admin)):
     d = await by_id("resumes", rid)
     if not d:
         raise HTTPException(404, {"error": "Not found"})
-    extracted = {"Name": "Rajib Mahata", "Title": "Senior .NET & Azure Engineer",
-                 "Summary": "12+ years SaaS & AI",
-                 "Skills": [".NET", "Azure", "AI"]}
+    # Real extraction via pypdf/docx (best-effort, scrubbed)
+    try:
+        from app.services.resume_text import extract_and_store
+        text = await extract_and_store(oid(d) if d.get("legacy_id") else str(d["_id"]))
+        # Build a minimal structured JSON for admin review (skills/title summary)
+        # Use deterministic fallback if extraction short
+        extracted = {"Name": d.get("filename") or d.get("file_name") or "Rajib Mahata",
+                     "Title": "Extracted Resume",
+                     "Summary": (text[:300] if text else "No text extracted"),
+                     "Skills": [],
+                     "RawTextPreview": text[:1000] if text else ""}
+        # Try to derive skills via simple keyword scan if profile exists
+        try:
+            prof = await get_db()["profiles"].find_one()
+            if prof and prof.get("skills"):
+                extracted["Skills"] = prof.get("skills", [])[:10]
+        except Exception:
+            pass
+    except Exception as e:
+        extracted = {"Name": d.get("filename") or d.get("file_name") or "Rajib Mahata",
+                     "Error": str(e)[:200],
+                     "Summary": "Extraction failed"}
+        text = ""
     db = get_db()
     doc = {"legacy_id": uuid.uuid4().hex, "resume_id": oid(d),
            "extracted_json": json.dumps(extracted), "status": "review",
            "created_at": utcnow()}
     await db["resume_extractions"].insert_one(doc)
+    # Also ensure resumes.extracted_text is up to date (for RAG if published)
+    if text:
+        try:
+            await db["resumes"].update_one({"_id": d["_id"]}, {"$set": {"extracted_text": text[:20000]}})
+        except Exception:
+            pass
     await audit(email, "RESUME_EXTRACT", rid)
     return {"id": doc["legacy_id"], "resumeId": doc["resume_id"],
             "extractedJson": doc["extracted_json"], "status": "review",
