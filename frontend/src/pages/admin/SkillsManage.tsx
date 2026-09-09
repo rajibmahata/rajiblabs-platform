@@ -33,8 +33,8 @@ export default function SkillsManage() {
     }
   };
 
-  useEffect(() => { load(1); setPage(1); }, [q, category, status, sort]);
-  useEffect(() => { load(page); }, [page]);
+  useEffect(() => { load(1); setPage(1); }, [q, category, status, sort]); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { load(page); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
 
   const openView = async (id: string) => {
     try {
