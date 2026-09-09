@@ -77,7 +77,7 @@ EDITABLE_FIELDS = {
 }
 
 AGENT_TYPES = ("concierge", "proposal", "recruiter", "marketing",
-               "research", "support", "career", "profile")
+               "research", "support", "career", "profile", "learning")
 
 CAREER_SLUG = "rajiblabs-career"
 
@@ -142,6 +142,44 @@ async def ensure_career_seed(db=None) -> dict:
     return doc
 
 
+LEARNING_SLUG = "rajiblabs-learning"
+
+DEFAULT_LEARNING_AGENT = {
+    "name": "RajibLabs Learning Agent",
+    "slug": LEARNING_SLUG,
+    "description": "Autonomous mentor that builds and maintains structured learning paths and daily blocks.",
+    "enabled": True,
+    "public_enabled": False,
+    "agent_type": "learning",
+    "system_prompt": (
+        "You are the RajibLabs Learning Agent — a mentor, not a blog writer. "
+        "Teach as a knowledgeable guide: clear progression, practical examples, "
+        "runnable code where applicable, and consistent difficulty. Never invent "
+        "technical facts; prefer verified knowledge. Be concise and mentor-like."
+    ),
+    "allowed_tools": [
+        "search_knowledge", "get_learning_path", "get_daily_lesson",
+        "create_lesson", "validate_lesson", "update_knowledge",
+    ],
+    "knowledge_sources": list(DEFAULT_SOURCE_POLICY),
+    "knowledge_policy": dict(DEFAULT_SOURCE_POLICY),
+    "guardrail_policy": "learning",
+    "hallucination_policy": "verified-only",
+    "response_policy": "verified-only",
+    "response_style": "mentor, clear, progressive, practical",
+    "lead_capture_enabled": False,
+    "lead_fields": [],
+    "fallback_message": "Learning Agent: no verified lesson to publish.",
+    "policy": {
+        "auto_generate": True,
+        "auto_publish": False,
+        "rag_sync": True,
+        "learning_publish_threshold": 50,
+    },
+    "schedule": {"cron": "0 6 * * *", "timezone": "Asia/Kolkata"},
+}
+
+
 PROFILE_SLUG = "rajiblabs-profile"
 
 DEFAULT_PROFILE_AGENT = {
@@ -200,11 +238,24 @@ async def ensure_profile_seed(db=None) -> dict:
     return doc
 
 
+async def ensure_learning_seed(db=None) -> dict:
+    db = get_db() if db is None else db
+    existing = await db["ai_agents"].find_one({"slug": LEARNING_SLUG})
+    if existing:
+        return existing
+    doc = {**DEFAULT_LEARNING_AGENT, "created_at": utcnow(), "updated_at": utcnow(),
+           "stats": {"runs": 0, "proposals": 0, "applied": 0, "errors": 0}}
+    await db["ai_agents"].insert_one(doc)
+    return doc
+
+
 async def get_agent(db, slug: str = CONCIERGE_SLUG) -> dict | None:
     if slug == CONCIERGE_SLUG:
         return await ensure_seed(db)
     if slug == PROFILE_SLUG:
         return await ensure_profile_seed(db)
+    if slug == LEARNING_SLUG:
+        return await ensure_learning_seed(db)
     return await db["ai_agents"].find_one({"slug": slug})
 
 
@@ -212,6 +263,7 @@ async def list_agents(db) -> list[dict]:
     await ensure_seed(db)
     await ensure_profile_seed(db)
     await ensure_career_seed(db)
+    await ensure_learning_seed(db)
     return [d async for d in db["ai_agents"].find().sort("created_at", 1)]
 
 

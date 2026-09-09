@@ -290,6 +290,11 @@ async def ensure_indexes(db=None) -> None:
         "professional_domains": [[("slug", 1)], [("status", 1)], [("featured", 1)],
                                  [("confidence_score", -1)], [("updated_at", -1)]],
         "professional_sources": [[("type", 1)], [("enabled", 1)], [("status", 1)]],
+        # Learning Management (autonomous, mentor-style)
+        "learning_paths": [[("slug", 1)], [("status", 1)], [("topic", 1)], [("updated_at", -1)]],
+        "learning_blocks": [[("path_id", 1), ("day_number", 1)], [("status", 1)], [("path_id", 1)], [("updated_at", -1)]],
+        "learning_progress": [[("path_id", 1)], [("user_id", 1)]],
+        "learning_agent_runs": [[("started_at", -1)], [("status", 1)]],
         # Multilingual framework: language master + translation records + hot cache
         "languages": [[("enabled", 1)], [("sort_order", 1)]],
         "translations": [[("key", 1), ("target_language", 1)],

@@ -192,6 +192,7 @@ RAG_SOURCE_TYPES = frozenset({
     "resume", "profile", "project", "product", "service", "case_study",
     "wip", "github_repository", "github_readme", "github_documentation",
     "github_commit", "github_issue", "website_content", "admin_knowledge",
+    "learning", "learning_path", "learning_block", "course", "lesson",
 })
 
 
