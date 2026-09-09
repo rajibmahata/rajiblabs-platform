@@ -4,6 +4,7 @@ import useRlzReveal from "../rlz/Reveal";
 import RlzNav from "../rlz/RlzNav";
 import RlzNeuralCanvas from "../rlz/RlzNeuralCanvas";
 import RlzHero from "../rlz/RlzHero";
+import RlzAbout from "../rlz/RlzAbout";
 import RlzMarquee from "../rlz/RlzMarquee";
 import RlzExpertise from "../rlz/RlzExpertise";
 import RlzSkills from "../rlz/RlzSkills";
@@ -35,6 +36,7 @@ export default function Home() {
         <RlzNeuralCanvas />
         <RlzNav />
         <RlzHero scopeRef={scopeRef} />
+        <RlzAbout />
         <RlzMarquee />
         <RlzExpertise />
         <RlzSkills />

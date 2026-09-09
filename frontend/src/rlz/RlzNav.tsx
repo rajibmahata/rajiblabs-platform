@@ -7,6 +7,7 @@ export default function RlzNav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const LINKS = [
+    { href: "#about", label: "About" },
     { href: "#expertise", label: t("nav.expertise") },
     { href: "#architecture", label: t("nav.architecture") },
     { href: "#projects", label: t("nav.projects") },
