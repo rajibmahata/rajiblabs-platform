@@ -91,8 +91,23 @@ async def test_agent(slug: str, body: dict, email: str = Depends(require_admin))
     """Dry-run a message through the agent loop without storing anything."""
     from app.services import concierge as _cg
     db = get_db()
-    if slug != _cg.AGENT_SLUG or await agents.get_agent(db, slug) is None:
+    agent = await agents.get_agent(db, slug)
+    if agent is None:
         raise HTTPException(404, "Agent not found")
+    # Allow any agent type; concierge uses its own loop, others use a generic RAG-grounded dry-run
+    if slug != _cg.AGENT_SLUG:
+        # Generic: just do a RAG query for the message and return it as a preview
+        message = ((body or {}).get("message") or "").strip()[:2000]
+        if not message:
+            raise HTTPException(400, "Message is required")
+        try:
+            from app.services import rag_query as _rq
+            intent, _ = await _rq.classify_intent(message)
+            chunks = await _rq.retrieve(message, top_k=3)
+            sources = [{"title": c.get("title",""), "source_type": c.get("source_type",""), "url": c.get("url")} for c in chunks[:3]]
+            return {"reply": f"[Dry-run for {slug}] would answer from {len(chunks)} grounded chunks (intent={intent}). RAG is active for this agent.", "sources": sources, "intent": intent}
+        except Exception as e:
+            return {"reply": f"[Dry-run] Agent {slug} is configured but RAG preview failed: {e}", "sources": [], "intent": "GENERAL"}
     message = ((body or {}).get("message") or "").strip()[:2000]
     if not message:
         raise HTTPException(400, "Message is required")
