@@ -21,7 +21,7 @@ async def get_config(email: str = Depends(require_admin)):
     from app.services import agent_config
     db = get_db()
     cfg = await agent_config.get_agent(db, agent_config.PROFILE_SLUG)
-    return cfg
+    return oid_str(cfg) if cfg else cfg
 
 @router.put("/config")
 async def update_config(body: dict, email: str = Depends(require_admin)):

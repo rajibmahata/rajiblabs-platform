@@ -358,6 +358,7 @@ async def get_dashboard(db=None) -> dict:
     if db is None:
         db = get_db()
     from app.services import agent_config
+    from app.models import oid_str as _oid
     cfg = await agent_config.get_agent(db, agent_config.PROFILE_SLUG)
     health = await check_configuration_health(db)
     # completeness
@@ -381,9 +382,9 @@ async def get_dashboard(db=None) -> dict:
         "products": products,
         "knowledge": kb_docs,
         "pending_approvals": pending,
-        "last_run": last_run,
+        "last_run": _oid(last_run) if last_run else None,
         "next_run": next_run,
         "health": health,
         "config": cfg.get("policy",{}) if cfg else {},
-        "agent": cfg
+        "agent": _oid(cfg) if cfg else None
     }
