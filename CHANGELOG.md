@@ -2,6 +2,51 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-10 — Project Intelligence: resume→projects evidence, GitHub enrichment, portfolio scoring, case-study sections
+
+No new systems — extends the existing Profile Agent (`resume_projects.py`),
+`projects` schema, RAG ingestion and `ProjectDetail.tsx`. Resume→projects
+consolidation, GitHub sync, RAG and the detail page already existed; this fills
+the gaps (evidence accumulation, repo enrichment, portfolio classification,
+learnings/beneficiaries/evidence UI).
+
+### Added — `rajiblabs-ai-backend/app/services/resume_projects.py`
+- Canonical evidence per project (`evidence: [{source, label, url}]`, sources
+  resume|github|portfolio), merged append-only and deduped; rendered on the
+  detail page as "Project Evidence".
+- GitHub enrichment from the STORED `github_repositories` record (no API
+  calls): verified URL, topics/language tech merge, maintainer description →
+  `solution` fallback only when empty. Exact, normalized and prefix repo match
+  (`pestflow-app` evidences `PestFlow`); existing URLs/content never
+  overwritten, `locked_fields` respected.
+- Deterministic portfolio-worthiness score 0-100 (`_portfolio_score`:
+  description substance, tech count, evidence sources, enterprise hints,
+  live/github/client signals) stored as `portfolio_score`/`portfolio_worthy`.
+- Configurable gate `get_portfolio_criteria()` from `site_settings`
+  `portfolio_criteria` (defaults `score_threshold: 50` — same bar as domain/
+  learning gates — `auto_create_draft: False`). Opt-in auto-draft creates a
+  portfolio DRAFT (never publishes) via `_maybe_create_portfolio_draft`.
+
+### Changed
+- `app/schemas/ProjectIn`: new optional fields `role`, `learnings`,
+  `beneficiaries`, `domain`, `evidence`, `portfolio_score`,
+  `portfolio_worthy` (admin PUT/POST accept them; full-overwrite semantics
+  unchanged).
+- RAG project bodies (`rag_ingest.ingest_mongodb` + resume-project sync) now
+  include verified `Role:`/`Business value:` lines when present.
+- `frontend/src/pages/ProjectDetail.tsx`: conditional "What I Learned",
+  "Who Benefits" and "Project Evidence" (source chips, linked when a verified
+  URL exists) sections in the existing card language; empty sections render
+  nothing — no placeholders, no invented claims.
+
+### Verified
+- New `tests/test_resume_projects.py`: 10 passed (scoring, evidence dedupe,
+  cross-version dedupe, idempotent rerun, locked-field protection, no URL
+  invention, autodraft on/off, criteria defaults) — fake-DB, no LLM/network.
+- Live E2E on local Mongo: synthetic resume + stored repo → project created
+  with merged tech/evidence/score; rerun clean; seed data untouched.
+- `test_profile_agent + test_rag + test_learning` green; `tsc` + `eslint` clean.
+
 ## [Unreleased] — 2026-09-10 — Learning Path public integration (LIVE visibility fix)
 
 Root cause: Admin creates paths as `planned` and the Admin UI speaks

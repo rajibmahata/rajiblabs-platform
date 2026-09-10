@@ -26,6 +26,10 @@ type ProjectDetailData = {
   architecture?: string;
   businessValue?: string;
   business_value?: string;
+  learnings?: string;
+  beneficiaries?: string;
+  domain?: string;
+  evidence?: { source: string; label: string; url?: string }[];
   challenges?: string;
   goal?: string;
   objectives?: string[];
@@ -292,6 +296,9 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
   const role = d.role || "";
   const architecture = d.architecture || "";
   const businessValue = d.businessValue || d.business_value || "";
+  const learnings = d.learnings || "";
+  const beneficiaries = d.beneficiaries || "";
+  const evidence = Array.isArray(d.evidence) ? d.evidence.filter((e) => e && e.label) : [];
   const challenges = d.challenges || "";
   const goal = d.goal || "";
   const objectives = d.objectives || [];
@@ -628,6 +635,54 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
                 )}
                 {architecture && <p style={{ marginTop: 16, color: "var(--rlz-text-dim)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{architecture}</p>}
                 {techNotes && <p style={{ marginTop: 12, color: "var(--rlz-text-dim)", lineHeight: 1.7 }}><b style={{ color: "var(--rlz-text)" }}>Technology notes: </b>{techNotes}</p>}
+              </section>
+            )}
+
+            {/* What I learned — only when supported by verified evidence */}
+            {learnings && (
+              <section style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(255,255,255,0.9))", border: "1px solid var(--rlz-border)", borderRadius: 20, padding: 28 }}>
+                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: 10 }}>
+                  <i className="material-symbols-outlined" style={{ color: "var(--rlz-green)" }}>school</i> What I Learned
+                </h2>
+                <p style={{ marginTop: 12, color: "var(--rlz-text-dim)", lineHeight: 1.7, fontSize: "0.95rem" }}>{learnings}</p>
+              </section>
+            )}
+
+            {/* Who benefits */}
+            {beneficiaries && (
+              <section style={{ background: "var(--rlz-surface-2)", border: "1px solid var(--rlz-border)", borderRadius: 20, padding: 28 }}>
+                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: 10 }}>
+                  <i className="material-symbols-outlined" style={{ color: "var(--rlz-cyan)" }}>group</i> Who Benefits
+                </h2>
+                <p style={{ marginTop: 12, color: "var(--rlz-text-dim)", lineHeight: 1.7, fontSize: "0.95rem" }}>{beneficiaries}</p>
+              </section>
+            )}
+
+            {/* Project evidence — verified sources only */}
+            {!!evidence.length && (
+              <section style={{ background: "var(--rlz-surface)", border: "1px solid var(--rlz-border)", borderRadius: 20, padding: 28 }}>
+                <h2 style={{ fontFamily: "Sora, sans-serif", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: 10 }}>
+                  <i className="material-symbols-outlined" style={{ color: "var(--rlz-violet)" }}>verified</i> Project Evidence
+                </h2>
+                <p style={{ margin: "8px 0 14px", fontSize: "0.85rem", color: "var(--rlz-text-faint)" }}>Every claim above traces to one of these verified sources.</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {evidence.map((e) => {
+                    const chip = (
+                      <>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 100, background: "var(--rlz-violet-soft)", color: "var(--rlz-violet)" }}>
+                          {e.source}
+                        </span>
+                        <span>{e.label}</span>
+                      </>
+                    );
+                    const style = { display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.85rem", padding: "8px 14px", borderRadius: 100, background: "var(--rlz-bg)", border: "1px solid var(--rlz-border)", color: "var(--rlz-text)" } as const;
+                    return e.url ? (
+                      <a key={`${e.source}:${e.label}`} href={e.url} target="_blank" rel="noopener noreferrer" style={{ ...style, textDecoration: "none" }}>{chip}</a>
+                    ) : (
+                      <span key={`${e.source}:${e.label}`} style={style}>{chip}</span>
+                    );
+                  })}
+                </div>
               </section>
             )}
           </div>

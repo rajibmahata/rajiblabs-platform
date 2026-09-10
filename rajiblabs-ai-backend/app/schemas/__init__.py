@@ -30,6 +30,13 @@ class ProjectIn(BaseModel):
     problem: str = ""
     solution: str = ""
     business_value: str = ""
+    role: str = ""
+    learnings: str = ""
+    beneficiaries: str = ""
+    domain: str = ""
+    evidence: list[dict] = []
+    portfolio_score: int = 0
+    portfolio_worthy: bool = False
     features: list[str] = []
     architecture: str = ""
     technologies: list[str] = []

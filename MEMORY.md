@@ -366,6 +366,17 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   via `normalize_path_status()` — never add a second status vocabulary or a
   parallel learning index. Draft/paused/archived paths AND unpublished blocks
   404 publicly (slug knowledge must not leak them).
+- Project Intelligence (single owner: `resume_projects.consolidate_resume_projects`,
+  run by the Profile Agent + on every resume extraction): dedupes across ALL
+  resume versions by slug, merges tech/descriptions, NEVER overwrites
+  `locked_fields`, NEVER invents URLs (github only from stored non-private
+  repos, live never invented). Evidence (`resume|github|portfolio` entries) is
+  append-only. Portfolio scoring is deterministic (`_portfolio_score`,
+  threshold from `site_settings.portfolio_criteria`, default 50); auto-draft
+  is opt-in and creates DRAFTs only. New `projects` fields (`role`,
+  `learnings`, `beneficiaries`, `domain`, `evidence`, `portfolio_score`,
+  `portfolio_worthy`) render conditionally on the detail page — empty means
+  hidden, never placeholder text.
 - Lead-chat tests use per-run phones (`PHONE_A`/`PHONE_B` from `TAG_NUM`);
   never hardcode phone numbers in tests (phone-second dedup merges across runs).
 - Lead-chat tests are order/state-sensitive: hardcoded phones (`9876543210`,

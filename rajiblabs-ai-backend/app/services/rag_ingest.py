@@ -268,6 +268,8 @@ async def ingest_mongodb() -> dict:
         body = "\n".join(filter(None, [
             p.get("short_description", "") or p.get("description", ""),
             f"Technologies: {tech}" if tech else "",
+            f"Role: {p['role']}" if p.get("role") else "",
+            f"Business value: {p['business_value']}" if p.get("business_value") else "",
             f"Status: {p.get('status', '')}",
             f"Live: {p['live_url']}" if p.get("live_url") else "",
             f"GitHub: {p['github_url']}" if p.get("github_url") else "",
