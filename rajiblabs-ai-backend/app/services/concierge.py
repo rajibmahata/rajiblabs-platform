@@ -371,7 +371,9 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
     intent, entities = detect_intent(message)
     # RAG-first level 0: structured MongoDB answer before any tools/LLM (global cache, no token)
     # Handles skills, projects, products etc. straight from MongoDB when evidence exists.
-    if not preview and intent not in ("hire_lead", "idea_discovery", "greeting", "general_conversation"):
+    # Note: "contact" and "live_url" are already LLM-free via compose_tool_only — keep them
+    # on the normal tool path so intent stays lowercase "contact" (test expects it).
+    if not preview and intent not in ("hire_lead", "idea_discovery", "greeting", "general_conversation", "contact", "live_url"):
         try:
             from app.services import ai_economy as _eco0
             # global cache for structured-equivalent questions (no per-session token)
