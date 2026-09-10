@@ -519,7 +519,7 @@ async def ingest_github_repo(full_name: str, max_files: int = 40,
                   url=f"{meta.get('html_url')}#readme", repository=full_name,
                   language=lang, branch=branch, tags=["github", "readme"])
 
-    # file tree → prioritized source files
+    # file tree → prioritized source files (parallel fetch with semaphore)
     tree = await gh.fetch_tree(owner_cfg, repo, token, branch)
     files = [t for t in tree
              if gh.is_ingestible_path(t.get("path", ""), t.get("size", 0))]
@@ -530,21 +530,33 @@ async def ingest_github_repo(full_name: str, max_files: int = 40,
         f"github:{full_name.lower()}:commits",
         f"github:{full_name.lower()}:issues",
     }
-    for f in gh.prioritize_paths(files, max_files=max_files):
-        if used_bytes >= max_bytes:
-            break
-        text = await gh.fetch_file(owner_cfg, repo, f["path"], token, branch)
+    # Parallel file fetch (max 5 concurrent)
+    import asyncio
+    _file_sem = asyncio.Semaphore(5)
+    prioritized = gh.prioritize_paths(files, max_files=max_files)
+
+    async def _fetch_one(f):
+        async with _file_sem:
+            return f["path"], await gh.fetch_file(owner_cfg, repo, f["path"], token, branch)
+
+    _file_results = await asyncio.gather(*[_fetch_one(f) for f in prioritized
+                                           if used_bytes < max_bytes],
+                                         return_exceptions=True)
+    for result in _file_results:
+        if isinstance(result, Exception) or not isinstance(result, tuple):
+            continue
+        fpath, text = result
         if not text.strip():
             continue
         used_bytes += len(text)
-        ext = f["path"].rsplit(".", 1)[-1].lower() if "." in f["path"] else ""
-        source_id = f"github:{full_name.lower()}:file:{f['path']}"
+        ext = fpath.rsplit(".", 1)[-1].lower() if "." in fpath else ""
+        source_id = f"github:{full_name.lower()}:file:{fpath}"
         seen_source_ids.add(source_id)
         await one("github_documentation", source_id,
-                  f"{repo}/{f['path']}", scrub_text(text[:15000]),
-                  url=f"{meta.get('html_url')}/blob/{branch}/{f['path']}",
+                  f"{repo}/{fpath}", scrub_text(text[:15000]),
+                  url=f"{meta.get('html_url')}/blob/{branch}/{fpath}",
                   repository=full_name, language=ext, branch=branch,
-                  file_path=f["path"],
+                  file_path=fpath,
                   tags=["github", "code" if ext not in ("md", "mdx", "rst", "txt") else "docs"])
 
     # recent commits digest (messages only)
@@ -593,3 +605,125 @@ async def ingest_github_repo(full_name: str, max_files: int = 40,
                   "rag_doc_count": stats["created"] + stats["updated"]}},
         upsert=False)
     return stats
+
+
+# ── Batch ingestion (skill intelligence optimization) ──
+
+async def upsert_documents_batch(docs: list[tuple[str, str, str, str, list[str]]]) -> int:
+    """Batch upsert multiple documents with a single embedding + Qdrant cycle.
+
+    Each doc is (source_type, source_id, title, content, tags).
+    Embeddings are generated in one batch call, then upserted together.
+    Returns count of documents successfully indexed.
+    """
+    if not docs:
+        return 0
+    from app.services.rag_embeddings import EmbeddingService, EmbeddingError
+    from app.services.rag_vectors import get_vector_store, point_id
+    from app.services.notify import scrub_text as _scrub
+    db = get_db()
+    emb = EmbeddingService()
+    if not emb.configured:
+        return 0
+    count = 0
+    # Process in batches of 20 to avoid memory issues
+    for batch_start in range(0, len(docs), 20):
+        batch = docs[batch_start:batch_start + 20]
+        # Step 1: create/update MongoDB documents + collect chunks
+        all_chunks = []
+        doc_ids = []
+        for source_type, source_id, title, content, tags in batch:
+            content = _scrub(content or "")
+            if not content.strip():
+                continue
+            h = content_hash(source_type, source_id, content)
+            doc = await db["knowledge_documents"].find_one(
+                {"source_type": source_type, "source_id": source_id})
+            if doc and doc.get("content_hash") == h:
+                continue  # unchanged
+            if doc:
+                doc_id = str(doc["_id"])
+                await db["knowledge_documents"].update_one(
+                    {"_id": doc["_id"]},
+                    {"$set": {"title": title, "content": content[:50000],
+                              "content_hash": h, "status": "active",
+                              "updated_at": utcnow()}})
+                # Delete old chunks
+                await db["knowledge_chunks"].delete_many({"document_id": doc_id})
+            else:
+                r = await db["knowledge_documents"].insert_one({
+                    "source_type": source_type, "source_id": source_id,
+                    "title": title, "content": content[:50000],
+                    "content_hash": h, "status": "active",
+                    "tags": tags, "created_at": utcnow(), "updated_at": utcnow()})
+                doc_id = str(r.inserted_id)
+            # Chunk the content
+            s = get_settings_local()
+            chunks = _chunk_content(content, s.rag_chunk_size or 1200, s.rag_chunk_overlap or 150)
+            for i, chunk_text in enumerate(chunks):
+                chunk_doc = {
+                    "document_id": doc_id, "content": chunk_text,
+                    "chunk_index": i, "metadata": {"source_type": source_type},
+                    "created_at": utcnow()}
+                r2 = await db["knowledge_chunks"].insert_one(chunk_doc)
+                all_chunks.append({
+                    "point_id": point_id(doc_id, i),
+                    "content": chunk_text,
+                    "document_id": doc_id,
+                    "mongo_chunk_id": str(r2.inserted_id),
+                    "source_type": source_type,
+                    "title": title, "url": None,
+                    "tags": tags})
+                doc_ids.append(doc_id)
+        if not all_chunks:
+            continue
+        # Step 2: batch embed all chunks at once
+        try:
+            texts = [c["content"][:8000] for c in all_chunks]
+            vectors = await emb.generate_embeddings(texts)
+        except (EmbeddingError, Exception) as e:
+            log.warning("batch embedding failed: %s", e)
+            continue
+        if len(vectors) != len(all_chunks):
+            log.warning("batch embedding count mismatch: %d vs %d", len(vectors), len(all_chunks))
+            continue
+        # Step 3: batch upsert to Qdrant
+        try:
+            store = get_vector_store()
+            payloads = []
+            for c, vec in zip(all_chunks, vectors):
+                payloads.append({
+                    "point_id": c["point_id"],
+                    "vector": vec,
+                    "payload": {
+                        "document_id": c["document_id"],
+                        "mongo_chunk_id": c["mongo_chunk_id"],
+                        "source_type": c["source_type"],
+                        "title": c["title"],
+                        "url": c["url"],
+                        "status": "active",
+                        "visibility": "public",
+                        "tags": c.get("tags", [])}})
+            await store.upsert_chunks(payloads)
+            count += len(set(doc_ids))
+        except Exception as e:
+            log.warning("batch Qdrant upsert failed: %s", e)
+    try:
+        from app.services import ai_economy as _eco
+        await _eco.bump_kb_version(db)
+    except Exception:
+        pass
+    return count
+
+
+def _chunk_content(text: str, size: int = 1200, overlap: int = 150) -> list[str]:
+    """Split text into overlapping chunks."""
+    if not text or len(text) <= size:
+        return [text] if text else []
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + size
+        chunks.append(text[start:end])
+        start = end - overlap
+    return chunks

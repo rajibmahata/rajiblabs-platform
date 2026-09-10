@@ -11,6 +11,7 @@ export default function RlzNav() {
     { href: "#expertise", label: t("nav.expertise") },
     { href: "#architecture", label: t("nav.architecture") },
     { href: "#projects", label: t("nav.projects") },
+    { href: "#learning", label: "Learning" },
     { href: "#experience", label: t("nav.experience") },
   ];
 

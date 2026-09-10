@@ -163,6 +163,13 @@ class AIService:
             if s.deepseek_api_key:
                 self._chain.append(("deepseek", s.deepseek_api_key,
                                     "https://api.deepseek.com", s.deepseek_model or "deepseek-chat"))
+        # Reusable HTTP client — connection pooling across all _complete() calls
+        self._http: httpx.AsyncClient | None = None
+
+    def _get_http(self) -> httpx.AsyncClient:
+        if self._http is None or self._http.is_closed:
+            self._http = httpx.AsyncClient(timeout=30)
+        return self._http
 
     @property
     def configured(self) -> bool:
@@ -206,30 +213,39 @@ class AIService:
             tried_models.add(f"{name}:{model}")
             last_model = f"{name}:{model}"
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
-                    payload = {"model": model, "messages": messages,
-                               "response_format": {"type": "json_object"}}
-                    if name == "openai":
-                        # gpt-5 reasoning consumes ~900 tokens before output; 500 is too low → empty answer
-                        effective_max = max_tokens
-                        if model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3"):
-                            effective_max = max(max_tokens, 4000)
-                        payload["max_completion_tokens"] = effective_max
-                        # gpt-5/o1 only supports default temperature=1
-                        if model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3"):
-                            payload["temperature"] = 1
+                client = self._get_http()
+                payload = {"model": model, "messages": messages,
+                           "response_format": {"type": "json_object"}}
+                if name == "openai":
+                    # gpt-5 reasoning consumes ~900 tokens before output; 500 is too low → empty answer
+                    # Use conservative budgets: concierge needs less headroom than generation
+                    effective_max = max_tokens
+                    if model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3"):
+                        # Reasoning tokens are overhead; request enough for output but cap waste
+                        if max_tokens <= 500:
+                            effective_max = 800  # concierge / classification
+                        elif max_tokens <= 900:
+                            effective_max = 1400  # marketing / drafting
+                        elif max_tokens <= 1200:
+                            effective_max = 2000  # scope / roadmap
                         else:
-                            payload["temperature"] = temperature
+                            effective_max = max(max_tokens, 4000)
+                    payload["max_completion_tokens"] = effective_max
+                    # gpt-5/o1 only supports default temperature=1
+                    if model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3"):
+                        payload["temperature"] = 1
                     else:
-                        payload["max_tokens"] = max_tokens
                         payload["temperature"] = temperature
-                    r = await client.post(
-                        # Both OpenAI and DeepSeek serve chat at /v1/chat/completions;
-                        # without /v1 the API 404s for every model.
-                        f"{base}/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {key}",
-                                 "Content-Type": "application/json"},
-                        json=payload)
+                else:
+                    payload["max_tokens"] = max_tokens
+                    payload["temperature"] = temperature
+                r = await client.post(
+                    # Both OpenAI and DeepSeek serve chat at /v1/chat/completions;
+                    # without /v1 the API 404s for every model.
+                    f"{base}/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {key}",
+                             "Content-Type": "application/json"},
+                    json=payload)
                 if r.status_code != 200:
                     try:
                         last_rid = r.headers.get("x-request-id", "") or ""

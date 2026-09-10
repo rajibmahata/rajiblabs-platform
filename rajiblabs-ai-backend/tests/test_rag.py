@@ -186,6 +186,8 @@ async def test_qdrant_health_never_raises(monkeypatch):
         qdrant_api_key = ""
         qdrant_collection = "rajiblabs_knowledge"
         embedding_dim = 1536
+        embedding_model = "text-embedding-3-small"
+        embedding_provider = "openai"
     import app.services.rag_vectors as vec_mod
     monkeypatch.setattr(vec_mod, "get_settings", lambda: S())
     res = await vec_mod.QdrantVectorStore().health_check()

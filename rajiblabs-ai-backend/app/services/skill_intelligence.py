@@ -386,6 +386,7 @@ async def sync_skills(triggered_by: str = "scheduler") -> dict:
     except Exception as e:
         log.warning("sync profiles.skills failed: %s", e)
     # RAG: upsert grouped skills doc and per-skill docs (first-class)
+    # Batch all per-skill docs into a single embedding + upsert cycle
     try:
         from app.services import rag_ingest
         # Grouped doc for backward compat (skills:all)
@@ -395,10 +396,13 @@ async def sync_skills(triggered_by: str = "scheduler") -> dict:
         if grouped:
             content = "\\n".join(f"{cat}: {', '.join(names)}" for cat, names in grouped.items())
             await rag_ingest.upsert_document("profile", "skills:all", "Rajib — Technical Skills", content, url="https://rajiblabs.com/#about", tags=["skills", "rajib"])
-        # Per-skill docs for fine-grained retrieval
+        # Batch per-skill docs: collect all, embed once, upsert once
+        skill_docs = []
         async for s in db["skills"].find({"status": "published"}):
             skill_content = f"Skill: {s['name']} (Category: {s['category']})\\nEvidence: {s.get('evidence_count',0)} sources, confidence {s.get('confidence',0)}\\nProjects: {', '.join(s.get('evidence',{}).get('projects',[])[:3])}\\nGitHub: {', '.join(s.get('evidence',{}).get('github_repositories',[])[:3])}"
-            await rag_ingest.upsert_document("profile", f"skill:{s['slug']}", f"Skill — {s['name']}", skill_content, tags=["skill", s["category"]])
+            skill_docs.append(("profile", f"skill:{s['slug']}", f"Skill — {s['name']}", skill_content, ["skill", s["category"]]))
+        if skill_docs:
+            await rag_ingest.upsert_documents_batch(skill_docs)
         # Deactivate RAG for archived skills
         async for s in db["skills"].find({"status": "archived"}):
             # Find and deactivate its RAG doc

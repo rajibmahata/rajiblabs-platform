@@ -11,6 +11,7 @@ import RlzSkills from "../rlz/RlzSkills";
 import RlzDomains from "../rlz/RlzDomains";
 import RlzArchitecture from "../rlz/RlzArchitecture";
 import RlzProjects from "../rlz/RlzProjects";
+import RlzLearning from "../rlz/RlzLearning";
 import RlzDemos from "../rlz/RlzDemos";
 import RlzExperience from "../rlz/RlzExperience";
 import RlzAgent from "../rlz/RlzAgent";
@@ -43,6 +44,7 @@ export default function Home() {
         <RlzDomains />
         <RlzArchitecture />
         <RlzProjects />
+        <RlzLearning />
         <RlzDemos />
         <RlzExperience />
         <RlzAgent />

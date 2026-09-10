@@ -49,15 +49,6 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"
     ai_fallback_enabled: bool = True
 
-    # AI provider abstraction for the lead assistant (server-only).
-    # ai_provider: "openai" | "deepseek". ai_model empty = provider default
-    # (openai_model for OpenAI). Fallback chain + retries keep chat resilient.
-    ai_provider: str = "openai"
-    ai_model: str = ""
-    deepseek_api_key: str = ""
-    deepseek_model: str = "deepseek-chat"
-    ai_fallback_enabled: bool = True
-
     # GitHub (server-only)
     github_owner: str = "rajibmahata"
     github_token: str = ""

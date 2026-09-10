@@ -35,13 +35,13 @@ def start_scheduler() -> AsyncIOScheduler:
         log.info("Scheduler added marketing-agent daily 09:00 %s", s.app_timezone)
     except Exception as e:
         log.warning("Marketing agent scheduler not added: %s", e)
-    # Learning Agent — daily 06:00 Asia/Kolkata (mentor content, hash-guarded, RAG-synced)
+    # Learning Agent — daily 06:30 Asia/Kolkata (30 min after profile-agent to avoid resource contention)
     try:
         from app.services.learning_agent import run_daily as _learn_daily
-        _sched.add_job(_learn_daily, CronTrigger(hour=6, minute=0),
+        _sched.add_job(_learn_daily, CronTrigger(hour=6, minute=30),
                        id="learning-agent", replace_existing=True, max_instances=1,
                        kwargs={"triggered_by": "scheduler"})
-        log.info("Scheduler added learning-agent daily 06:00 %s", s.app_timezone)
+        log.info("Scheduler added learning-agent daily 06:30 %s", s.app_timezone)
     except Exception as e:
         log.warning("Learning agent scheduler not added: %s", e)
     _sched.start()

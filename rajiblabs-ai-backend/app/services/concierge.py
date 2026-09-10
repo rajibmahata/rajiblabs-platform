@@ -386,18 +386,26 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
              for n, a in calls]
     results: dict = {}
     called: list[str] = []
-    for name, args in calls:
-        try:
-            results[name] = await tools.run_public_tool(name, db, **args)
-            called.append(name)
-        except tools.ToolAuthError:
-            continue
-        except Exception as e:
+    # Parallel tool execution — independent tools run concurrently
+    if calls:
+        import asyncio
+        async def _run_tool(n, a):
             try:
-                await log_error("concierge_tool", f"tool {name} failed",
-                                str(e)[:1000], logger="app.services.concierge")
-            except Exception:
-                pass
+                return n, await tools.run_public_tool(n, db, **a), None
+            except tools.ToolAuthError:
+                return n, None, "auth"
+            except Exception as e:
+                try:
+                    await log_error("concierge_tool", f"tool {n} failed",
+                                    str(e)[:1000], logger="app.services.concierge")
+                except Exception:
+                    pass
+                return n, None, "error"
+        _results = await asyncio.gather(*[_run_tool(n, a) for n, a in calls])
+        for name, result, err in _results:
+            if result is not None:
+                results[name] = result
+                called.append(name)
     # guardrail: only policy-allowed RAG content may ground the answer
     policy = agent.get("knowledge_policy") or {}
     for key in ("search_knowledge",):
@@ -476,7 +484,23 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
     # compose: tool-only fast paths, else one small LLM call, else fallback
     fallback = agent.get("fallback_message") or "I don't have verified information about that."
     reply, used_llm, meta = fallback, False, {"ai_provider": None, "ai_model": None}
-    _social_ack = intent == "general_conversation" and bool(
+
+    # LEVEL 0/1 concierge cache: identical question within TTL → free answer
+    _concierge_cache_hit = False
+    if not preview:
+        try:
+            from app.services import ai_economy as _eco_cc
+            _cc = await _eco_cc.response_cache_get(db, message, f"concierge|{token}")
+            if _cc:
+                reply = _cc.get("answer", fallback)
+                sources = _cc.get("sources", [])
+                used_llm = False
+                _concierge_cache_hit = True
+        except Exception:
+            pass
+
+    if not _concierge_cache_hit:
+        _social_ack = intent == "general_conversation" and bool(
         re.search(r"thank|\b(bye|goodbye|see you)\b", (message or "").lower()))
     # LEVEL 0/1 fast path: deterministic tool answers skip the LLM entirely.
     # List/detail intents with verified tool output compose extractively;
@@ -542,6 +566,16 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
             if lead_mode and missing and question and reply == fallback:
                 reply = question
     reply, _removed = validate_reply_urls(reply, set(collect_allowed_urls(results)))
+    # Store in concierge response cache (stable deterministic answers)
+    if not preview and reply and reply != fallback:
+        try:
+            from app.services import ai_economy as _eco_cc2
+            await _eco_cc2.response_cache_set(
+                db, message, {"answer": reply, "sources": sources,
+                              "intent": intent, "grounded": True},
+                f"concierge|{token}")
+        except Exception:
+            pass
     # Central hallucination gate (deterministic, no extra LLM call): validate
     # LLM-composed replies against evidence + resolved KB policy. Tool-only
     # replies are pre-grounded templates and skip this step.

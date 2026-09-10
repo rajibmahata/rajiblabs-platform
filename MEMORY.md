@@ -62,7 +62,7 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
    (fake `OPENAI_API_KEY` + cache reset) — otherwise they die at the unconfigured gate.
    `tests/conftest.py` seeds-if-empty on a reachable Mongo so live tests are
    deterministic on fresh DBs; never assert on ambient seed content beyond that.
-6. `python3 -m pytest tests/ -q` (~208 tests, must stay green).
+6.    `python3 -m pytest tests/ -q` (~156 tests, must stay green).
 
 ## Secrets (non-negotiable)
 
@@ -82,12 +82,46 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   (`SKIP_FILENAMES` / `SKIP_EXTENSIONS` in `github_service.py`).
 - Chunk hydration is via `payload.mongo_chunk_id` (Qdrant point IDs are UUIDv5).
 - `EmbeddingService.descriptor()` keys: `embedding_provider/model/version/dim`.
-- Vector store health is `get_vector_store().health_check()` (no `collection_info`).
+- **Vector store is a module-level singleton** (`rag_vectors._VS_SINGLETON`) — never
+  create `QdrantVectorStore()` directly in hot paths; use `get_vector_store()`.
 - `qdrant-client==1.12.1` is pinned in requirements (dashboard goes DOWN without it);
   dev compose runs `qdrant/qdrant:v1.11.3`, prod compose its own internal instance
   (`QDRANT_URL=http://qdrant:6333`, persistent `/opt/rajiblabs/data/qdrant`).
 - `github_rag_repos` config is a comma-separated STRING; empty = all tracked public repos.
 - `/api/admin/logs/stats` returns `by_level` as an OBJECT `{level: count}`.
+- **Batch RAG ingestion**: `rag_ingest.upsert_documents_batch()` embeds + upserts
+  multiple documents in one cycle — used by `skill_intelligence.py` for per-skill docs.
+  Never call `upsert_document()` in a loop for the same source type; batch instead.
+
+## Cost optimization rules (do not break)
+
+- **LLM is the LAST resort.** Answer hierarchy: Level 0 (MongoDB structured) →
+  Level 1 (cache/embedding/Qdrant) → Level 2 (cheap classification) → Level 3 (strong LLM).
+- **Level 0 structured answering** (`ai_economy.structured_answer()`) handles: products,
+  projects, skills, domains, resume, contact, live URLs, social links, experience,
+  certifications, tech stack, portfolio live. Questions matching these patterns go
+  straight to MongoDB — no embedding, no RAG, no LLM.
+- **AI intent classification is removed.** `classify_intent_ai()` returns "GENERAL" stub.
+  All production intents are covered by rule-based classification in `rag_query.py`
+  and `concierge.py`. Never re-add AI intent classification.
+- **Response cache** is used by both RAG (`ai_economy.response_cache_get/set`) and
+  concierge (`concierge.py`). Keyed by question hash + KB version. Stable information
+  (skills, products, contact) caches longer. Invalidate via `bump_kb_version()`.
+- **KB version** (`ai_economy.kb_version()`) has a 10-second in-process TTL cache.
+  Never call `site_settings.find_one({"key": "kb_version"})` directly in hot paths.
+- **gpt-5 token budgets** are tiered: concierge 800, marketing 1400, scope 2000,
+  generation 4000. Never request more than needed. `max_completion_tokens` (not `max_tokens`).
+- **Concurrent tool execution** in concierge uses `asyncio.gather`. Never run independent
+  tools sequentially. `search_knowledge`, `get_projects`, `get_contact_information`
+  are independent and must run in parallel.
+- **Scheduler staggering**: `profile-agent` at 06:00, `learning-agent` at 06:30 IST.
+  Never schedule resource-intensive agents at the same time.
+- **AIService._http** is a reusable `httpx.AsyncClient`. Never create a new client per
+  `_complete()` call. The client is shared across all providers and retries.
+- **Embedding cache**: content-hash keyed in `embedding_cache` collection, TTL
+  `rag_cache_ttl_seconds`. Never re-embed unchanged content. `cached_embed()` handles this.
+- Admin usage dashboard: `GET /api/admin/usage/{today,week,cache-stats,health}` for
+  monitoring LLM costs, cache hit rates, and latency.
 
 ## Concierge / agents rules (do not break)
 
@@ -208,6 +242,7 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - Admin i18n: `/api/admin/languages` (+`/{code}`, `/{code}/status`, DELETE guarded), `/api/admin/translations` (+`/generate`, `/coverage`, `/{id}` edit/approve/regenerate/delete).
 - Admin RAG: `/api/admin/rag/{dashboard,documents,github-sources,reindex,evaluate}`.
 - Admin agents: `/api/admin/agents` (CRUD), `/{slug}` (get/put), `/{slug}/{test,stats,conversations}`.
+- Admin usage: `/api/admin/usage/{today,week,cache-stats,health}` (cost/latency/cache monitoring).
 - Admin GitHub: `/api/admin/github/{config,test,status,sync}`, `/repositories` (+`/{id}` PATCH/sync/knowledge/reindex/disable/delete-knowledge, `/map`).
 - Workbench: `/api/admin/ai/proposal/{analyze,generate,refine,save}`, `/proposal/{id}`
   (GET/PUT/DELETE), `/proposal/{id}/duplicate`, `/proposals`, `/ai/chat`.
@@ -223,11 +258,13 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `error_logs` (7-day TTL + daily-agent sweep), `audit_logs`, `ai_agents` (seeded concierge),
   `site_settings` (`github` token doc — write-only API, never returned),
   `languages` (seeded, unique `code`),
-  `translations` (unique key+target), `translation_cache` (unique hash+target).
+  `translations` (unique key+target), `translation_cache` (unique hash+target),
+  `embedding_cache` (content-hash+provider+model, TTL), `response_cache` (question-hash+kb_version, TTL),
+  `ai_usage` (LLM/embedding call records for cost dashboard).
 
 ## Verify before finishing any task
 
-- Backend: `python3 -m pytest tests/ -q` from `rajiblabs-ai-backend/`.
+- Backend: `python3 -m pytest tests/ -q` from `rajiblabs-ai-backend/` (~156 tests).
 - Frontend: `npx tsc --noEmit`, `npx eslint src/pages/admin/ src/components/admin/`,
   `npm run build` from `frontend/`.
 - Update this file + `CHANGELOG.md` with what was actually done.

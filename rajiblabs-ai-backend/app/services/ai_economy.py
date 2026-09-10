@@ -94,6 +94,15 @@ _STRUCT_PATTERNS: list[tuple[str, list[str]]] = [
                  r"\breach\b", r"\bcall\b.*\brajib\b"]),
     ("live", [r"\blive\b", r"\bonline\b", r"\bwebsite\b.*\b(live|link|url)\b",
                r"\bdemo link\b", r"\bdeployed\b"]),
+    ("social_links", [r"\bsocial\b", r"\blinkedin\b", r"\bgithub\b.*\b(profile|link|url)\b",
+                      r"\btwitter\b", r"\bsocial media\b"]),
+    ("experience", [r"\bexperience\b", r"\bcareer\b", r"\bwork history\b",
+                    r"\bemployment\b", r"\bworked at\b", r"\bprevious jobs?\b"]),
+    ("certifications", [r"\bcertifi", r"\bcredential", r"\blicense\b"]),
+    ("tech_stack", [r"\bwhat tech\b", r"\bwhat technolog", r"\bwhat (is|does).*use",
+                    r"\bstack\b", r"\bbuilt with\b", r"\bmade with\b"]),
+    ("portfolio_live", [r"\bportfolio.*live\b", r"\blive.*portfolio\b",
+                        r"\bportfolio.*site\b", r"\bsites?\b.*\blive\b"]),
 ]
 
 
@@ -194,6 +203,53 @@ async def structured_answer(question: str, db) -> dict | None:
             return {"answer": _bullets("Live sites", lines),
                     "sources": src, "confidence": 0.95, "level": 0,
                     "intent": "PROJECT_INFORMATION"}
+        if kind == "social_links":
+            prof = await db["profiles"].find_one() or {}
+            links = prof.get("social_links") or {}
+            bits = [f"GitHub: {links['github']}" if links.get("github") else "",
+                    f"LinkedIn: {links['linkedin']}" if links.get("linkedin") else "",
+                    f"Twitter: {links['twitter']}" if links.get("twitter") else ""]
+            bits = [b for b in bits if b]
+            if not bits:
+                return None
+            src = [{"title": "Rajib — Social Links", "url": None, "source_type": "profile"}]
+            return {"answer": "Rajib's social profiles:\n" + "\n".join(bits),
+                    "sources": src, "confidence": 0.95, "level": 0,
+                    "intent": "ABOUT_RAJIB"}
+        if kind == "experience":
+            prof = await db["profiles"].find_one() or {}
+            career = prof.get("career") or []
+            if not career:
+                return None
+            lines = [f"{c.get('role','')} at {c.get('company','')} ({c.get('period','')})"
+                     for c in career[:5]]
+            src = [{"title": "Rajib — Career Experience", "url": None, "source_type": "profile"}]
+            return {"answer": "Rajib's experience:\n- " + "\n- ".join(lines),
+                    "sources": src, "confidence": 0.95, "level": 0,
+                    "intent": "CAREER_INFORMATION"}
+        if kind == "certifications":
+            cur = db["skills"].find({"status": "published", "category": "Certifications"})
+            names = [d.get("name", "") async for d in cur if d.get("name")]
+            if not names:
+                return None
+            src = [{"title": "Rajib — Certifications", "url": None, "source_type": "skills"}]
+            return {"answer": "Certifications:\n- " + "\n- ".join(names),
+                    "sources": src, "confidence": 0.9, "level": 0,
+                    "intent": "TECHNICAL_EXPERIENCE"}
+        if kind == "portfolio_live":
+            cur = db["portfolio"].find({"status": "published", "live_url": {"$exists": True, "$ne": ""}})
+            items = []
+            async for p in cur:
+                if p.get("live_url"):
+                    items.append(p)
+            if not items:
+                return None
+            lines = [f"{p.get('title','')}: {p.get('live_url')}" for p in items[:8]]
+            src = [{"title": p.get("title", ""), "url": p.get("live_url"),
+                    "source_type": "portfolio"} for p in items[:8]]
+            return {"answer": _bullets("Live portfolio sites", lines),
+                    "sources": src, "confidence": 0.95, "level": 0,
+                    "intent": "PROJECT_INFORMATION"}
     except Exception as e:
         log.warning("structured answer failed: %s", e)
         return None
@@ -246,13 +302,28 @@ async def cached_embed(text: str, db=None):
     return vec, False
 
 
+_KB_VERSION_CACHE: tuple[str, float] = ("0", 0.0)  # (version, monotonic_ts)
+_KB_VERSION_TTL = 10.0  # seconds — avoid 2 DB roundtrips per cache check
+
+
 async def kb_version(db) -> str:
-    """Single cheap version stamp for the whole knowledge base."""
+    """Single cheap version stamp for the whole knowledge base.
+
+    In-process cache (10s TTL) eliminates redundant DB roundtrips
+    when response_cache_get and response_cache_set both need the version."""
+    global _KB_VERSION_CACHE
+    import time as _t
+    now = _t.monotonic()
+    cached_ver, cached_ts = _KB_VERSION_CACHE
+    if now - cached_ts < _KB_VERSION_TTL:
+        return cached_ver
     try:
         d = await db["site_settings"].find_one({"key": "kb_version"})
-        return str((d or {}).get("value", {}).get("v", "0"))
+        ver = str((d or {}).get("value", {}).get("v", "0"))
+        _KB_VERSION_CACHE = (ver, now)
+        return ver
     except Exception:
-        return "0"
+        return cached_ver
 
 
 async def bump_kb_version(db) -> str:

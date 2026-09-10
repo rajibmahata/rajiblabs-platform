@@ -173,5 +173,12 @@ class QdrantVectorStore(VectorStore):
             return {"ok": False, "error": str(e)[:200], "url": self.url}
 
 
+_VS_SINGLETON: QdrantVectorStore | None = None
+
+
 def get_vector_store() -> VectorStore:
-    return QdrantVectorStore()
+    """Module-level singleton — reuses the same AsyncQdrantClient across requests."""
+    global _VS_SINGLETON
+    if _VS_SINGLETON is None:
+        _VS_SINGLETON = QdrantVectorStore()
+    return _VS_SINGLETON

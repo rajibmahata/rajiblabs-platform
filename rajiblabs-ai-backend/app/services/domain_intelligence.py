@@ -317,10 +317,13 @@ async def ensure_linkedin_source(db) -> dict:
     return doc
 
 async def validate_portfolio_urls(db) -> list[dict]:
-    """Check live portfolio URLs (Rajol-owned only, no aggressive crawl)."""
+    """Check live portfolio URLs (Rajib-owned only, no aggressive crawl).
+    Parallel HEAD requests for low latency."""
     import httpx
+    import asyncio
     results = []
     seen = set()
+    urls_to_check = []
     for coll in ("portfolio", "projects"):
         filt = {"status": "published"} if coll == "portfolio" else {"published": True}
         async for doc in db[coll].find(filt):
@@ -328,22 +331,27 @@ async def validate_portfolio_urls(db) -> list[dict]:
                 url = doc.get("live_url") or doc.get("liveUrl")
                 if url and url not in seen:
                     seen.add(url)
-                    # validate domain allowlist: only rajib-owned
-                    host = urlparse(url).hostname or ""
-                    if host not in ("rajiblabs.com", "www.rajiblabs.com", "docsignerhub.com", "fryyofoods.com") and "rajib" not in host and "github.io" not in host:
-                        # skip aggressive check for external unverified? Spec says only Rajib-owned — skip if not in allowlist? But do lightweight HEAD anyway without storing content
-                        pass
-                    try:
-                        async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
-                            r = await client.head(url, headers={"User-Agent": "RajibLabsBot/1.0"})
-                            results.append({"url": url, "slug": doc.get("slug"), "status": r.status_code, "ok": r.status_code < 400, "checked_at": utcnow()})
-                    except Exception as e:
-                        results.append({"url": url, "slug": doc.get("slug"), "status": 0, "ok": False, "error": str(e)[:200], "checked_at": utcnow()})
-                        # mark portfolio as stale? Do not delete — set health
-                        try:
-                            await db["portfolio"].update_one({"_id": doc["_id"]}, {"$set": {"verification_status": "broken", "last_checked": utcnow(), "health_status": "unreachable"}})
-                        except Exception:
-                            pass
+                    urls_to_check.append((url, doc))
+
+    async def _check_url(url, doc):
+        try:
+            async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+                r = await client.head(url, headers={"User-Agent": "RajibLabsBot/1.0"})
+                return {"url": url, "slug": doc.get("slug"), "status": r.status_code,
+                        "ok": r.status_code < 400, "checked_at": utcnow()}
+        except Exception as e:
+            try:
+                await db["portfolio"].update_one(
+                    {"_id": doc["_id"]},
+                    {"$set": {"verification_status": "broken", "last_checked": utcnow(),
+                              "health_status": "unreachable"}})
+            except Exception:
+                pass
+            return {"url": url, "slug": doc.get("slug"), "status": 0, "ok": False,
+                    "error": str(e)[:200], "checked_at": utcnow()}
+
+    if urls_to_check:
+        results = await asyncio.gather(*[_check_url(u, d) for u, d in urls_to_check])
     # persist health summary for admin
     try:
         await db["professional_sources"].update_one({"type": "portfolio_health"}, {"$set": {"health": results, "updated_at": utcnow()}}, upsert=True)

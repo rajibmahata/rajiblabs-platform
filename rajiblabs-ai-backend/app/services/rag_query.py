@@ -95,42 +95,20 @@ def classify_intent_rule(text: str) -> str | None:
 
 
 async def classify_intent_ai(text: str) -> str:
-    """AI fallback, only when rules draw a blank. Never raises."""
-    try:
-        from openai import AsyncOpenAI
-        s = get_settings()
-        if not s.openai_api_key or not s.openai_enabled:
-            return "GENERAL"
-        client = AsyncOpenAI(api_key=s.openai_api_key)
-        kwargs = dict(
-            model=s.openai_model, max_completion_tokens=2000,
-            messages=[
-                {"role": "system", "content": (
-                    "Classify the visitor message into exactly one of: "
-                    + ", ".join(RAG_INTENTS) + ". Return JSON object with key \"intent\" and label as value.")},
-                {"role": "user", "content": text[:1000]}],
-            response_format={"type": "json_object"})
-        # gpt-5 family only supports default temperature=1
-        if not s.openai_model.startswith("gpt-5"):
-            kwargs["temperature"] = 0
-        resp = await client.chat.completions.create(**kwargs)
-        import json
-        data = json.loads(resp.choices[0].message.content or "{}")
-        label = str(data.get("intent", data.get("label", ""))).strip().upper()
-        return label if label in RAG_INTENTS else "GENERAL"
-    except Exception as e:
-        log.warning("AI intent classification failed: %s", e)
-        return "GENERAL"
+    """AI fallback — REMOVED for cost optimization. Rules cover all
+    production intents; the AI classifier was burning tokens on GENERAL
+    defaults. Kept as dead-code stub for backward compatibility."""
+    return "GENERAL"
 
 
 async def classify_intent(text: str) -> tuple[str, str]:
-    """(intent, method) with method in {rule, ai, default}."""
+    """(intent, method) with method in {rule, default}.
+
+    AI classification removed — rules are sufficient for all production
+    intents and the GENERAL fallback makes AI classification wasteful."""
     hit = classify_intent_rule(text)
     if hit:
         return hit, "rule"
-    ai_hit = await classify_intent_ai(text)
-    if ai_hit != "GENERAL":
-        return ai_hit, "ai"
     return "GENERAL", "default"
 
 
@@ -148,22 +126,9 @@ async def retrieve(question: str, top_k: int = 0, intent: str = "GENERAL",
         return []
     db0 = get_db()
     vec, _hit = None, False
-    _emb_svc = None
     try:
         from app.services import ai_economy as _eco
         vec, _hit = await _eco.cached_embed(question, db0)
-        try:
-            from app.services.rag_embeddings import EmbeddingService as _ES
-            _emb_svc = _ES()
-            await _eco.record_usage(
-                db0, provider=_emb_svc.provider, model=_emb_svc.model,
-                tag="rag-embed",
-                reason=("query embedding (cache hit)" if _hit
-                        else "query embedding (cache miss)"),
-                in_text="" if _hit else question, latency_ms=0,
-                cache_hit=bool(_hit))
-        except Exception:
-            pass
     except EmbeddingError as e:
         log.warning("retrieval degraded to keyword search (embeddings): %s", e)
         try:
@@ -339,15 +304,22 @@ async def answer_question(question: str, history: list[dict] | None = None,
         return RagAnswer(answer=NO_RESULT_REPLY, intent=intent, sources=[], grounded=False)
     # LEVEL 1 extractive: top hit far above threshold → quote verified
     # chunks directly, no LLM call at all.
+    # Lower threshold for factual questions (who/what/where) to avoid
+    # unnecessary LLM synthesis when retrieval is already confident.
     try:
         _direct_min = float(s.rag_direct_answer_min_score or 0.80)
     except Exception:
         _direct_min = 0.80
+    _factual_re = re.compile(
+        r"^(who|what|where|when|which|how many|how much|list|show|name|tell me about)\b",
+        re.IGNORECASE)
+    _is_factual = bool(_factual_re.match(question.strip()))
+    _effective_min = max(_direct_min - 0.15, 0.55) if _is_factual else _direct_min
     _top_score = max([c.score for c in sources] or [0])
-    if _top_score >= _direct_min:
+    if _top_score >= _effective_min:
         _parts, _used = [], 0
         for c in chunks:
-            if c.score < _direct_min:
+            if c.score < _effective_min:
                 continue
             txt = (c.get("content") or "").strip()[:600]
             if txt:
