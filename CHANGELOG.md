@@ -2,6 +2,48 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-10 — Learning Path public integration (LIVE visibility fix)
+
+Root cause: Admin creates paths as `planned` and the Admin UI speaks
+`planned/active/...`, while users mark paths "LIVE/PUBLISHED" — any row stored
+as `live`/`published` matched NOTHING in the public API filter
+(`active/completed` only), so it never appeared. No new learning system;
+existing agent/model/API/UI connected.
+
+### Fixed — `rajiblabs-ai-backend/app/services/learning_agent.py`
+- Single source of truth for status vocabulary: `PATH_STATUS_SYNONYMS`
+  (`live`/`published`/`public` → `active`, `draft` → `planned`),
+  `normalize_path_status()`, `is_path_visible()`, `VISIBLE_PATH_STATUSES`
+  (`active/completed/live/published`), `VISIBLE_BLOCK_STATUSES`
+  (`published/completed`).
+- `run_daily` picks up `live`/`published` rows (previously `active` only).
+
+### Fixed — `rajiblabs-ai-backend/app/routers/public_learning.py`
+- Every endpoint gates on path visibility: `get_path` no longer serves
+  `planned` drafts; `list_blocks`/`get_block`/`update_progress` 404 unless the
+  parent path is live; block filter is `published/completed` only (dropped the
+  never-produced `ready` status). Internal `content_hash`/`validation_issues`
+  stay hidden as before.
+
+### Fixed — `rajiblabs-ai-backend/app/routers/admin_learning.py`
+- PATCH accepts `live`/`published`/`draft` synonyms and stores the canonical
+  form, so "Set Live" immediately publishes to the public site.
+
+### Added — frontend (existing system only)
+- Homepage Learning section: "View all learning paths →" link to `/learning`
+  (cards already linked to detail; the listing had no entry point from Home).
+- Cards/detail/daily-lesson UI verified as-is: topic, goal, duration, level,
+  roadmap preview, progress, Start CTA; hero → prerequisites → roadmap →
+  day-by-day mentor blocks (objective, concept, steps, code + output, exercise,
+  homework, challenge, review) → prev/next navigation. No hardcoded content,
+  no new generated content in the frontend.
+
+### Verified
+- `tests/test_learning.py` 7 passed (new: synonym/visibility unit tests +
+  live Admin→Live→public→archive flow test).
+- Manual E2E: seeded live C# path → public list/detail/blocks/day-1 OK,
+  unpublished day-2 404, planned/archived fully hidden; cleaned up after.
+
 ## [Unreleased] — 2026-09-10 — Autonomous profile/portfolio: resume → RAG → projects, confidential details, fast RAG-first chat
 
 Makes RajibLabs an autonomous, evidence-based portfolio system with minimum LLM usage. No duplicate RAG/Profile/Project systems — smallest clean changes to the existing Profile Agent, RAG/Qdrant, Sentence Transformer, MongoDB, AI Orchestrator, public APIs and UI.

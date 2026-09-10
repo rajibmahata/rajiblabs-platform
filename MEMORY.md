@@ -360,6 +360,12 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - Mocks of `AIService._complete` must accept `**kwargs`: `chat_with_lead` /
   concierge pass `db=`/`reason=` (caused
   `test_chat_reply_localized_same_knowledge` TypeError).
+- Learning visibility: public serves ONLY `learning_agent.VISIBLE_PATH_STATUSES`
+  (`active/completed/live/published`) and `VISIBLE_BLOCK_STATUSES`
+  (`published/completed`). Admin PATCH normalizes `live`/`published`/`draft`
+  via `normalize_path_status()` — never add a second status vocabulary or a
+  parallel learning index. Draft/paused/archived paths AND unpublished blocks
+  404 publicly (slug knowledge must not leak them).
 - Lead-chat tests use per-run phones (`PHONE_A`/`PHONE_B` from `TAG_NUM`);
   never hardcode phone numbers in tests (phone-second dedup merges across runs).
 - Lead-chat tests are order/state-sensitive: hardcoded phones (`9876543210`,
