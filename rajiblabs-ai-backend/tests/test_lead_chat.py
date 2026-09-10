@@ -29,7 +29,7 @@ class FakeAI:
         self.analyze_result = analyze
         self.calls = 0
 
-    async def chat_with_lead(self, history, message, knowledge, known, language="en"):
+    async def chat_with_lead(self, history, message, knowledge, known, language="en", db=None):
         self.calls += 1
         if self.turns:
             t = self.turns.pop(0)
@@ -38,7 +38,7 @@ class FakeAI:
         return LeadAssistantOut(reply=f"Noted: {message[:60]}"), \
             {"ai_provider": "fake", "ai_model": "fake", "usage": {}}
 
-    async def analyze_idea(self, lead, idea):
+    async def analyze_idea(self, lead, idea, db=None):
         from app.schemas import ScopeSection
         if isinstance(self.analyze_result, Exception):
             raise self.analyze_result
@@ -463,7 +463,7 @@ async def test_17_invalid_ai_json(monkeypatch):
 
     class BadClient:
         def __init__(self, *a, **k):
-            pass
+            self.is_closed = False
 
         async def __aenter__(self):
             return self
@@ -592,7 +592,7 @@ async def test_23_prose_wrapped_json_repaired(monkeypatch, fake_ai_key):
 
     class ProseClient:
         def __init__(self, *a, **k):
-            pass
+            self.is_closed = False
 
         async def __aenter__(self):
             return self
@@ -629,7 +629,7 @@ async def test_24_empty_content_retries_then_ai_error(monkeypatch, fake_ai_key):
 
     class EmptyClient:
         def __init__(self, *a, **k):
-            pass
+            self.is_closed = False
 
         async def __aenter__(self):
             return self
@@ -671,7 +671,7 @@ async def test_25_refusal_breaks_early(monkeypatch, fake_ai_key):
 
     class RefuseClient:
         def __init__(self, *a, **k):
-            pass
+            self.is_closed = False
 
         async def __aenter__(self):
             return self
@@ -704,7 +704,7 @@ async def test_26_http_401_breaks_early(monkeypatch, fake_ai_key):
 
     class DeniedClient:
         def __init__(self, *a, **k):
-            pass
+            self.is_closed = False
 
         async def __aenter__(self):
             return self
@@ -759,7 +759,7 @@ async def test_28_http_404_retries_once_with_fallback_model(monkeypatch, fake_ai
 
     class FlakyClient:
         def __init__(self, *a, **k):
-            pass
+            self.is_closed = False
 
         async def __aenter__(self):
             return self
@@ -802,7 +802,7 @@ async def test_29_chat_url_has_v1_prefix(monkeypatch, fake_ai_key):
 
     class UrlClient:
         def __init__(self, *a, **k):
-            pass
+            self.is_closed = False
 
         async def __aenter__(self):
             return self
