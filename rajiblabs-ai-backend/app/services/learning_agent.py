@@ -22,6 +22,47 @@ def _slug(text: str) -> str:
 def _hash(*parts: str) -> str:
     return hashlib.sha256("|".join(p or "" for p in parts).encode()).hexdigest()[:16]
 
+# ---------- Status vocabulary (single source of truth) ----------
+# Admin/outside callers use "live"/"published"/"draft"; storage canonical form
+# is planned|active|paused|completed|archived. The public site serves ONLY
+# active|completed — never planned/paused/archived, never by prompt.
+PATH_STATUS_SYNONYMS = {
+    "live": "active",
+    "published": "active",
+    "public": "active",
+    "active": "active",
+    "completed": "completed",
+    "planned": "planned",
+    "draft": "planned",
+    "paused": "paused",
+    "archived": "archived",
+}
+
+# Path statuses the public website may serve. "live"/"published" are accepted
+# as stored synonyms (rows written before normalization, or via direct DB
+# edits) so intent-to-publish is never silently hidden. Everything else —
+# planned/draft, paused, archived — stays admin-only.
+VISIBLE_PATH_STATUSES = ("active", "completed", "live", "published")
+
+# Block statuses the public website may serve. Anything else (planned,
+# needs_review) stays admin-only even when the parent path is live.
+VISIBLE_BLOCK_STATUSES = ("published", "completed")
+
+
+def normalize_path_status(raw: str) -> str:
+    """Map live/published/draft synonyms to the canonical stored status.
+
+    Raises ValueError for unknown values (admin PATCH surfaces it as 400)."""
+    canon = PATH_STATUS_SYNONYMS.get((raw or "").strip().lower())
+    if not canon:
+        raise ValueError(f"Invalid status: {raw}")
+    return canon
+
+
+def is_path_visible(doc: dict | None) -> bool:
+    """True only for paths the public site may serve (active/completed)."""
+    return bool(doc) and doc.get("status") in VISIBLE_PATH_STATUSES
+
 def _sanitize(text: str) -> str:
     for pat in [r"sk-[A-Za-z0-9]{10,}", r"ghp_[A-Za-z0-9]{10,}", r"Bearer\s+\S+"]:
         text = re.sub(pat, "***", text, flags=re.I)
@@ -243,8 +284,9 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
     if cfg and not cfg.get("enabled", True):
         return {"status": "no_action", "reason": "agent disabled"}
     now = utcnow()
-    # Find active paths
-    cur = db["learning_paths"].find({"status": "active"})
+    # Find live paths (canonical "active" plus legacy/synonym rows that were
+    # stored as "live"/"published" before status normalization existed).
+    cur = db["learning_paths"].find({"status": {"$in": ["active", "live", "published"]}})
     paths = [d async for d in cur]
     # Also include planned that should become active (first run)
     if not paths:

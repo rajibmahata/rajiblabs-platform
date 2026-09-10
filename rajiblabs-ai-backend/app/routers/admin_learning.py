@@ -45,8 +45,15 @@ async def patch_path(slug: str, body: dict, email: str = Depends(require_admin))
     allowed={"status","goal","level","prerequisites"}
     patch={k:v for k,v in (body or {}).items() if k in allowed}
     if not patch: raise HTTPException(400, "Nothing to update")
-    if "status" in patch and patch["status"] not in ("planned","active","completed","paused","archived"):
-        raise HTTPException(400, "Invalid status")
+    if "status" in patch:
+        from app.services.learning_agent import normalize_path_status
+        try:
+            # Accept live/published/draft synonyms; store the canonical form
+            # (live/published → active, draft → planned) so the public site
+            # picks the path up without any further step.
+            patch["status"] = normalize_path_status(patch["status"])
+        except ValueError:
+            raise HTTPException(400, "Invalid status")
     patch["updated_at"]=utcnow()
     res=await db["learning_paths"].update_one({"slug":slug},{"$set":patch})
     if not res.matched_count: raise HTTPException(404,"Not found")
