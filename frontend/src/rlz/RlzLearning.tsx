@@ -140,6 +140,12 @@ export default function RlzLearning() {
             </Link>
           ))}
         </div>
+
+        <div className="rlz-center" style={{ marginTop: 22 }}>
+          <Link to="/learning" className="rlz-btn rlz-btn-ghost" style={{ textDecoration: "none", display: "inline-flex" }}>
+            View all learning paths <i className="material-symbols-outlined" style={{ fontSize: "1rem" }}>arrow_forward</i>
+          </Link>
+        </div>
       </div>
     </section>
   );

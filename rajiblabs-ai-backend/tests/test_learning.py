@@ -90,10 +90,9 @@ async def test_learning_path_create_and_blocks():
             blocks = r.json()
             assert len(blocks) == 3
             assert blocks[0]["day_number"] == 1
-            # Public should see 0 published initially (all planned)
-            r = await c.get(f"/api/learning/paths/{slug}/blocks")
-            assert r.status_code == 200
-            assert len(r.json()) == 0
+            # Draft (planned) path stays fully hidden: detail + blocks 404
+            assert (await c.get(f"/api/learning/paths/{slug}")).status_code == 404
+            assert (await c.get(f"/api/learning/paths/{slug}/blocks")).status_code == 404
             # Cleanup
             db = get_db()
             await db["learning_paths"].delete_many({"slug": slug})
