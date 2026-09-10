@@ -24,7 +24,10 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - `rajiblabs-ai-backend/app/services/` — `lead_ai.AIService` (THE orchestrator),
   `rag_query.retrieve` (THE retrieval entry), `agent_tools.py` (THE public tool
   registry), `concierge.py` (intent→tools→reply loop), `agent_config.py`
-  (`ai_agents` store), `workbench.py`, `github_service.py`, `translation_*`.
+  (`ai_agents` store), `workbench.py`, `github_service.py`, `translation_*`,
+  `resume_text.py` (PDF/DOCX extraction), `resume_projects.py` (resume→projects
+  consolidation, Profile Agent owned), `ai_economy.py` (LEVEL 0 structured +
+  caches), `skill_intelligence.py`/`domain_intelligence.py` (evidence-backed).
 - `rajiblabs-ai-backend/tests/` — `test_api.py`, `test_lead_chat.py`, `test_rag.py`,
   `test_workbench.py`, `test_concierge.py`, `test_github_knowledge.py`, `test_kb_policy.py`,
   `test_i18n.py` (~199 collected). HTTP mocks via `respx` (in requirements; install if missing).
@@ -92,6 +95,10 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - **Batch RAG ingestion**: `rag_ingest.upsert_documents_batch()` embeds + upserts
   multiple documents in one cycle — used by `skill_intelligence.py` for per-skill docs.
   Never call `upsert_document()` in a loop for the same source type; batch instead.
+- **Resume knowledge**: `resume_text.extract_and_store()` → `rag_ingest.ingest_resume()`
+  (scrubbed, hash-deduped). One doc per file (`resume:file:<id>`) plus
+  `resume:approved-public`. `resume_projects.consolidate_resume_projects()` is the
+  single owner for resume→projects (all versions, slug-deduped, no invention).
 
 ## Cost optimization rules (do not break)
 
@@ -107,6 +114,8 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - **Response cache** is used by both RAG (`ai_economy.response_cache_get/set`) and
   concierge (`concierge.py`). Keyed by question hash + KB version. Stable information
   (skills, products, contact) caches longer. Invalidate via `bump_kb_version()`.
+  Concierge also has a **global** `concierge-global` cache (no per-session token) for
+  structured answers — next visitor is free.
 - **KB version** (`ai_economy.kb_version()`) has a 10-second in-process TTL cache.
   Never call `site_settings.find_one({"key": "kb_version"})` directly in hot paths.
 - **gpt-5 token budgets** are tiered: concierge 800, marketing 1400, scope 2000,
@@ -120,6 +129,12 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `_complete()` call. The client is shared across all providers and retries.
 - **Embedding cache**: content-hash keyed in `embedding_cache` collection, TTL
   `rag_cache_ttl_seconds`. Never re-embed unchanged content. `cached_embed()` handles this.
+- **Lead chat fast path** (`lead_pipeline.process_chat_message`): Level 0/1
+  `response_cache` → `structured_answer` → high-confidence extractive RAG
+  (score ≥ `rag_direct_answer_min_score`, factual threshold 0.55) before any
+  `AIService.chat_with_lead` call. Simple knowledge queries (`what are your skills`,
+  `what projects have you built`) return in ~40 ms with `used_llm=False`.
+  Only `hire`/`build`/`idea` lead-intent messages go to the LLM.
 - Admin usage dashboard: `GET /api/admin/usage/{today,week,cache-stats,health}` for
   monitoring LLM costs, cache hit rates, and latency.
 
@@ -128,17 +143,33 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - Flow is intent → sanitized tools → ONE small LLM reply (`concierge.py`).
   Pure lookups (greeting/contact/verified live URL/lead follow-ups) never call the LLM;
   provider failure falls back to the deterministic tool-only composer.
+  **Fast path:** global `concierge-global` structured cache + `tool_answer_ok`
+  for `projects_list`/`github_work`/`products`/`services`/`about_rajib` etc. with
+  verified tool output — no LLM when retrieval is sufficient.
 - Public tools live ONLY in `agent_tools.PUBLIC_TOOL_NAMES`; `run_public_tool`
   rejects admin-only/unknown names server-side — the LLM never decides authorization.
   Tool outputs are allowlisted + secret-scrubbed; reply URLs are validated against
   tool-returned URLs (others stripped); unknown info → fallback message, never invented.
+- **Project details confidential handling** (`frontend/src/pages/ProjectDetail.tsx`):
+  missing `live_url` → `Delivered to the customer. The live application URL is confidential.`
+  missing `github_url` → `Repository details are confidential / not publicly available.`
+  Never imply a private project has a public repo; never leave empty link fields.
 - KB policy is central (`kb_policy.py`) and enforced server-side, never by prompt:
   `rag_query.retrieve(consumer=)` drops disallowed/orphan chunks (fail-closed);
-  `upsert_document` normalizes + stores per-doc `guardrails`/`hallucination_control`;
-  concierge validates LLM replies deterministically (no-evidence/low-confidence/
+  `ai_economy.keyword_search(consumer=)` enforces the SAME contract (parent
+  hydration + `filter_hits`, fail-closed) — the keyword fallback must never be
+  a guardrail bypass when embeddings are down; `upsert_document` normalizes +
+  stores per-doc `guardrails`/`hallucination_control`; concierge validates LLM
+  replies deterministically (no-evidence/low-confidence/
   unsupported-claims → fallback or clarify question). Admin edits policies in the
   KB form (`GET /api/admin/rag/guardrail-schema` drives the widgets); policy-only
   saves skip re-indexing.
+- Concierge hallucination gate: read policy keys with `.get()` — the
+  hallucination dict has `require_evidence`, NOT `require_source` (a direct
+  `_pol["require_source"]` raises `KeyError`, gets swallowed by the surrounding
+  `except: pass`, and the gate silently stops replacing ungrounded replies).
+  Evidence must include `snippet` (`search_knowledge` returns `snippet`, not
+  `content`).
 - Knowledge guardrails: per-agent `knowledge_policy` in `ai_agents`
   (`{source: {public_allowed, priority}}`, unknown types denied); RAG hits filtered
   server-side in the concierge (shared index, never a second one).
@@ -202,6 +233,12 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - `respx` is a test dependency (requirements.txt) but may not be installed in the
   environment — `pip install --break-system-packages respx` if collection errors
   with `ModuleNotFoundError: No module named 'respx'`.
+- **Resume PDF extraction**: `pypdf` + `python-docx` MUST be in `requirements.txt`
+  and the Docker image must be rebuilt (`docker compose build ai-api`). A stale
+  image silently returns `extracted_text=""` (no error, just no RAG/projects).
+- **Resume versioning**: `file_hash` (SHA256 of raw bytes, 16 hex) dedupes identical
+  uploads — same file returns existing doc, no new version or re-embedding.
+  Version is `max(version)+1`, not `count+1` (handles deletions).
 
 - `npm install` MUST run from Windows, not WSL: WSL npm prunes win32 native bindings
   (`@rolldown`, `@tailwindcss/oxide`, `lightningcss`) and Windows `vite build` dies with
@@ -239,6 +276,7 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 ## Key endpoints & collections
 
 - Public: `/api/public/chat` (+`mode:"rag"` → intent/sources, +`language`), `/api/rag/query` (+`language`), `/api/rag/health`, `/api/public/languages`, `/api/public/translations/{lang}`, `/api/public/translate`, `/api/public/agent/{config,chat}`; content endpoints accept `?lang=`.
+  Resume: `POST /api/admin/resumes/upload` (multipart, `file_hash` dedup, versioned, single published) + `POST /api/admin/resume` (compat), `GET /api/admin/resumes`, `PATCH /api/admin/resumes/{id}` (publish), `DELETE`, `POST .../extract`, `GET /api/resume/current`, `GET /api/public/resume/download`.
 - Admin i18n: `/api/admin/languages` (+`/{code}`, `/{code}/status`, DELETE guarded), `/api/admin/translations` (+`/generate`, `/coverage`, `/{id}` edit/approve/regenerate/delete).
 - Admin RAG: `/api/admin/rag/{dashboard,documents,github-sources,reindex,evaluate}`.
 - Admin agents: `/api/admin/agents` (CRUD), `/{slug}` (get/put), `/{slug}/{test,stats,conversations}`.
@@ -314,6 +352,14 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   dynamic `GET /sitemap.xml` (backend lists published slugs, static fallback);
   nginx proxies `= /sitemap.xml` with `@sitemap_static` fallback. Detail pages
   set per-route title/meta/OG/canonical in `ProjectDetail`.
+- RAG live tests must mock `app.services.ai_economy.cached_embed` (fake vector),
+  not just `rq.EmbeddingService`: `retrieve()` resolves embeddings via
+  `cached_embed`, so without that mock the test hits real embeddings and — with
+  no OpenAI key — silently falls back to keyword search, ignoring the mocked
+  vector store (caused `test_public_consumer...`, github URL + orphan failures).
+- Mocks of `AIService._complete` must accept `**kwargs`: `chat_with_lead` /
+  concierge pass `db=`/`reason=` (caused
+  `test_chat_reply_localized_same_knowledge` TypeError).
 - Lead-chat tests use per-run phones (`PHONE_A`/`PHONE_B` from `TAG_NUM`);
   never hardcode phone numbers in tests (phone-second dedup merges across runs).
 - Lead-chat tests are order/state-sensitive: hardcoded phones (`9876543210`,

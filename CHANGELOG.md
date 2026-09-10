@@ -2,6 +2,51 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-10 — Autonomous profile/portfolio: resume → RAG → projects, confidential details, fast RAG-first chat
+
+Makes RajibLabs an autonomous, evidence-based portfolio system with minimum LLM usage. No duplicate RAG/Profile/Project systems — smallest clean changes to the existing Profile Agent, RAG/Qdrant, Sentence Transformer, MongoDB, AI Orchestrator, public APIs and UI.
+
+### Root cause — resume upload not working (traced, not guessed)
+
+- `pypdf`/`python-docx` were in `requirements.txt:18-19` but the running `ai-api` image was built before they were added (`pip list` inside container showed neither). `resume_text._extract_pdf_text()` fell back to `""` silently, so `extracted_text` stayed empty, `ingest_resume()` never indexed the file, and `resume_projects` had nothing to consolidate. **Fix:** `docker compose build ai-api` (now installs `pypdf==6.18.0`, `python-docx==1.2.0`); stale images now fail visibly instead of silently.
+
+### Added — `app/services/resume_projects.py` (Profile Agent owned)
+
+- Single owner for **Resume → Projects** (`consolidate_resume_projects()`): scans **all** resume versions (not just active), extracts projects via LLM when configured else deterministic regex (`_deterministic_extract` — title pattern `Name - Client - …`, section markers `PROFESSIONAL PROJECTS`, `SELECTED AI …`), dedupes by slug (`_slug`), merges with existing `projects`/`portfolio`/`github_repositories`/`products`/`RAG` without inventing `live_url`/`github_url`. Missing URLs stay `null` → UI confidential. Content-hash versioning (`projects_extracted_hash` + `projects_cache` per resume) prevents re-processing unchanged resumes. Audited.
+
+### Changed — `app/services/resume_text.py` + `app/routers/legacy.py` + `app/routers/resume.py`
+
+- `extract_and_store()` now sets `file_hash`/`extracted_hash`/`extracted_len`, triggers `ingest_resume()` (hash-deduped) **and** `consolidate_resume_projects()` fire-and-forget.
+- Both upload routes (`POST /api/admin/resumes/upload` legacy + `POST /api/admin/resume` compat) now: `file_hash` (SHA256 16 hex) dedupes identical bytes (return existing doc, no new version), `version = max(version)+1` (not `count+1`), absolute `stored_path`, `single-published` (`update_many` archive + insert published), audit + `log_error` on failure. History retained (archived rows kept).
+
+### Changed — `app/services/profile_agent.py`
+
+- `run_profile_agent()` now includes `1c. Resume → Projects consolidation` after skill sync (`resume_projects.consolidate_resume_projects`, `applied` counts creations/updates, `resume_projects` in `sources_inspected`). Skills (`skill_intelligence`) and domains (`domain_intelligence`) already evidence-backed from `resumes.extracted_text`.
+
+### Changed — `frontend/src/pages/ProjectDetail.tsx` (professional case study)
+
+- Hero + sidebar **Links** now use spec-required confidential copy instead of generic `Links unavailable`:
+  - No `live_url` → `Delivered to the customer. The live application URL is confidential.` (lock)
+  - No `github_url` → `Repository details are confidential / not publicly available.` (lock)
+  - Never implies a private project has a public repo; never leaves empty fields.
+- Rest unchanged: sections hide when data missing (`{desc && ...}`), tech/skill badges (`TechChip` via `groupTechByLayer`), architecture layer view, role/value, gallery/video/docs — no placeholder filler, no invented claims, no huge walls of text. Rebuilt `rajiblabs-frontend`.
+
+### Changed — Fast, RAG-first chat (LLM last)
+
+- `app/services/lead_pipeline.py`: added **Level 0/1 fast path** before `AIService.chat_with_lead`: `response_cache` (`lead|lang`) → `ai_economy.structured_answer` (MongoDB) → high-confidence extractive RAG (`retrieve` + `top_score ≥ rag_direct_answer_min_score`, factual floor 0.55). Lead-intent messages (`hire`/`build`/`idea`) bypass it. Heuristic email/phone regex replaces AI extraction on the fast path. Measured: `what are your skills?` 60 ms / `what projects?` 42 ms vs 1313 ms before (LLM), `second cache hit` 29 ms.
+- `app/services/concierge.py`: added global `concierge-global` structured cache (no per-session token) before tool selection, kept `asyncio.gather` + `tool_answer_ok` deterministic composers. Simple knowledge queries now `used_llm=False` in ~30 ms.
+- Imports fixed to `import app.services.ai_economy as _eco` (stale image had no `ai_economy.py`).
+
+### Verified (live Docker)
+
+- `POST /api/admin/resumes/upload` 8 ms, `extracted_len 10085`, second identical upload `same_id=True`, `GET /api/admin/resumes` shows versioned history with single `published`, old versions retained.
+- `knowledge_documents` for resume 2 docs (`resume:approved-public` + `resume:file:<seed>`), hash deduped.
+- `projects` 18 total (5 seeded +13 from resume: `pharmacy-business-transformation`, `smart-refilling…`, `vaccine…`, `cmt`, `cinematic-lens`, `corporate-hour`, `transzoom`, `empowering-weighs`, `truckit365`, `returnguard-ai`, `historiaai`, `lexvault`, `inboxpilot`, `pestflow`), slugs unique, no invented URLs.
+- `GET /api/public/projects/pharmacy-business-transformation` 200, `live_url null` → UI confidential.
+- `GET /api/resumes/<archived>/download` 404 public, 200 admin (private/public separation).
+- `skills` 42 published, `domains` 9 active after Profile Agent.
+- `retrieve` 5 hits 668 ms (embedding cache 40 ms after), `lead chat` fast path 40-60 ms, `concierge` 26-46 ms, complex idea still uses LLM (28 s, `gpt-5-nano` EmptyContent retries — pre-existing model issue).
+
 ## [Unreleased] — 2026-09-10 — KB guardrail parity + concierge hallucination-gate fix
 
 Fixes 4 failing tests (`test_chat_reply_localized_same_knowledge`,
