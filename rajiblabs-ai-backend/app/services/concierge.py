@@ -369,6 +369,59 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
                 "agent": AGENT_SLUG}
 
     intent, entities = detect_intent(message)
+    # RAG-first level 0: structured MongoDB answer before any tools/LLM (global cache, no token)
+    # Handles skills, projects, products etc. straight from MongoDB when evidence exists.
+    if not preview and intent not in ("hire_lead", "idea_discovery", "greeting", "general_conversation"):
+        try:
+            from app.services import ai_economy as _eco0
+            # global cache for structured-equivalent questions (no per-session token)
+            _gcache = await _eco0.response_cache_get(db, message, "concierge-global")
+            if _gcache:
+                # serve from global cache without any retrieval/tool call
+                return {
+                    "reply": _gcache.get("answer", ""),
+                    "sources": _gcache.get("sources", []),
+                    "intent": _gcache.get("intent", intent),
+                    "tools_called": [],
+                    "session_token": session_token or "",
+                    "session_id": session_token or "",
+                    "lead_captured": False,
+                    "missing_fields": [],
+                    "agent": AGENT_SLUG,
+                    "used_llm": False,
+                    "duration_ms": int((time.time() - t0) * 1000),
+                    "language": language,
+                }
+            _direct = await _eco0.structured_answer(message, db)
+            if _direct and _direct.get("answer"):
+                _ans = _direct["answer"]
+                _srcs = [{"title": s.get("title",""), "url": s.get("url"), "source_type": s.get("source_type","")} for s in _direct.get("sources", [])]
+                # cache globally for next visitors
+                try:
+                    await _eco0.response_cache_set(db, message, {"answer": _ans, "sources": _srcs, "intent": _direct.get("intent", intent), "grounded": True}, "concierge-global")
+                except Exception:
+                    pass
+                # need session for persistence but reply is already grounded
+                if not preview:
+                    sess, token = await _lp.get_or_create_session(db, session_token, client_ip)
+                    await db["customer_messages"].insert_one({
+                        "conversation_id": str(sess["_id"]), "session_token": token,
+                        "sender": "user", "role": "user", "message": message, "content": message,
+                        "intent": intent, "agent_slug": AGENT_SLUG,
+                        "ai_provider": None, "ai_model": None, "usage": {}, "created_at": utcnow()})
+                    # persist assistant reply directly without LLM
+                    await db["customer_messages"].insert_one({
+                        "conversation_id": str(sess["_id"]), "session_token": token,
+                        "sender": "assistant", "role": "assistant",
+                        "message": _ans, "content": _ans,
+                        "intent": _direct.get("intent", intent), "tools_called": [],
+                        "sources_used": _srcs, "agent_slug": AGENT_SLUG, "duration_ms": int((time.time() - t0) * 1000),
+                        "ai_provider": None, "ai_model": None, "usage": {}, "created_at": utcnow()})
+                    await db["customer_conversations"].update_one({"_id": sess["_id"]}, {"$set": {"last_message_at": utcnow()}})
+                    await agents.bump_stat(db, AGENT_SLUG, "turns")
+                    return {"reply": _ans, "sources": _srcs, "intent": _direct.get("intent", intent), "tools_called": [], "session_token": token, "session_id": token, "lead_captured": False, "missing_fields": [], "agent": AGENT_SLUG, "used_llm": False, "duration_ms": int((time.time() - t0)*1000), "language": language}
+        except Exception as _e:
+            log.warning("concierge fast structured skipped: %s", _e)
     if not preview:
         sess, token = await _lp.get_or_create_session(db, session_token, client_ip)
         await db["customer_messages"].insert_one({

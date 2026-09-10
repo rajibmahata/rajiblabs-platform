@@ -103,6 +103,16 @@ async def extract_and_store(resume_id: str) -> str:
         {"_id": doc["_id"]},
         {"$set": {"extracted_text": scrubbed, "extracted_at": utcnow()}}
     )
+    # Compute content/file hash for versioning (unchanged resumes skip downstream)
+    import hashlib as _hashlib
+    try:
+        file_hash = _hashlib.sha256(raw.encode()).hexdigest()[:16] if raw else ""
+    except Exception:
+        file_hash = ""
+    await db["resumes"].update_one(
+        {"_id": doc["_id"]},
+        {"$set": {"extracted_hash": file_hash, "extracted_len": len(scrubbed)}}
+    )
     # Trigger RAG only if this resume is the currently published/active one
     # (archived resumes remain internal knowledge source but not publicly indexed;
     #  ingest_resume checks active:true, so archived will be skipped until published)
@@ -113,4 +123,13 @@ async def extract_and_store(resume_id: str) -> str:
             await ingest_resume()
         except Exception as e:
             log.warning("RAG ingest after extract failed: %s", e)
+    # Resume → Projects consolidation (Profile Agent owned): extract projects from this resume
+    # and merge with existing projects/portfolio (hash/versioned, no duplicate processing)
+    try:
+        from app.services.resume_projects import consolidate_resume_projects
+        # Only run consolidation if this resume's extracted_hash changed or no cache
+        # consolidate_resume_projects handles per-resume hash versioning internally
+        await consolidate_resume_projects(db, triggered_by=f"resume:{resume_id}")
+    except Exception as e:
+        log.warning("resume project consolidation skipped: %s", e)
     return scrubbed

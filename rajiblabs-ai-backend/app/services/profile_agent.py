@@ -250,6 +250,22 @@ async def run_profile_agent(triggered_by: str = "scheduler") -> dict:
                 await log_error("profile_agent", "Skill sync failed", str(e)[:1000])
             except: pass
 
+        # 1c. Resume → Projects consolidation (Profile Agent owned)
+        # Extract ALL projects across ALL resume versions, deduplicate, merge with existing
+        # Projects/Portfolio/GitHub/Products/RAG — no invention, history preserved.
+        try:
+            from app.services.resume_projects import consolidate_resume_projects
+            rp_stats = await consolidate_resume_projects(db, triggered_by=triggered_by)
+            sources_inspected.append("resume_projects")
+            # count created projects as proposed/applied evidence
+            applied += int(rp_stats.get("created", 0)) + int(rp_stats.get("updated", 0))
+            log.info("Resume projects consolidation: %s", rp_stats)
+        except Exception as e:
+            log.warning("resume project consolidation failed: %s", e)
+            try:
+                await log_error("profile_agent", "Resume project consolidation failed", str(e)[:1000])
+            except: pass
+
         # 2. GitHub sync
         sources_inspected.append("github")
         gh_result = await sync_github(db, policy)

@@ -1378,6 +1378,7 @@ async def resumes_list(email: str = Depends(require_admin)):
 @router.post("/api/admin/resumes/upload")
 async def resume_upload(request: Request, email: str = Depends(require_admin)):
     from fastapi import UploadFile
+    import hashlib as _hashlib
     s = get_settings()
     form = await request.form()
     file = next((v for v in form.values() if _is_upload(v)), None)
@@ -1389,28 +1390,47 @@ async def resume_upload(request: Request, email: str = Depends(require_admin)):
     data = await file.read()
     if len(data) > s.max_resume_mb * 1024 * 1024:
         raise HTTPException(400, {"error": f"Max {s.max_resume_mb}MB"})
+    # Content-hash versioning: identical file bytes → return existing, no duplicate processing
+    file_hash = _hashlib.sha256(data).hexdigest()[:16]
+    db = get_db()
+    # Check existing file_hash (new field) or size+name heuristic for legacy docs without hash
+    existing_hash = await db["resumes"].find_one({"file_hash": file_hash})
+    if existing_hash:
+        # Already stored this exact file — no new version, ensure RAG is up to date and return existing
+        return resume_out(existing_hash)
     safe = f"{uuid.uuid4().hex}{ext}"
     updir = Path(s.upload_dir) / "resumes"
     updir.mkdir(parents=True, exist_ok=True)
-    (updir / safe).write_bytes(data)
-    db = get_db()
-    version = await db["resumes"].count_documents({}) + 1
+    # Resolve to absolute to avoid CWD drift (FileResponse needs real file)
+    try:
+        (updir / safe).write_bytes(data)
+    except Exception as e:
+        raise HTTPException(500, {"error": f"Storage failed: {e}"})
+    # Version = max(existing version) + 1, not count (handles deletions)
+    max_ver_doc = await db["resumes"].find_one(sort=[("version", -1)], projection={"version": 1})
+    version = int((max_ver_doc or {}).get("version", 0)) + 1
     doc = {"legacy_id": uuid.uuid4().hex, "filename": file.filename,
            "file_name": file.filename,
-           "stored_path": str(updir / safe), "stored_rel": f"uploads/resumes/{safe}",
+           "stored_path": str((updir / safe).resolve()) if (updir / safe).exists() else str(updir / safe),
+           "stored_rel": f"uploads/resumes/{safe}",
            "content_type": file.content_type or "application/octet-stream",
            "size_bytes": len(data), "version": version, "status": "published",
-           "active": True, "extracted_text": "",
+           "active": True, "extracted_text": "", "file_hash": file_hash,
            "uploaded_at": utcnow(), "published_at": utcnow()}
     await db["resumes"].update_many({}, {"$set": {"status": "archived", "active": False}})
     await db["resumes"].insert_one(doc)
     await audit(email, "RESUME_UPLOAD", str(doc["legacy_id"]))
     # Best-effort extraction + RAG (archived resumes stay internal, not indexed)
+    # Extraction now also triggers resume→project consolidation via Profile Agent (hash-deduped)
     try:
         from app.services.resume_text import extract_and_store
         await extract_and_store(doc["legacy_id"])
-    except Exception:
-        pass
+    except Exception as e:
+        try:
+            from app.services.notify import log_error
+            await log_error("resume_upload", "Resume extraction failed", str(e)[:1000])
+        except Exception:
+            pass
     return resume_out(doc)
 
 

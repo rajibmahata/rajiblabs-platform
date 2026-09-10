@@ -319,71 +319,169 @@ async def process_chat_message(db, session_token: str | None, message: str,
              "company": lead.get("company_name", ""), "industry": lead.get("industry", ""),
              "idea": (idea.get("description", "")[:120] if idea else "")}
 
-    # 7/8/9. AI turn (or heuristic fallback)
+    # 7/8/9. Fast-path RAG-first (cost optimization) — LEVEL 0/1 before LLM
+    # Hierarchy: response cache → structured MongoDB → high-confidence RAG extractive → LLM
+    # This avoids LLM for simple knowledge queries (what projects, skills, etc.)
+    import time as _time
+    import re as _re
+    _fast_start = _time.monotonic()
+    _use_fast = False
+    _fast_reply: str | None = None
+    _fast_sources: list[dict] = []
+    _fast_intent: str | None = None
+    # Heuristic: lead-intent messages (hire/build/idea) must go through LLM for nurturing
+    _lead_words = ("hire", "proposal", "quote", "price", "cost", "build", "need", "contact", "call", "demo",
+                   "i have", "my idea", "project idea", "looking for")
+    _is_lead_intent = any(w in (message or "").lower() for w in _lead_words) or bool((lead.get("email") or "").strip() and len(message) < 200)
+    # Try fast path only for non-lead, knowledge-seeking questions
+    if not _is_lead_intent and len((message or "").strip()) >= 4:
+        try:
+            from app.services import ai_economy as _eco
+            # LEVEL 1 cache: identical question within TTL → zero retrieval, zero LLM
+            _cached = await _eco.response_cache_get(db, message, f"lead|{language}")
+            if _cached:
+                _fast_reply = _cached.get("answer")
+                _fast_sources = _cached.get("sources", [])
+                _fast_intent = _cached.get("intent")
+                _use_fast = True
+                await audit("rag", "LEAD_CACHE_HIT", token, {"latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
+            else:
+                # LEVEL 0 structured answer (MongoDB only, no embedding, no LLM)
+                _direct = await _eco.structured_answer(message, db)
+                if _direct:
+                    _fast_reply = _direct["answer"]
+                    _fast_sources = [{"title": s.get("title",""), "source_type": s.get("source_type",""), "url": s.get("url"), "score": s.get("score", 0.95)} for s in _direct.get("sources",[])]
+                    _fast_intent = _direct.get("intent", "GENERAL")
+                    _use_fast = True
+                    await audit("rag", "LEAD_DIRECT", token, {"intent": _fast_intent, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
+                    # cache it
+                    try:
+                        await _eco.response_cache_set(db, message, {"answer": _fast_reply, "sources": _fast_sources, "intent": _fast_intent, "grounded": True}, f"lead|{language}")
+                    except Exception:
+                        pass
+                else:
+                    # LEVEL 1 extractive RAG: if top hit is high confidence, answer directly from chunks
+                    from app.services import rag_query as _rq
+                    _intent, _ = await _rq.classify_intent(message)
+                    _chunks = await _rq.retrieve(message, intent=_intent)
+                    if _chunks:
+                        _top = max([c.get("score",0) for c in _chunks] or [0])
+                        _direct_min = 0.80
+                        try:
+                            from app.config import get_settings as _sgs
+                            _direct_min = float(_sgs().rag_direct_answer_min_score or 0.80)
+                        except Exception:
+                            pass
+                        _is_factual = bool(_re.match(r"^(who|what|where|when|which|how many|list|show|tell me about)\b", (message or "").strip(), _re.IGNORECASE))
+                        _eff_min = max(_direct_min - 0.15, 0.55) if _is_factual else _direct_min
+                        if _top >= _eff_min:
+                            # build extractive answer from high-score chunks (like rag_query)
+                            _parts, _used = [], 0
+                            for c in _chunks:
+                                if c.get("score",0) < _eff_min:
+                                    continue
+                                txt = (c.get("content") or "").strip()[:600]
+                                if txt:
+                                    _parts.append(txt)
+                                    _used += len(txt)
+                                if len(_parts) >= 3 or _used >= 1200:
+                                    break
+                            if _parts:
+                                _fast_reply = "\n\n".join(_parts)
+                                _fast_sources = [{"title": c.get("title",""), "source_type": c.get("source_type",""), "url": c.get("url"), "score": c.get("score",0)} for c in _chunks]
+                                _fast_intent = _intent
+                                _use_fast = True
+                                await audit("rag", "LEAD_EXTRACTIVE", token, {"intent": _fast_intent, "top_score": _top, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
+                                try:
+                                    await _eco.response_cache_set(db, message, {"answer": _fast_reply, "sources": _fast_sources, "intent": _fast_intent, "grounded": True}, f"lead|{language}")
+                                except Exception:
+                                    pass
+        except Exception as _fe:
+            log.warning("fast path skipped: %s", _fe)
+    # Decide AI turn vs fast path
     ai_meta: dict = {}
-    rag_meta: dict = {"intent": None, "sources": []}
-    try:
-        history_cur = db["customer_messages"].find(
-            {"session_token": token}).sort("created_at", 1).limit(30)
-        history = [{"role": ("assistant" if d.get("sender") == "assistant" else "user"),
-                    "content": (d.get("message") or "")[:1000]}
-                   async for d in history_cur][-12:]
-        knowledge = await build_knowledge(db)
-        # RAG augmentation (§18): verified retrieval grounds the same AI turn.
-        # Disabled/misconfigured RAG degrades to the legacy knowledge string.
+    rag_meta: dict = {"intent": _fast_intent, "sources": _fast_sources}
+    if _use_fast and _fast_reply:
+        reply = _fast_reply
+        ai_lead, ai_idea = {}, {}
+        # Heuristic extraction for fast path: pull contact bits via regex (no LLM)
         try:
-            from app.config import get_settings as _rag_settings
-            if _rag_settings().rag_enabled:
-                from app.services import rag_query as _rag
-                _intent, _method = await _rag.classify_intent(message)
-                rag_meta["intent"] = _intent
-                _chunks = await _rag.retrieve(message, intent=_intent)
-                if _chunks:
-                    _ctx = "\n\n".join(
-                        f"[{c['title']}] ({c['source_type']}): {c['content'][:1200]}"
-                        for c in _chunks)
-                    knowledge = (knowledge + "\n\nVerified RAG knowledge:\n" + _ctx)[:6000]
-                    rag_meta["sources"] = [
-                        {"title": c.get("title", ""), "source_type": c.get("source_type", ""),
-                         "url": c.get("url"), "score": c.get("score", 0)} for c in _chunks]
-                await audit("rag", "RAG_QUERY", token,
-                            {"intent": _intent, "method": _method,
-                             "retrieved": len(rag_meta["sources"])},
-                            event_type="RAG_QUERY", session_id=token)
-        except Exception as _e:
-            log.warning("RAG augment skipped: %s", _e)
-        await audit("website_chat", "AI_REQUEST", token, {},
-                    event_type="AI_REQUEST", session_id=token)
-        result, ai_meta = await AIService().chat_with_lead(
-            history, message, knowledge, known, language=language or "en",
-            db=db)
-        await audit("website_chat", "AI_RESPONSE", token,
-                    {"provider": ai_meta.get("ai_provider", ""),
-                     "next_action": result.next_action},
-                    event_type="AI_RESPONSE", session_id=token)
-        reply = result.reply
-        ai_lead = result.lead.model_dump()
-        ai_idea = result.idea.model_dump()
-    except AIError as e:
-        log.warning("AI turn failed: %s", e)
-        await audit("website_chat", "AI_FAILURE", token, {"error": str(e)[:300]},
-                    event_type="AI_FAILURE", session_id=token)
-        try:
-            from app.services.notify import log_error
-            await log_error("lead_chat", "AI turn failed", str(e)[:2000], level="warning",
-                                logger="app.services.lead_pipeline")
+            import re as _re2
+            _email_re = _re2.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
+            _phone_re = _re2.compile(r"\+?\d[\d\s\-()]{6,18}\d")
+            m = _email_re.search(message or "")
+            if m:
+                ai_lead["email"] = m.group(0)
+            m = _phone_re.search(message or "")
+            if m and len(_re2.sub(r"\D","",m.group(0))) >= 7:
+                ai_lead["phone"] = m.group(0).strip()
         except Exception:
             pass
-        if _ai_configured():
-            # Provider was configured but failed: spec §12 graceful message.
-            # The user message is already persisted; nothing is lost.
-            reply = ("I'm having trouble processing that right now. Your message has been saved. "
-                     "Please continue or try again shortly. Or contact Rajib directly: "
-                     "rajibmahata143@gmail.com / +91 84202 49020.")
-        else:
-            # Zero-spend heuristic mode (no API key): answer from site knowledge.
-            reply = await heuristic_reply(db, message)
-        ai_lead, ai_idea = {}, {}
+        ai_meta = {"ai_provider": None, "ai_model": None, "fast_path": True, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}
+        await audit("website_chat", "FAST_REPLY", token, {"intent": _fast_intent, "sources": len(_fast_sources), "latency_ms": ai_meta["latency_ms"]}, event_type="AI_RESPONSE", session_id=token)
+    else:
+        try:
+            history_cur = db["customer_messages"].find(
+                {"session_token": token}).sort("created_at", 1).limit(30)
+            history = [{"role": ("assistant" if d.get("sender") == "assistant" else "user"),
+                        "content": (d.get("message") or "")[:1000]}
+                       async for d in history_cur][-12:]
+            knowledge = await build_knowledge(db)
+            # RAG augmentation (§18): verified retrieval grounds the same AI turn.
+            # Disabled/misconfigured RAG degrades to the legacy knowledge string.
+            try:
+                from app.config import get_settings as _rag_settings
+                if _rag_settings().rag_enabled:
+                    from app.services import rag_query as _rag
+                    _intent, _method = await _rag.classify_intent(message)
+                    rag_meta["intent"] = _intent
+                    _chunks = await _rag.retrieve(message, intent=_intent)
+                    if _chunks:
+                        _ctx = "\n\n".join(
+                            f"[{c['title']}] ({c['source_type']}): {c['content'][:1200]}"
+                            for c in _chunks)
+                        knowledge = (knowledge + "\n\nVerified RAG knowledge:\n" + _ctx)[:6000]
+                        rag_meta["sources"] = [
+                            {"title": c.get("title", ""), "source_type": c.get("source_type", ""),
+                             "url": c.get("url"), "score": c.get("score", 0)} for c in _chunks]
+                    await audit("rag", "RAG_QUERY", token,
+                                {"intent": _intent, "method": _method,
+                                 "retrieved": len(rag_meta["sources"])},
+                                event_type="RAG_QUERY", session_id=token)
+            except Exception as _e:
+                log.warning("RAG augment skipped: %s", _e)
+            await audit("website_chat", "AI_REQUEST", token, {},
+                        event_type="AI_REQUEST", session_id=token)
+            result, ai_meta = await AIService().chat_with_lead(
+                history, message, knowledge, known, language=language or "en",
+                db=db)
+            await audit("website_chat", "AI_RESPONSE", token,
+                        {"provider": ai_meta.get("ai_provider", ""),
+                         "next_action": result.next_action},
+                        event_type="AI_RESPONSE", session_id=token)
+            reply = result.reply
+            ai_lead = result.lead.model_dump()
+            ai_idea = result.idea.model_dump()
+        except AIError as e:
+            log.warning("AI turn failed: %s", e)
+            await audit("website_chat", "AI_FAILURE", token, {"error": str(e)[:300]},
+                        event_type="AI_FAILURE", session_id=token)
+            try:
+                from app.services.notify import log_error
+                await log_error("lead_chat", "AI turn failed", str(e)[:2000], level="warning",
+                                    logger="app.services.lead_pipeline")
+            except Exception:
+                pass
+            if _ai_configured():
+                # Provider was configured but failed: spec §12 graceful message.
+                # The user message is already persisted; nothing is lost.
+                reply = ("I'm having trouble processing that right now. Your message has been saved. "
+                         "Please continue or try again shortly. Or contact Rajib directly: "
+                         "rajibmahata143@gmail.com / +91 84202 49020.")
+            else:
+                # Zero-spend heuristic mode (no API key): answer from site knowledge.
+                reply = await heuristic_reply(db, message)
+            ai_lead, ai_idea = {}, {}
 
     # 10/11. backend validation — explicit body fields win, then AI extraction
     src = source or {}

@@ -355,23 +355,32 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
             {displayPurpose && <p style={{ marginTop: 16, fontSize: "1.25rem", color: "var(--rlz-text)", fontWeight: 600, lineHeight: 1.4 }}>{displayPurpose}</p>}
             {shortDesc && shortDesc !== displayPurpose && <p style={{ marginTop: 12, fontSize: "1.05rem", color: "var(--rlz-text-dim)", lineHeight: 1.6 }}>{shortDesc}</p>}
             {(purpose && purpose !== displayPurpose && purpose !== shortDesc) && <p style={{ marginTop: 10, color: "var(--rlz-text-dim)" }}>{purpose}</p>}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 22 }}>
-              {live && (
-                <a href={live} target="_blank" rel="noopener noreferrer" className="rlz-btn rlz-btn-primary" style={{ textDecoration: "none" }}>
-                  <i className="material-symbols-outlined">open_in_new</i> Live Website
+            <div style={{ display: "grid", gap: 10, marginTop: 22 }}>
+              {live ? (
+                <a href={live} target="_blank" rel="noopener noreferrer" className="rlz-btn rlz-btn-primary" style={{ textDecoration: "none", justifyContent: "flex-start" }}>
+                  <i className="material-symbols-outlined">open_in_new</i> Live Website — Visit project
                 </a>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 12, background: "var(--rlz-bg-2)", border: "1px solid var(--rlz-border)", color: "var(--rlz-text-dim)", fontSize: "0.92rem" }}>
+                  <i className="material-symbols-outlined" style={{ color: "var(--rlz-text-faint)" }}>lock</i>
+                  <span><b>Live URL:</b> Delivered to the customer. The live application URL is confidential.</span>
+                </div>
               )}
-              {gh && (
-                <a href={gh} target="_blank" rel="noopener noreferrer" className="rlz-btn rlz-btn-ghost" style={{ textDecoration: "none" }}>
-                  <i className="material-symbols-outlined">code</i> GitHub Repository
+              {gh ? (
+                <a href={gh} target="_blank" rel="noopener noreferrer" className="rlz-btn rlz-btn-ghost" style={{ textDecoration: "none", justifyContent: "flex-start" }}>
+                  <i className="material-symbols-outlined">code</i> GitHub Repository — View code
                 </a>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 12, background: "var(--rlz-bg-2)", border: "1px solid var(--rlz-border)", color: "var(--rlz-text-dim)", fontSize: "0.92rem" }}>
+                  <i className="material-symbols-outlined" style={{ color: "var(--rlz-text-faint)" }}>lock</i>
+                  <span><b>Repository:</b> Repository details are confidential / not publicly available.</span>
+                </div>
               )}
               {docs && (
-                <a href={docs} target="_blank" rel="noopener noreferrer" className="rlz-btn rlz-btn-ghost" style={{ textDecoration: "none" }}>
+                <a href={docs} target="_blank" rel="noopener noreferrer" className="rlz-btn rlz-btn-ghost" style={{ textDecoration: "none", justifyContent: "flex-start" }}>
                   <i className="material-symbols-outlined">description</i> Documentation
                 </a>
               )}
-              {!live && !gh && <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "0.8rem", color: "var(--rlz-text-faint)", alignSelf: "center" }}>Links unavailable — private / in development</span>}
             </div>
             {!!tags.length && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 18 }}>
@@ -663,19 +672,29 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
               </section>
             )}
 
-            {/* Links */}
+            {/* Links — professional confidential handling (spec §4) */}
             <section style={{ background: "var(--rlz-surface-2)", border: "1px solid var(--rlz-border)", borderRadius: 20, padding: 20 }}>
-              <h3 style={{ fontFamily: "Sora, sans-serif", fontSize: "1rem" }}>Links</h3>
+              <h3 style={{ fontFamily: "Sora, sans-serif", fontSize: "1rem" }}>Project Links</h3>
               <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                {live && (
+                {live ? (
                   <a href={live} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: "var(--rlz-grad-1)", color: "#fff", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
                     <i className="material-symbols-outlined">language</i> Live Website <i className="material-symbols-outlined" style={{ marginLeft: "auto" }}>open_in_new</i>
                   </a>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: "var(--rlz-bg-2)", border: "1px solid var(--rlz-border)", color: "var(--rlz-text-dim)", fontSize: "0.9rem" }}>
+                    <i className="material-symbols-outlined" style={{ color: "var(--rlz-text-faint)", fontSize: "1.1rem" }}>lock</i>
+                    <span>Live URL — Delivered to the customer. The live application URL is confidential.</span>
+                  </div>
                 )}
-                {gh && (
+                {gh ? (
                   <a href={gh} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: "var(--rlz-bg)", border: "1px solid var(--rlz-border)", color: "var(--rlz-text)", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
                     <i className="material-symbols-outlined">code</i> GitHub Repository <i className="material-symbols-outlined" style={{ marginLeft: "auto" }}>open_in_new</i>
                   </a>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: "var(--rlz-bg-2)", border: "1px solid var(--rlz-border)", color: "var(--rlz-text-dim)", fontSize: "0.9rem" }}>
+                    <i className="material-symbols-outlined" style={{ color: "var(--rlz-text-faint)", fontSize: "1.1rem" }}>lock</i>
+                    <span>Repository — Repository details are confidential / not publicly available.</span>
+                  </div>
                 )}
                 {docs && (
                   <a href={docs} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: "var(--rlz-surface)", border: "1px solid var(--rlz-border)", color: "var(--rlz-text-dim)", textDecoration: "none", fontSize: "0.9rem" }}>
@@ -687,7 +706,6 @@ export default function ProjectDetail({ kind }: { kind: DetailKind }) {
                     <i className="material-symbols-outlined">shopping_bag</i> Product Page
                   </a>
                 ) : null}
-                {!live && !gh && <p style={{ fontSize: "0.85rem", color: "var(--rlz-text-faint)" }}>Links will appear when verified URLs are available.</p>}
               </div>
             </section>
 
