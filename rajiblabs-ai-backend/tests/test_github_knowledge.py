@@ -390,6 +390,11 @@ async def test_rag_retrieval_returns_github_url_live(monkeypatch):
 
         monkeypatch.setattr(rq, "EmbeddingService", _Emb)
         monkeypatch.setattr(rq, "get_vector_store", lambda: _Vec())
+
+        async def _fake_cached_embed(text, db=None):
+            return [0.1], False
+
+        monkeypatch.setattr("app.services.ai_economy.cached_embed", _fake_cached_embed)
         hits = await rq.retrieve("React architecture examples")
         assert hits and hits[0]["source_type"] == "github_documentation"
         assert hits[0]["url"] == f"https://github.com/{FULL}/blob/main/architecture.md"
@@ -428,6 +433,11 @@ async def test_rag_retrieval_drops_orphan_vectors_live(monkeypatch):
 
         monkeypatch.setattr(rq, "EmbeddingService", _Emb)
         monkeypatch.setattr(rq, "get_vector_store", lambda: _Vec())
+
+        async def _fake_cached_embed(text, db=None):
+            return [0.1], False
+
+        monkeypatch.setattr("app.services.ai_economy.cached_embed", _fake_cached_embed)
         assert await rq.retrieve("orphan content") == []
     finally:
         await db["knowledge_chunks"].delete_many({"document_id": "doc-orphan"})

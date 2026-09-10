@@ -653,7 +653,7 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
             _pol = _kb.resolve_request_policy(
                 {"hallucination_policy": agent.get("hallucination_policy"),
                  "fallback_message": agent.get("fallback_message")}, _docs)
-            _ev = [(h.get("content") or "")
+            _ev = [(h.get("content") or h.get("snippet") or "")
                    for h in (results.get("search_knowledge") or [])]
             _ev.append(scrub_text(json.dumps(
                 {k: v for k, v in results.items() if not k.startswith("__")},
@@ -661,7 +661,7 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
             _top = max([h.get("score") or 0
                         for h in (results.get("search_knowledge") or [])] or [0])
             _ok, _reason = _kb.validate_grounding(reply, _ev, _pol, _top)
-            _needs_source = _pol["require_source"] and not any(
+            _needs_source = _pol.get("require_source", _pol.get("require_evidence", True)) and not any(
                 s.get("url") for s in sources)
             if (not _ok) or _needs_source:
                 if _pol["on_insufficient"] == "clarify":

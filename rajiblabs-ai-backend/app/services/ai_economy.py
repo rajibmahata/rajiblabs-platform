@@ -381,7 +381,11 @@ async def response_cache_set(db, question: str, answer: dict, extra: str = "") -
 async def keyword_search(question: str, db, top_k: int = 5,
                          consumer: str = "public") -> list[dict]:
     """LEVEL 1 fallback when vectors are unavailable: Mongo regex search
-    over knowledge chunks (implements retrieve()'s documented promise)."""
+    over knowledge chunks (implements retrieve()'s documented promise).
+
+    Enforces the central KB guardrails server-side (same contract as the
+    vector path): orphan chunks dropped, disallowed consumers filtered,
+    title/url hydrated from the parent document. Fail-closed on error."""
     words = [w for w in re.findall(r"[a-z]{3,}", (question or "").lower())]
     words = [w for w in words if w not in
              ("what", "who", "how", "why", "the", "and", "for", "with", "does")]
@@ -401,6 +405,45 @@ async def keyword_search(question: str, db, top_k: int = 5,
                         "score": score, "source_type": (c.get("metadata") or {}).get(
                             "source_type", ""),
                         "title": "", "url": None, "content": text[:1500]})
+        out.sort(key=lambda h: h["score"], reverse=True)
+        out = out[:top_k * 4]
+        # Central KB guardrail gate (same as vector path): hydrate parents,
+        # enrich title/url, drop orphans + disallowed consumers. Never
+        # prompt-gated.
+        try:
+            from app.services import kb_policy as _kb
+            doc_ids: set[str] = {h.get("document_id", "") for h in out if h.get("document_id")}
+            docs_by_id: dict = {}
+            if doc_ids:
+                from bson import ObjectId as _Oid
+                oids = []
+                for did in doc_ids:
+                    try:
+                        oids.append(_Oid(did))
+                    except Exception:
+                        pass
+                if oids:
+                    async for d in db["knowledge_documents"].find({"_id": {"$in": oids}}):
+                        docs_by_id[str(d["_id"])] = d
+            # Enrich display fields from the parent document (source of truth
+            # for title/url/source_type); chunk metadata is only a fallback.
+            for h in out:
+                d = docs_by_id.get(h.get("document_id", ""))
+                if d:
+                    if not h.get("title"):
+                        h["title"] = d.get("title", "")
+                    if h.get("url") is None:
+                        h["url"] = d.get("url")
+                    if not h.get("source_type"):
+                        h["source_type"] = d.get("source_type", "")
+                    if not h.get("repository"):
+                        h["repository"] = d.get("repository")
+                    if not h.get("language"):
+                        h["language"] = d.get("language")
+            out = _kb.filter_hits(out, docs_by_id, consumer)
+        except Exception as e:
+            log.warning("keyword guardrail filter failed (fail-closed): %s", e)
+            return []
         out.sort(key=lambda h: h["score"], reverse=True)
         return out[:top_k]
     except Exception as e:

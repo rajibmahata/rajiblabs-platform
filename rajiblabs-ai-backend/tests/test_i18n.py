@@ -131,7 +131,7 @@ class FakeOrchestrator:
     def __init__(self, *a, **k):
         pass
 
-    async def _complete(self, messages, max_tokens, temperature, tag):
+    async def _complete(self, messages, max_tokens, temperature, tag, **kwargs):
         user = next(m["content"] for m in messages if m["role"] == "user")
         return {"provider": "openai", "model": "test-model",
                 "data": {"text": f"[{tag}] {user[:60]}"}}
@@ -320,7 +320,7 @@ async def test_chat_reply_localized_same_knowledge(fakedb, monkeypatch):
 
     monkeypatch.setattr(langmod, "response_instruction", _fake_instruction)
 
-    async def _capture(self, messages, max_tokens=0, temperature=0, tag=""):
+    async def _capture(self, messages, max_tokens=0, temperature=0, tag="", **kwargs):
         seen["messages"] = messages
         return {"provider": "openai", "model": "m",
                 "data": {"reply": "x", "lead": {}, "idea": {},

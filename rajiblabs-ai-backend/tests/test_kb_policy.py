@@ -262,6 +262,11 @@ async def test_public_consumer_cannot_see_restricted_live(monkeypatch):
 
         monkeypatch.setattr(rqmod, "EmbeddingService", _Emb)
         monkeypatch.setattr(rqmod, "get_vector_store", lambda: _VecHit())
+
+        async def _fake_cached_embed(text, db=None):
+            return [0.1] * 4, False
+
+        monkeypatch.setattr("app.services.ai_economy.cached_embed", _fake_cached_embed)
         assert await rq.retrieve("zebra printing", consumer="public") == []
         admin_hits = await rq.retrieve("zebra printing", consumer="admin")
         assert len(admin_hits) == 1 and "Zebra" in admin_hits[0]["content"]
@@ -277,6 +282,14 @@ async def test_concierge_complies_with_kb_policy_live(monkeypatch):
     from app.services import concierge as cg
     monkeypatch.setattr(ri, "_embedding_service", lambda: _FakeEmb())
     monkeypatch.setattr(ri, "get_vector_store", lambda: _FakeVec())
+
+    async def _fake_cached_embed(text, db=None):
+        return [0.1] * 4, False
+
+    monkeypatch.setattr("app.services.ai_economy.cached_embed", _fake_cached_embed)
+    import app.services.rag_query as _rq
+
+    monkeypatch.setattr(_rq, "get_vector_store", lambda: _FakeVec())
     db = await _live_db()
     token = None
     try:

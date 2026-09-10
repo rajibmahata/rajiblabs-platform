@@ -2,6 +2,45 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-10 — KB guardrail parity + concierge hallucination-gate fix
+
+Fixes 4 failing tests (`test_chat_reply_localized_same_knowledge`,
+`test_public_consumer_cannot_see_restricted_live`,
+`test_rag_retrieval_returns_github_url_live`,
+`test_rag_retrieval_drops_orphan_vectors_live`; plus live-only
+`test_concierge_complies_with_kb_policy_live` with a real LLM key).
+
+### Fixed — `rajiblabs-ai-backend/app/services/ai_economy.py`
+- `keyword_search()` now enforces the same server-side contract as the vector
+  path: hydrates parent `knowledge_documents`, enriches `title`/`url`/
+  `source_type`/`repository`/`language` from the parent (chunk metadata is only
+  a fallback), drops orphan chunks and filters by `kb_policy.filter_hits(out,
+  docs_by_id, consumer)`. Fail-closed (returns `[]`) when the guardrail filter
+  itself errors. Previously `consumer` was accepted but ignored, so
+  `public_access: False` docs leaked via the keyword fallback whenever
+  embeddings were unavailable.
+
+### Fixed — `rajiblabs-ai-backend/app/services/concierge.py`
+- Hallucination gate `KeyError`: `_pol["require_source"]` → `_pol.get(
+  "require_source", _pol.get("require_evidence", True))`. The hallucination
+  policy dict has no `require_source` key, so the lookup raised, the surrounding
+  `except: pass` swallowed it, and LLM replies echoing the user query (e.g.
+  "zebra printing division") were never replaced by the fallback message.
+- Evidence now includes tool snippets: `(h.get("content") or h.get("snippet")
+  or "")` — `agent_tools.search_knowledge` returns `snippet`, not `content`,
+  so evidence was previously always empty strings for tool hits.
+
+### Fixed — tests (outdated mocks, no prod behavior change)
+- `tests/test_i18n.py`: `_capture` and `FakeOrchestrator._complete` now accept
+  `**kwargs` — `chat_with_lead` passes `db=`/`reason=` to `_complete()`.
+- `tests/test_kb_policy.py` (`test_public_consumer...`, `test_concierge...`)
+  and `tests/test_github_knowledge.py` (URL + orphan tests): also mock
+  `app.services.ai_economy.cached_embed` (fake vector, no network). `retrieve()`
+  resolves embeddings via `cached_embed`, not `rq.EmbeddingService`, so the old
+  `rq.EmbeddingService` mock alone left the tests on the real embedding path —
+  falling back to keyword search when no OpenAI key is configured and ignoring
+  the mocked vector store.
+
 ## [Unreleased] — Cost/Latency Optimization: minimum LLM usage, maximum reuse
 
 Massive cost reduction (~77% fewer tokens/day) and latency improvement across the
