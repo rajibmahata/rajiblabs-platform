@@ -39,30 +39,35 @@ export default function LearningPathDetail() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [activeDay, setActiveDay] = useState<number>(1);
   const [progress, setProgress] = useState<{ progress: number } | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
+
+  const loading = loadedSlug !== slug;
 
   useEffect(() => {
+    let cancelled = false;
     const base = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
-    setLoading(true);
     Promise.all([
       fetch(`${base}/api/learning/paths/${slug}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch(`${base}/api/learning/paths/${slug}/blocks`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ])
       .then(([pathRes, blocksRes]) => {
-        if (!pathRes) { setError(true); setLoading(false); return; }
+        if (cancelled) return;
+        if (!pathRes) { setError(true); setLoadedSlug(slug); return; }
         setPath(pathRes);
         const arr = Array.isArray(blocksRes) ? blocksRes : [];
         setBlocks(arr);
         const firstPublished = arr.find((b: Block) => b.status === "published");
         if (firstPublished) setActiveDay(firstPublished.day_number);
         else if (arr[0]) setActiveDay(arr[0].day_number);
-        setLoading(false);
+        setLoadedSlug(slug);
       })
       .catch(() => {
+        if (cancelled) return;
         setError(true);
-        setLoading(false);
+        setLoadedSlug(slug);
       });
+    return () => { cancelled = true; };
   }, [slug]);
 
   const markProgress = useCallback(async (day: number, done: boolean) => {
