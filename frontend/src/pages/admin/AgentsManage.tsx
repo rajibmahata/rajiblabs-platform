@@ -2,8 +2,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel } from "../../components/admin/ui";
-import { InlineLoader } from "../../components/admin/ui";
-import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 export default function AgentsManage() {
@@ -14,9 +12,7 @@ export default function AgentsManage() {
   const [convos, setConvos] = useState<any[]>([]);
   const [testMsg, setTestMsg] = useState("What projects has Rajib completed?");
   const [testRes, setTestRes] = useState<any>(null);
-  const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("action");
-  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
+  const [busy, setBusy] = useState(false)
   const [form, setForm] = useState<any>({});
   const [policy, setPolicy] = useState<Record<string, any>>({});
   const [creating, setCreating] = useState({ slug: "", name: "", agent_type: "support" });

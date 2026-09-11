@@ -10,6 +10,9 @@ from app.services import resume_projects as rp
 
 # ── fake Mongo boundary ──
 
+import copy as _copy
+
+
 def _match(doc: dict, q: dict) -> bool:
     for k, v in (q or {}).items():
         if isinstance(v, dict):
@@ -40,8 +43,10 @@ class FakeCursor:
 
     def __aiter__(self):
         async def gen():
+            # Motor returns snapshot copies — caller mutation must not leak
+            # back into the collection (matters for prev-vs-new comparisons).
             for d in self.docs:
-                yield d
+                yield _copy.deepcopy(d)
         return gen()
 
 
@@ -55,7 +60,7 @@ class FakeColl:
     async def find_one(self, q=None, *a, **k):
         for d in self.docs:
             if _match(d, q or {}):
-                return d
+                return _copy.deepcopy(d)
         return None
 
     async def update_one(self, filt, update, upsert=False):
@@ -231,6 +236,26 @@ async def test_portfolio_autodraft_off_by_default(fakedb, canned):
     assert await fakedb["portfolio"].find_one({"slug": "pestflow"}) is None
 
 
+async def test_empty_resume_never_reextracted(fakedb, monkeypatch):
+    """Consolidate must not call extract_and_store for already-attempted
+    empty resumes (this mutual recursion was an infinite loop)."""
+    import app.services.resume_text as rt
+    from datetime import datetime, timezone
+    fakedb["resumes"] = FakeColl([{
+        "_id": "e1", "version": 1, "extracted_text": "",
+        "extracted_at": datetime.now(timezone.utc), "status": "archived"}])
+    calls = []
+
+    async def _boom(rid):
+        calls.append(rid)
+        return ""
+
+    monkeypatch.setattr(rt, "extract_and_store", _boom)
+    stats = await rp.consolidate_resume_projects(fakedb, triggered_by="test")
+    assert calls == []
+    assert stats["skipped"] == 1
+
+
 async def test_role_linked_from_matching_career(fakedb, canned, monkeypatch):
     fakedb["resumes"] = FakeColl([_resume(2)])
     fakedb["profiles"] = FakeColl([{
@@ -317,7 +342,9 @@ async def test_extract_triggers_skill_sync(tmp_path, monkeypatch):
     pdf.write_bytes(b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\nhello")
     db["resumes"] = FakeColl([{
         "_id": "rx", "legacy_id": "rx", "version": 1, "active": False,
-        "status": "archived", "stored_path": str(pdf), "extracted_text": ""}])
+        "status": "archived", "stored_path": str(pdf),
+        # pre-existing text differs from the (empty) re-extraction → changed
+        "extracted_text": "previous text"}])
     monkeypatch.setattr(rt, "get_db", lambda: db)
     seen = {}
 
@@ -334,3 +361,30 @@ async def test_extract_triggers_skill_sync(tmp_path, monkeypatch):
     monkeypatch.setattr(_rp, "consolidate_resume_projects", _fake_consolidate)
     await rt.extract_and_store("rx")
     assert seen.get("by") == "resume:rx"
+
+
+async def test_noop_reextract_skips_downstream_storm(tmp_path, monkeypatch):
+    """Empty re-extraction with unchanged text must not fan out (no loop)."""
+    import app.services.resume_text as rt
+    db = FakeDB()
+    pdf = tmp_path / "r.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\nhello")
+    db["resumes"] = FakeColl([{
+        "_id": "rx", "legacy_id": "rx", "version": 1, "active": False,
+        "status": "archived", "stored_path": str(pdf), "extracted_text": ""}])
+    monkeypatch.setattr(rt, "get_db", lambda: db)
+    calls = []
+
+    async def _fake_sync(triggered_by=""):
+        calls.append(("sync", triggered_by))
+        return {}
+
+    async def _fake_consolidate(_db=None, triggered_by=""):
+        calls.append(("consolidate", triggered_by))
+        return {}
+
+    monkeypatch.setattr("app.services.skill_intelligence.sync_skills", _fake_sync)
+    import app.services.resume_projects as _rp
+    monkeypatch.setattr(_rp, "consolidate_resume_projects", _fake_consolidate)
+    await rt.extract_and_store("rx")
+    assert calls == []

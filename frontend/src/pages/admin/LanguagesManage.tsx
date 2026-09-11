@@ -2,8 +2,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
-import { InlineLoader } from "../../components/admin/ui";
-import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 interface Lang {
@@ -17,9 +15,7 @@ export default function LanguagesManage() {
   const [langs, setLangs] = useState<Lang[]>([]);
   const [form, setForm] = useState<any>({ ...EMPTY_FORM });
   const [editing, setEditing] = useState<string | null>(null);
-  const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("action");
-  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
+  const [busy, setBusy] = useState(false)
 
   const load = () => {
     api.get<Lang[]>("/api/admin/languages").then((l) => setLangs(Array.isArray(l) ? l : [])).catch(() => {});

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../services/api";
-import { Empty, Field, PageHead, Panel, StatusPill, BlockLoader } from "./ui";
+import { Empty, Field, PageHead, Panel, StatusPill } from "./ui";
 import { InlineLoader } from "./ui";
 import { useAsyncActions } from "./async";
 import { toast } from "./toast";
@@ -66,7 +66,6 @@ export default function CatalogManager(cfg: CatalogKind) {
   const [editId, setEditId] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("save") || isLoading("upload-featuredImage") || isLoading("upload-gallery");
   const uploading = isLoading("upload-featuredImage") ? "featuredImage" : isLoading("upload-gallery") ? "gallery" : null;
   const fileRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);

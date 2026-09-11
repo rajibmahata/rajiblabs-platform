@@ -52,35 +52,9 @@ export function useAsyncActions() {
     []
   );
 
-  const isLoading = useCallback((key: string) => !!loadingsRef.current[key], []);
+  const isLoadingRef = useCallback((key: string) => !!loadingsRef.current[key], []);
   const isAnyLoading = Object.values(loadings).some(Boolean);
 
   // For render, use state-driven loadings; for logic, use ref
-  return { run, isLoading: (k: string) => !!loadings[k], isLoadingRef: isLoading, isAnyLoading, loadings };
-}
-
-/**
- * Single-action variant for simple cases.
- */
-export function useAsyncAction(opts?: { successTitle?: string; successMsg?: string; errorTitle?: string }) {
-  const [loading, setLoading] = useState(false);
-  const run = useCallback(
-    async (fn: () => Promise<unknown>) => {
-      if (loading) return;
-      setLoading(true);
-      try {
-        const res = await fn();
-        if (opts?.successTitle) toast(opts.successTitle, opts.successMsg || "");
-        return res;
-      } catch (e: unknown) {
-        const msg = String((e as Error)?.message || e).slice(0, 300);
-        toast(opts?.errorTitle || "Action failed", msg || "Please try again.");
-        throw e;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [loading, opts?.successTitle, opts?.successMsg, opts?.errorTitle]
-  );
-  return { run, loading };
+  return { run, isLoading: (k: string) => !!loadings[k], isLoadingRef, isAnyLoading, loadings };
 }

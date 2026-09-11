@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
-import { Chip, Empty, Field, PageHead, Panel, StatusPill, BlockLoader } from "../../components/admin/ui";
+import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { InlineLoader } from "../../components/admin/ui";
 import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";

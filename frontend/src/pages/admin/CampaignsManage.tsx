@@ -2,8 +2,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
-import { InlineLoader } from "../../components/admin/ui";
-import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 const EMPTY_FORM: any = { name: "", subject: "", html: "", text: "", template_id: "", segment: "all_opted_in", max_per_7_days: 2, min_interval_hours: 48 };
@@ -18,9 +16,7 @@ export default function CampaignsManage() {
   const [form, setForm] = useState<any>({ ...EMPTY_FORM });
   const [detail, setDetail] = useState<any>(null);
   const [eligible, setEligible] = useState<number | null>(null);
-  const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("action");
-  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
+  const [busy, setBusy] = useState(false)
 
   const load = () => {
     api.get<any>("/api/admin/marketing/campaigns").then((r) => setItems(r.items || [])).catch(() => {});

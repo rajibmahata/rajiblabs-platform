@@ -2,8 +2,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
-import { InlineLoader } from "../../components/admin/ui";
-import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 const toCSV = (v: any): string => Array.isArray(v) ? v.join(", ") : (v || "");
@@ -22,9 +20,7 @@ export default function ProfileManage() {
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<any>({ ...EMPTY_CAREER });
   const [msg, setMsg] = useState("");
-  const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("action");
-  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
+  const [busy, setBusy] = useState(false)
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
   useEffect(() => {

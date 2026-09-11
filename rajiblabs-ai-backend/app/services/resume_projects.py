@@ -483,30 +483,31 @@ async def consolidate_resume_projects(db=None, triggered_by: str = "profile_agen
     seen_file_hash: set[str] = set()
     for resume in resumes:
         text = (resume.get("extracted_text") or "").strip()
-        if not text:
-            # try to extract on the fly if file exists but text missing (e.g., after fix)
+        if not text and not resume.get("extracted_at"):
+            # One-time on-the-fly attempt for resumes never extracted (rows
+            # predating extraction). extract_and_store records extracted_at on
+            # EVERY attempt, so an empty result is a legitimate outcome — not
+            # a retry signal. Retrying here unconditionally caused an infinite
+            # extract→consolidate→extract loop for files that yield no text.
             try:
                 from app.services.resume_text import extract_and_store
                 rid = resume.get("legacy_id") or str(resume["_id"])
-                text = await extract_and_store(rid)
-                text = (text or "").strip()
+                await extract_and_store(rid)
                 # re-fetch
                 resume = await db["resumes"].find_one({"_id": resume["_id"]})
-                text = (resume.get("extracted_text") or "").strip() if resume else text
+                text = (resume.get("extracted_text") or "").strip() if resume else ""
             except Exception as e:
                 log.warning("resume re-extract failed for %s: %s", resume.get("_id"), e)
-                continue
         if not text:
             stats["skipped"] += 1
             continue
         # content hash versioning: skip re-processing same extracted_text content for this resume
         cur_hash = _hash(text)
         if resume.get("projects_extracted_hash") == cur_hash:
-            # already processed and projects already consolidated; still add its previously extracted? Need to ensure we still count it for dedupe
-            # We skip LLM/deterministic re-extraction but we can reload cached projects? Instead we just re-extract but hash check avoids duplicate work per resume
-            # For now, skip re-extraction if hash same — but we need its projects for dedupe. So we keep a cached list in resume doc if available
+            # already processed; reuse the cached extraction for dedupe —
+            # including an empty list (no LLM re-run for empty resumes).
             cached = resume.get("projects_cache")
-            if cached and isinstance(cached, list):
+            if isinstance(cached, list):
                 all_extracted.extend(cached)
                 stats["projects_found"] += len(cached)
                 continue

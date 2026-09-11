@@ -82,13 +82,11 @@ export default function LearningManage(){
       setTimeout(()=> { loadBlocks(selected); loadPaths(); }, 2500);
     }, { successTitle: "Agent triggered", successMsg: "Check blocks in a few seconds", errorTitle: "Run failed" });
 
-  const runSingleDay = async (slug: string, day: number) => {
-    setBusy(true);
-    try {
+  const runSingleDay = (slug: string, day: number) => {
+    run(`run-day-${day}`, async () => {
       await api.post<any>(`/api/admin/learning/paths/${slug}/run`, {});
-      toast("Agent", `Regenerating Day ${day}...`);
       setTimeout(()=> loadBlocks(slug), 3000);
-    } catch(e:any){ toast("Run failed", String(e.message||e).slice(0,200)); } finally{ setBusy(false); }
+    }, { successTitle: "Agent", successMsg: `Regenerating Day ${day}...`, errorTitle: "Run failed" });
   };
 
   const updateStatus=async(slug:string, status:string)=>{

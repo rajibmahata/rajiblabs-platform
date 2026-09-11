@@ -44,6 +44,18 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
    Never invent new colors — use `var(--rla-*)` tokens.
 2. Guard every list fetch: `.then((l) => setX(Array.isArray(l) ? l : []))`.
 3. Feedback via `toast(title, msg)` from `components/admin/toast` (no bare `alert` in new code).
+   Every async action MUST show a loader + disable its button + toast on
+   success/error + refresh UI: `const { run, isLoading } = useAsyncActions()`
+   from `components/admin/async`, then
+   `run("save", async () => { await api.put(...); load(); },
+   { successTitle: "Saved", errorTitle: "Save failed" })` with
+   `disabled={isLoading("save")}` and `{isLoading("save") ?
+   <InlineLoader text="Saving..." /> : "Save"}`. Loaders come from
+   `components/admin/ui` (`InlineLoader`, `BlockLoader`, `StepProgress`,
+   `AsyncButton`) + `admin.css` (`rla-inline-loader`, `rla-block-loader`,
+   `rla-step-progress`); never invent new colors or per-page spinners.
+   Pattern: try → toast success → catch toast error → finally clears loader
+   (the hook guarantees the loader never sticks).
 4. Route in `frontend/src/App.tsx` inside the admin layout block; nav entry in
    `AdminLayout.tsx` NAV groups (pick icon from Font Awesome free set, already bundled).
 5. `npx tsc --noEmit && npx eslint src/pages/admin/ && npm run build`.
@@ -389,6 +401,21 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `learnings`, `beneficiaries`, `domain`, `evidence`, `portfolio_score`,
   `portfolio_worthy`) render conditionally on the detail page — empty means
   hidden, never placeholder text.
+- Resume pipeline triggers (all best-effort in `extract_and_store`): RAG
+  ingest + project consolidation + `sync_skills` — skills must refresh on
+  upload, not just on the 06:00 agent run. `ingest_resume` indexes the active
+  resume publicly AND history resumes admin-only (`resume:history:<id>`,
+  `public_access: False`), plus an orphan sweep for deleted resumes. Empty
+  extraction on the ACTIVE resume fires an admin-visible `log_error`.
+- NEVER fan out unconditionally from extraction: `extract_and_store` runs
+  downstream only when text was produced or changed, and consolidation
+  re-extracts only rows without `extracted_at`. Otherwise empty extractions
+  form an extract→consolidate→extract infinite loop (pinned CPU, hung
+  `test_resume.py`). Empty cache `[]` is valid cache — never LLM-repeat it.
+- Tests share the dev MongoDB (no isolation): `test_resume.py` uploads archive
+  the real published resume, so its autouse `_resume_isolation` fixture
+  snapshots/restores published state and deletes created rows. Never assume a
+  scratch DB — any upload-touching test needs the same guard.
 - Lead-chat tests use per-run phones (`PHONE_A`/`PHONE_B` from `TAG_NUM`);
   never hardcode phone numbers in tests (phone-second dedup merges across runs).
 - Lead-chat tests are order/state-sensitive: hardcoded phones (`9876543210`,

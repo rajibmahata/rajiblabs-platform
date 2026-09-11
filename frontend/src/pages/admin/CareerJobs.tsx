@@ -2,8 +2,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
-import { InlineLoader } from "../../components/admin/ui";
-import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 const STATUSES = ["all", "Draft", "Open", "Analyzing", "Ready for Application", "Applied", "Closed"];
@@ -18,9 +16,7 @@ export default function CareerJobs() {
   const [companyId, setCompanyId] = useState("");
   const [form, setForm] = useState<any>({ ...BLANK });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("action");
-  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
+  const [busy, setBusy] = useState(false)
 
   const load = () => {
     const p = new URLSearchParams();

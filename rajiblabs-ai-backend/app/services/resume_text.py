@@ -86,6 +86,14 @@ async def extract_and_store(resume_id: str) -> str:
     file_path = next((c for c in candidates if c and Path(c).is_file()), None)
     if not file_path:
         log.warning("extract_and_store: file missing for %s", resume_id)
+        # Stamp the attempt so callers (consolidate) don't retry every run —
+        # a missing file is a stable outcome, not a retry signal.
+        try:
+            await db["resumes"].update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"extracted_at": utcnow(), "extracted_len": 0}})
+        except Exception:
+            pass
         return ""
     raw = extract_text_for_file(file_path)
     # Fallback: if extraction empty but file exists, keep previous extracted_text
@@ -113,11 +121,18 @@ async def extract_and_store(resume_id: str) -> str:
         {"_id": doc["_id"]},
         {"$set": {"extracted_hash": file_hash, "extracted_len": len(scrubbed)}}
     )
+    # Downstream fan-out only when this extraction produced text or changed
+    # the stored text. Re-extracting an unchanged empty result must NOT
+    # re-fire consolidation+skills (each of which is otherwise cheap, but the
+    # unconditional fan-out formed an extract→consolidate→extract loop for
+    # files that yield no text).
+    prev_text = doc.get("extracted_text") or ""
+    downstream_needed = bool((scrubbed or "").strip()) or ((prev_text or "") != scrubbed)
     # Trigger RAG only if this resume is the currently published/active one
     # (archived resumes remain internal knowledge source but not publicly indexed;
     #  ingest_resume checks active:true, so archived will be skipped until published)
     fresh = await db["resumes"].find_one({"_id": doc["_id"]})
-    if fresh and fresh.get("active") and fresh.get("status") == "published":
+    if downstream_needed and fresh and fresh.get("active") and fresh.get("status") == "published":
         try:
             from app.services.rag_ingest import ingest_resume
             await ingest_resume()
@@ -125,22 +140,24 @@ async def extract_and_store(resume_id: str) -> str:
             log.warning("RAG ingest after extract failed: %s", e)
     # Resume → Projects consolidation (Profile Agent owned): extract projects from this resume
     # and merge with existing projects/portfolio (hash/versioned, no duplicate processing)
-    try:
-        from app.services.resume_projects import consolidate_resume_projects
-        # Only run consolidation if this resume's extracted_hash changed or no cache
-        # consolidate_resume_projects handles per-resume hash versioning internally
-        await consolidate_resume_projects(db, triggered_by=f"resume:{resume_id}")
-    except Exception as e:
-        log.warning("resume project consolidation skipped: %s", e)
+    if downstream_needed:
+        try:
+            from app.services.resume_projects import consolidate_resume_projects
+            # Only run consolidation if this resume's extracted_hash changed or no cache
+            # consolidate_resume_projects handles per-resume hash versioning internally
+            await consolidate_resume_projects(db, triggered_by=f"resume:{resume_id}")
+        except Exception as e:
+            log.warning("resume project consolidation skipped: %s", e)
     # Resume → Skills sync (Profile Agent owned, deterministic, no LLM):
     # previously skills refreshed only on the daily agent run, so freshly
     # uploaded resume skills never appeared until 06:00. Same best-effort
     # pattern as projects above; sync_skills is hash-versioned internally.
-    try:
-        from app.services.skill_intelligence import sync_skills
-        await sync_skills(triggered_by=f"resume:{resume_id}")
-    except Exception as e:
-        log.warning("resume skill sync skipped: %s", e)
+    if downstream_needed:
+        try:
+            from app.services.skill_intelligence import sync_skills
+            await sync_skills(triggered_by=f"resume:{resume_id}")
+        except Exception as e:
+            log.warning("resume skill sync skipped: %s", e)
     # Alert when the ACTIVE resume has no usable text: without extraction the
     # public resume RAG, skills and projects all silently go stale. Archived
     # resumes stay quiet (history only).

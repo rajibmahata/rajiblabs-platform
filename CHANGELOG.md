@@ -2,6 +2,111 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-11 — Admin async UX: shared loaders + toasts everywhere
+
+Resume upload gave no indication anything was happening (single backend request,
+no progress events). Same gap on save/publish/sync/re-index/generate across Admin.
+Fixed with one shared pattern, no per-page spinners, no fake percentages.
+
+### Added — `frontend/src/components/admin/async.tsx` (new, centralized)
+
+- `useAsyncActions()`: `run(key, fn, { successTitle, successMsg, errorTitle })`
+  with duplicate-submission guard (same key re-entry ignored), try → toast
+  success → catch toast error → finally clears loader (loader never sticks).
+  `isLoading(key)` drives `disabled` + loader text per action.
+
+### Added — `frontend/src/components/admin/ui.tsx` + `frontend/src/styles/admin.css`
+
+- `InlineLoader` (`rla-inline-loader`), `BlockLoader` (`rla-block-loader`),
+  `StepProgress` (`rla-step-progress` with done/current/error states + pulse),
+  `AsyncButton` (`is-loading` + `aria-busy`). Violet/soft tokens only,
+  responsive, `fa-spinner fa-spin` icons. No new colors.
+
+### Changed — `frontend/src/pages/admin/ResumeManage.tsx` (the reported issue)
+
+- Upload button disables + shows `Processing...` immediately; staged
+  `StepProgress` (Uploading → Processing → Extracting → Updating Knowledge →
+  Completed) advances on an 800ms timer and holds at step 4 until the single
+  request resolves (no fake percentages — step 5 only on real success).
+  Success toast: "Resume uploaded and profile knowledge updated successfully."
+  + auto list refresh + file-input reset; failure toast: "Resume upload failed.
+  Please try again." Publish/Extract/Delete rows each get per-row
+  `publish-{id}`/`extract-{id}`/`delete-{id}` keys with inline
+  `Publishing...`/`Extracting...`/`Deleting...` states.
+
+### Changed — shared surfaces (same pattern)
+
+- `components/admin/AdminLayout.tsx`: global `Sync GitHub Now` via
+  `runSync("global-sync")` with `Syncing…` state (was bare `syncing` boolean).
+- `components/admin/CatalogManager.tsx` (Portfolio + Products): save,
+  publish/unpublish, feature, delete, image uploads via `run()` with
+  `Saving...`/`Uploading…` states + toasts.
+- `pages/admin/GitHubManage.tsx`: sync/test/save/revoke/toggle/kb-sync via
+  `run()` with `Syncing…`/`Testing…`/`Saving...` states.
+- `pages/admin/KnowledgeManage.tsx`: re-index (site/github), save, doc
+  actions, GH actions, evaluate via `run()` with per-action loaders.
+- `pages/admin/LearningManage.tsx`: create + agent run via `run()`;
+  `Regenerate Day` via `run(`run-day-${day}`)`; `Running...`/`Creating...` states.
+
+### Verified
+
+- `npx eslint src/pages/admin/ src/components/admin/` clean, `npx tsc --noEmit`
+  clean, `npm run build` ✓ (107 modules).
+- Manual: upload shows steps instantly, button disabled (no duplicates),
+  success toast + list refresh; failure shows error toast and keeps file for retry.
+
+## [Unreleased] — 2026-09-11 — Resume pipeline: skill sync on upload, history RAG, career→role, test-DB guard
+
+Root causes for "resume skills/projects not appearing" (traced, not guessed):
+upload → extraction → RAG + project consolidation ran, but `sync_skills`
+only ran on the 06:00 agent run — fresh resume skills never appeared until
+then. The active resume in dev was test residue (`test_resume_1.pdf` with a
+dead /tmp path, zero extraction) because the test suite shares the dev MongoDB
+and upload-tests archive the real resume even when they pass.
+
+### Fixed — `rajiblabs-ai-backend/app/services/resume_text.py`
+- `extract_and_store()` now also triggers `skill_intelligence.sync_skills()`
+  (deterministic, hash-versioned — same best-effort pattern as the existing
+  project consolidation). Upload → skills appear immediately.
+- Active resume with empty extraction now writes an admin-visible `log_error`
+  warning (skills/projects/RAG go stale silently otherwise).
+
+### Fixed — `rajiblabs-ai-backend/app/services/rag_ingest.py`
+- `ingest_resume()` now also indexes non-active resumes with text as
+  admin-only knowledge (`resume:history:<id>`, `guardrails.public_access:
+  False` — public concierge can never retrieve them; admin/workbench can).
+  Full resume history is internal RAG knowledge; public RAG still only the
+  active resume. Orphan sweep deactivates knowledge docs of deleted resumes.
+
+### Fixed — `rajiblabs-ai-backend/app/services/resume_projects.py`
+- Career→role linkage (`_link_career_role`): empty project `role` fills from
+  the verified `profiles.career`/published `experience` entry whose
+  client/company matches the resume project client. No match → stays empty
+  (rendered sections stay hidden). Respects `locked_fields`.
+- **Infinite loop fix (was hanging the suite + pinning CPU):**
+  `extract_and_store` fanned out to consolidation unconditionally while
+  consolidation re-called extraction for every empty-text resume — an
+  extract→consolidate→extract cycle for files yielding no text. Now:
+  consolidation re-extracts only never-attempted rows (`extracted_at`
+  guard), empty `projects_cache: []` counts as valid cache (no repeat LLM),
+  and extraction fans out downstream only when text was produced or changed.
+  `test_resume.py` went from infinite hang to 5 passed in ~9s.
+
+### Fixed — `rajiblabs-ai-backend/tests/test_resume.py`
+- New autouse `_resume_isolation` fixture: snapshots resume rows + the
+  published id before each test, deletes created rows after, restores the
+  previously published resume. Test runs can no longer dethrone or pollute
+  the real resume data.
+
+### Verified
+- New tests in `tests/test_resume_projects.py` (role linkage incl.
+  no-invention case, history admin-only indexing + orphan sweep, skill-sync
+  trigger on extract) — 14 passed, fake-DB, no LLM/network.
+- Live E2E with the real PDF: upload → v2 published, 10085-char extraction,
+  37 published skills cite the upload, public RAG doc created, public
+  skills/projects/detail all 200; cleaned up and v1 restored.
+- Repaired dev data (deleted pytest residue, republished real resume v1).
+
 ## [Unreleased] — 2026-09-11 — Learning: admin inspector + public mentor journey (practical-first second pass)
 
 Second pass on the same Learning system (no new DB/index/API): the previous 2026-09-11 mentor rewrite landed but admin still showed only Day title + Status, and public rendering, while mentor-like, missed the full “What/Why/Real-world → Demo → Try → Mistakes → Exercise → Homework → Recap → What you can do” flow.

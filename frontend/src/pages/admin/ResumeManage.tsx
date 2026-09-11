@@ -2,7 +2,6 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "../../services/api";
 import { Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
-import { toast } from "../../components/admin/toast";
 import { useAsyncActions } from "../../components/admin/async";
 import { InlineLoader, StepProgress } from "../../components/admin/ui";
 
@@ -21,6 +20,7 @@ export default function ResumeManage() {
   const [uploadStep, setUploadStep] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<"processing" | "done" | "error">("processing");
   const timerRef = useRef<number | null>(null);
+  const uploading = isLoading("upload");
 
   const load = () => api.get<any[]>("/api/admin/resumes").then((l) => setList(Array.isArray(l) ? l : [])).catch(() => {});
 
@@ -28,23 +28,23 @@ export default function ResumeManage() {
     load();
   }, []);
 
-  // Advance simulated steps while upload is in progress
+  // Advance simulated steps while upload is in progress.
+  // Step reset happens in upload() before the request starts; this effect
+  // only owns the timer (interval callbacks may call setState).
   useEffect(() => {
-    if (isLoading("upload")) {
-      setUploadStep(0);
-      setUploadStatus("processing");
-      let step = 0;
-      timerRef.current = window.setInterval(() => {
-        step = Math.min(step + 1, STEPS.length - 2); // hold at "Updating Knowledge..." until request finishes
-        setUploadStep(step);
-      }, 800);
-      return () => {
-        if (timerRef.current) window.clearInterval(timerRef.current);
-      };
-    } else {
+    if (!uploading) {
       if (timerRef.current) window.clearInterval(timerRef.current);
+      return;
     }
-  }, [isLoading]);
+    let step = 0;
+    timerRef.current = window.setInterval(() => {
+      step = Math.min(step + 1, STEPS.length - 2); // hold at "Updating Knowledge..." until request finishes
+      setUploadStep(step);
+    }, 800);
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    };
+  }, [uploading]);
 
   const upload = async () => {
     if (!file) return;
@@ -120,8 +120,6 @@ export default function ResumeManage() {
       },
       { successTitle: "Resume deleted", successMsg: "", errorTitle: "Delete failed" }
     );
-
-  const uploading = isLoading("upload");
 
   return (
     <div>
