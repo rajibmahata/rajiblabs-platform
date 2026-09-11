@@ -1,7 +1,12 @@
 """Learning Agent — autonomous mentor for RajibLabs.
 
 Owns the complete lifecycle: Admin defines Topic+Duration(+Goal/Level) → Agent creates
-roadmap → daily blocks → validation → MongoDB → RAG. Daily at 06:00 IST.
+roadmap → daily blocks → validation → MongoDB → RAG. Daily at 06:30 IST.
+
+Principles:
+- Human-centric, mentor beside you, not AI article.
+- Practical-first: real-world scenario → simple explanation → code → try → exercise → homework → recap.
+- Progressive: understands full path before generating a day, Day 5 never assumes unt taught knowledge.
 """
 import hashlib
 import logging
@@ -23,9 +28,6 @@ def _hash(*parts: str) -> str:
     return hashlib.sha256("|".join(p or "" for p in parts).encode()).hexdigest()[:16]
 
 # ---------- Status vocabulary (single source of truth) ----------
-# Admin/outside callers use "live"/"published"/"draft"; storage canonical form
-# is planned|active|paused|completed|archived. The public site serves ONLY
-# active|completed — never planned/paused/archived, never by prompt.
 PATH_STATUS_SYNONYMS = {
     "live": "active",
     "published": "active",
@@ -38,21 +40,11 @@ PATH_STATUS_SYNONYMS = {
     "archived": "archived",
 }
 
-# Path statuses the public website may serve. "live"/"published" are accepted
-# as stored synonyms (rows written before normalization, or via direct DB
-# edits) so intent-to-publish is never silently hidden. Everything else —
-# planned/draft, paused, archived — stays admin-only.
 VISIBLE_PATH_STATUSES = ("active", "completed", "live", "published")
-
-# Block statuses the public website may serve. Anything else (planned,
-# needs_review) stays admin-only even when the parent path is live.
 VISIBLE_BLOCK_STATUSES = ("published", "completed")
 
 
 def normalize_path_status(raw: str) -> str:
-    """Map live/published/draft synonyms to the canonical stored status.
-
-    Raises ValueError for unknown values (admin PATCH surfaces it as 400)."""
     canon = PATH_STATUS_SYNONYMS.get((raw or "").strip().lower())
     if not canon:
         raise ValueError(f"Invalid status: {raw}")
@@ -60,20 +52,19 @@ def normalize_path_status(raw: str) -> str:
 
 
 def is_path_visible(doc: dict | None) -> bool:
-    """True only for paths the public site may serve (active/completed)."""
     return bool(doc) and doc.get("status") in VISIBLE_PATH_STATUSES
 
 def _sanitize(text: str) -> str:
     for pat in [r"sk-[A-Za-z0-9]{10,}", r"ghp_[A-Za-z0-9]{10,}", r"Bearer\s+\S+"]:
         text = re.sub(pat, "***", text, flags=re.I)
-    return text[:6000]
+    return text[:8000]
 
 # ---------- Roadmap generation (intelligent, not hardcoded) ----------
 async def _generate_roadmap(topic: str, duration: int, goal: str = "", level: str = "") -> list[dict]:
     """Use LLM to create a day-by-day roadmap, fallback to deterministic template."""
     topic = (topic or "").strip()
     goal = (goal or "").strip()
-    level = (level or "beginner").strip()
+    level = (level or "beginner").strip() or "beginner"
     # Try LLM first (cheap, via shared orchestrator)
     try:
         from app.services.lead_ai import AIService
@@ -83,22 +74,25 @@ async def _generate_roadmap(topic: str, duration: int, goal: str = "", level: st
             svc = AIService()
             if svc.configured:
                 prompt = (
-                    f"You are a mentor designing a {duration}-day learning roadmap for '{topic}' (level: {level}).\n"
-                    f"Goal: {goal or 'Practical understanding'}\n"
-                    "Return JSON with keys: prerequisites[], roadmap: [{day: int, title: string, objective: string, why_matters: string}].\n"
-                    "Rules: progression from fundamentals → advanced, each day builds on previous, no generic fluff, practical focus, no invented prerequisites.\n"
+                    f"You are a senior mentor designing a {duration}-day learning path for a COMPLETE BEGINNER who knows nothing about '{topic}'.\n"
+                    f"Level: {level}. Goal: {goal or 'Be able to practically use '+topic+' in real projects'}.\n"
+                    "Design a progressive roadmap where each day builds on the previous:\n"
+                    "Understand → Observe → Follow → Practice → Modify → Solve → Build.\n"
+                    "Day 1 must be true fundamentals with no assumed knowledge. Day 2 must not assume Day 5 knowledge.\n"
+                    "Focus on practical usefulness, not theory. Each day title must be concrete and action-oriented (e.g. 'Your First C# Program — Printing Hello' not 'Introduction to Types').\n"
+                    "Return JSON with keys: prerequisites[] (0-3 things truly needed, or empty if none), roadmap: [{day: int, title: string, objective: string, why_matters: string}].\n"
+                    "Rules: no generic fluff like 'Advanced Concepts', no invented prerequisites, titles must be specific to the topic.\n"
                     "Return JSON only."
                 )
                 out = await svc._complete(
-                    [{"role": "system", "content": "You are a curriculum designer. Return JSON only."},
-                     {"role": "user", "content": prompt[:3500]}],
-                    max_tokens=1200, temperature=0.3, tag="learning-roadmap"
+                    [{"role": "system", "content": "You are a curriculum designer who creates practical, beginner-friendly roadmaps. Return JSON only."},
+                     {"role": "user", "content": prompt[:3800]}],
+                    max_tokens=1400, temperature=0.3, tag="learning-roadmap"
                 )
                 data = out.get("data", {})
                 roadmap = data.get("roadmap", [])
                 prereqs = data.get("prerequisites", [])
                 if isinstance(roadmap, list) and len(roadmap) >= duration:
-                    # Validate and trim to duration
                     cleaned = []
                     for i, item in enumerate(roadmap[:duration], 1):
                         cleaned.append({
@@ -110,24 +104,31 @@ async def _generate_roadmap(topic: str, duration: int, goal: str = "", level: st
                     return {"roadmap": cleaned, "prerequisites": prereqs[:5]}
     except Exception as e:
         log.warning("roadmap LLM failed for %s: %s", topic, e)
-    # Deterministic fallback: generic progression, still useful
+    # Deterministic fallback: generic progression, still useful — but topic-aware
     fallback_titles = [
-        "Fundamentals & Setup", "Core Concepts", "Types & Variables", "Control Flow",
-        "Functions & Scope", "Data Structures", "Object-Oriented Basics", "Collections & Iteration",
-        "Error Handling", "Async & Patterns", "Advanced Concepts", "Practical Project",
-        "Testing & Debugging", "Best Practices", "Final Review & Next Steps"
+        "First Steps — What is {t} and Why It Matters", "Setting Up — Your First {t} Environment",
+        "Your First {t} Program — Seeing It Run", "Variables — Storing Information",
+        "Control Flow — Making Decisions", "Functions — Reusing Code",
+        "Working with Data — Collections", "Objects — Modeling Real Things",
+        "Handling Errors Gracefully", "Putting It Together — Mini Project",
+        "Testing Your Code", "Best Practices & Clean Code", "Building Something Real",
+        "Next Steps — Where to Go From Here"
     ]
     roadmap = []
     for i in range(1, duration + 1):
-        title = fallback_titles[(i - 1) % len(fallback_titles)]
+        tmpl = fallback_titles[(i - 1) % len(fallback_titles)]
+        title = tmpl.format(t=topic)
         if duration <= 7 and i == duration:
-            title = "Practical Project & Review"
-        roadmap.append({"day": i, "title": f"{topic} — {title}", "objective": f"Understand {title.lower()}", "why_matters": f"Essential for {topic} mastery"})
+            title = f"Capstone — Build a Small {topic} Project"
+        roadmap.append({"day": i, "title": title, "objective": f"Understand and practice {title.lower()}", "why_matters": f"Core building block for {topic}"})
     return {"roadmap": roadmap, "prerequisites": []}
 
 # ---------- Daily block generation ----------
-async def _generate_daily_block(topic: str, day: int, day_title: str, objective: str, why_matters: str, prev_context: str = "") -> dict:
-    """Generate a structured daily block via LLM + RAG grounding, fallback deterministic."""
+async def _generate_daily_block(topic: str, day: int, day_title: str, objective: str, why_matters: str, prev_context: str = "", *, duration: int = 0, full_roadmap: list[dict] | None = None, prev_blocks_summary: str = "") -> dict:
+    """Generate a structured daily block via LLM + RAG grounding, fallback deterministic.
+    
+    This is the HEART of the mentor experience. Every lesson must feel like a patient mentor.
+    """
     # RAG grounding: fetch trusted knowledge for this day's topic
     rag_context = ""
     try:
@@ -139,7 +140,14 @@ async def _generate_daily_block(topic: str, day: int, day_title: str, objective:
                 rag_context = "\n".join(c.get("content", "")[:400] for c in chunks[:2])
     except Exception:
         pass
-    # Try LLM
+
+    # Build progressive context: full roadmap + previous days
+    roadmap_ctx = ""
+    if full_roadmap:
+        roadmap_ctx = "Full path: " + " → ".join([f"Day {r.get('day')}: {r.get('title')}" for r in full_roadmap[:duration or len(full_roadmap)]])
+    prev_ctx_full = prev_blocks_summary or prev_context
+
+    # Try LLM — mentor tone, practical-first
     try:
         from app.services.lead_ai import AIService
         from app.config import get_settings
@@ -147,84 +155,304 @@ async def _generate_daily_block(topic: str, day: int, day_title: str, objective:
         if s.openai_api_key and s.openai_enabled:
             svc = AIService()
             if svc.configured:
-                prev = f"Previous: {prev_context[:500]}" if prev_context else ""
-                prompt = (
-                    f"Create Day {day} lesson for '{topic}' — Title: {day_title}\n"
-                    f"Objective: {objective}\nWhy matters: {why_matters}\n{prev}\n"
-                    f"Verified context (use if relevant, never invent):\n{rag_context[:800]}\n\n"
-                    "Return JSON with keys: topic, learning_objective, why_matters, concept_explanation (2-3 short paragraphs, mentor tone), "
-                    "step_by_step (array of 3-5 strings), examples (array of {title, code, explanation, expected_output}), "
-                    "exercise (string), homework (string), challenge (string), quick_review (array), questions (array of 3), next_preview (string).\n"
-                    "Code examples must be runnable, progressive, and match the lesson. Return JSON only."
+                is_first_day = day == 1
+                is_last_day = duration and day == duration
+                level_hint = "COMPLETE BEGINNER — knows nothing, no jargon without explanation" if is_first_day else "beginner who completed previous days"
+
+                system_prompt = (
+                    "You are a warm, patient mentor sitting beside a complete beginner. "
+                    "You do NOT write textbook articles. You teach by story, example, and doing. "
+                    "Your language is simple, friendly, short paragraphs (2-3 sentences each). "
+                    "You introduce a technical term only AFTER explaining it in plain words. "
+                    "You never jump to advanced concepts. You make the learner DO something every lesson."
                 )
+
+                user_prompt = f"""
+Topic for the whole path: "{topic}" ({duration or '?'} days)
+{roadmap_ctx}
+Current lesson: Day {day} — "{day_title}"
+Objective for today: {objective}
+Why it matters: {why_matters}
+Learner level: {level_hint}
+{"This is DAY 1 — start from zero, no assumed knowledge, very gentle." if is_first_day else ""}
+{"This is the FINAL day — include a small capstone and where to go next." if is_last_day else ""}
+Previous lessons already covered (do NOT repeat, build on them):
+{prev_ctx_full[:1200] or "(none — this is the start)"}
+
+Verified knowledge (use only if relevant, never invent facts):
+{rag_context[:900] if rag_context else "(no verified context — use general accurate knowledge)"}
+
+TASK: Create a complete, practical lesson for Day {day}. Follow this EXACT structure. Keep each section concise and useful. Do not add fluff.
+
+Required JSON keys (all strings unless noted):
+{{
+  "topic": "Short topic for today (same as Day title)",
+  "learning_objective": "One clear sentence: After today you will be able to ...",
+  "why_matters": "2-3 sentences, real-world relevance",
+  "real_world_example": "A relatable story/scenario BEFORE any theory. For programming: use concrete objects like Customer (name, email), Product (name, price), Shopping Cart. Make it vivid and beginner-friendly.",
+  "simple_explanation": "Explain the core idea in plain words as if to a friend, 2-3 short paragraphs max, no jargon-first",
+  "concept_explanation": "Slightly deeper but still simple — connect the real-world example to the technical concept. Introduce the term naturally here.",
+  "step_by_step": ["3-5 concrete steps the learner can follow, action-oriented, e.g. '1. Create a new variable called customerName'"],
+  "practical_example": "Describe the practical example you will code/demo, in one paragraph, connected to the real-world scenario",
+  "examples": [
+    {{
+      "title": "Example title (e.g. Customer class - your first object)",
+      "code": "Runnable code. For C# must be complete with using System; class Program {{ static void Main() {{ ... }} }}, for Python must be runnable. Keep beginner-level, no enterprise patterns on Day 1-4.",
+      "explanation": "Line-by-line friendly explanation of what the code does, not just what it is",
+      "expected_output": "What the learner will see when they run it"
+    }}
+  ],
+  "try_it_yourself": "One small tweak to try immediately (e.g. 'Change the product price to 99 and see what happens')",
+  "common_mistakes": ["Mistake 1 with why it happens and how to fix", "Mistake 2..."],
+  "exercise": "A hands-on exercise the learner can do in 5-10 minutes, clearly matched to today's level. Must be doable with only knowledge up to Day {day}.",
+  "homework": "A slightly bigger take-home task (15-20 min) that reinforces today and previews tomorrow, still within current level",
+  "challenge": "Optional stretch goal for curious learners (one sentence)",
+  "quick_review": ["3 bullet recap of key takeaways"],
+  "what_you_can_do_now": ["2-3 concrete abilities, e.g. 'Create a Customer class with 2 properties'"],
+  "questions": ["3 check-yourself questions"],
+  "next_preview": "One sentence teaser for Day {day+1} that connects logically"
+}}
+
+Rules:
+- No textbook tone, no huge paragraphs, no repeating the topic definition.
+- No unexplained terminology. If you say 'class', first say 'a class is like a blueprint for creating objects — think of a cookie cutter'.
+- Code must be correct, runnable, and use the simplest possible example for this day's level.
+- Exercises/homework must be exactly at this day's level — Day 2 must not require Day 5 knowledge.
+- If topic is not programming (e.g. design, theory), provide practical example without code or with pseudocode, but still follow the structure.
+- Return JSON only, no markdown wrapper.
+"""
                 out = await svc._complete(
-                    [{"role": "system", "content": "You are a mentor teaching practically. Return JSON only, no markdown wrapper."},
-                     {"role": "user", "content": _sanitize(prompt[:4000])}],
-                    max_tokens=2000, temperature=0.4, tag="learning-block"
+                    [{"role": "system", "content": system_prompt},
+                     {"role": "user", "content": _sanitize(user_prompt[:6500])}],
+                    max_tokens=3000, temperature=0.35, tag="learning-block"
                 )
                 data = out.get("data", {})
-                # Basic validation
-                if data.get("topic") and data.get("concept_explanation"):
-                    return {
-                        "topic": str(data.get("topic", day_title))[:120],
-                        "learning_objective": str(data.get("learning_objective", objective))[:300],
-                        "why_matters": str(data.get("why_matters", why_matters))[:300],
-                        "concept_explanation": str(data.get("concept_explanation", ""))[:3000],
-                        "step_by_step": (data.get("step_by_step") or [])[:6],
-                        "examples": (data.get("examples") or [])[:3],
-                        "expected_output": str(data.get("examples", [{}])[0].get("expected_output", "") if data.get("examples") else "")[:500],
-                        "exercise": str(data.get("exercise", ""))[:1000],
-                        "homework": str(data.get("homework", ""))[:1000],
-                        "challenge": str(data.get("challenge", ""))[:800],
-                        "quick_review": (data.get("quick_review") or [])[:5],
-                        "questions": (data.get("questions") or [])[:5],
-                        "next_preview": str(data.get("next_preview", ""))[:300],
+                if data.get("topic") and (data.get("concept_explanation") or data.get("simple_explanation")):
+                    # Normalize and validate we got mentor-quality content
+                    def _s(v, n): return str(v or "")[:n].strip()
+                    def _arr(v, n): return [str(x)[:500] for x in (v or [])][:n] if isinstance(v, list) else []
+                    def _ex_arr(v):
+                        if not isinstance(v, list): return []
+                        out_e=[]
+                        for e in v[:2]:
+                            if not isinstance(e, dict): continue
+                            out_e.append({
+                                "title": _s(e.get("title"), 120),
+                                "code": _s(e.get("code"), 4000),
+                                "explanation": _s(e.get("explanation"), 1000),
+                                "expected_output": _s(e.get("expected_output"), 600),
+                            })
+                        return out_e
+
+                    result = {
+                        "topic": _s(data.get("topic", day_title), 120),
+                        "learning_objective": _s(data.get("learning_objective", objective), 400),
+                        "why_matters": _s(data.get("why_matters", why_matters), 500),
+                        "real_world_example": _s(data.get("real_world_example"), 1200),
+                        "simple_explanation": _s(data.get("simple_explanation"), 2000),
+                        "concept_explanation": _s(data.get("concept_explanation", data.get("simple_explanation")), 3500),
+                        "step_by_step": _arr(data.get("step_by_step"), 6),
+                        "practical_example": _s(data.get("practical_example"), 1000),
+                        "examples": _ex_arr(data.get("examples")),
+                        "try_it_yourself": _s(data.get("try_it_yourself"), 600),
+                        "common_mistakes": _arr(data.get("common_mistakes"), 5),
+                        "exercise": _s(data.get("exercise"), 1200),
+                        "homework": _s(data.get("homework"), 1200),
+                        "challenge": _s(data.get("challenge"), 800),
+                        "quick_review": _arr(data.get("quick_review"), 5),
+                        "what_you_can_do_now": _arr(data.get("what_you_can_do_now"), 5),
+                        "questions": _arr(data.get("questions"), 5),
+                        "next_preview": _s(data.get("next_preview"), 400),
                     }
+                    # Ensure at least one example has code if programming topic
+                    if not result["examples"]:
+                        result["examples"] = [{"title": f"{day_title} example", "code": f"// {topic} Day {day}\nconsole.log('Hello {topic}');", "explanation": "Starter example", "expected_output": "Hello"}]
+                    return result
     except Exception as e:
         log.warning("daily block LLM failed day %s %s: %s", day, topic, e)
-    # Deterministic fallback
-    return {
-        "topic": day_title,
-        "learning_objective": objective,
-        "why_matters": why_matters or f"Builds toward {topic} mastery",
-        "concept_explanation": f"Today we explore {day_title}. {objective} This builds on previous days and prepares for next steps in {topic}.",
-        "step_by_step": [f"Step {i}: Understand {day_title} concept {i}" for i in range(1, 4)],
-        "examples": [{"title": f"{day_title} example", "code": f"// {topic} Day {day} example\nconsole.log('Hello {topic}');", "explanation": "Basic example", "expected_output": "Hello"}],
-        "exercise": f"Try modifying the example to handle a different input for {day_title}.",
-        "homework": f"Build a small {day_title.lower()} exercise and test it.",
-        "challenge": f"Can you extend {day_title} to handle edge cases?",
-        "quick_review": [f"Reviewed {day_title}"],
-        "questions": [f"What is {day_title}?", f"Why does {day_title} matter for {topic}?", "Can you explain it to someone else?"],
-        "next_preview": f"Next: Day {day+1}",
+    # Deterministic fallback — STILL mentor-like, not generic lorem
+    # Build a practical fallback based on topic
+    is_code_topic = any(k in topic.lower() for k in ["c#", ".net", "asp.net", "python", "javascript", "java", "programming", "react", "angular", "node", "sql", "code","blazor","backend","frontend"])
+    if is_code_topic:
+        # Use shopping app scenario as anchor for code topics
+        real_world = f"Imagine you are building a small shopping app. Today we focus on {day_title}. Think of a Customer who has a name and email, and a Product with name and price — we will model this with {topic}."
+        simple = f"Today you will learn {day_title}. {objective} We will start with a tiny, runnable example and then you will tweak it yourself."
+        code_title = f"{day_title} — Your first object"
+        if "c#" in topic.lower() or "asp.net" in topic.lower() or ".net" in topic.lower():
+            code = """using System;
+
+class Product
+{
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+
+class Program
+{
+    static void Main()
+    {
+        var p = new Product { Name = "Laptop", Price = 999 };
+        Console.WriteLine($"{p.Name} costs ${p.Price}");
     }
+}"""
+            explanation = "We define a Product as a blueprint (class) with two pieces of data. Then we create one product and print it. Try changing the price."
+            expected = "Laptop costs 999"
+        elif "python" in topic.lower():
+            code = """class Product:
+    def __init__(self, name, price):
+        self.name = name
+        self.price = price
+
+p = Product("Laptop", 999)
+print(f"{p.name} costs {p.price}")"""
+            explanation = "We create a blueprint for a Product, make one, and print it. Change the values and run again."
+            expected = "Laptop costs 999"
+        else:
+            code = f"// {topic} — {day_title}\nconsole.log('Day {day}: {day_title}');\nconsole.log('Try changing the text and running again');"
+            explanation = "A minimal runnable example to see immediate output."
+            expected = f"Day {day}: {day_title}"
+        return {
+            "topic": day_title,
+            "learning_objective": objective or f"Understand {day_title} and run your first example",
+            "why_matters": why_matters or f"Every {topic} project uses {day_title.lower()} — this is your building block",
+            "real_world_example": real_world,
+            "simple_explanation": simple,
+            "concept_explanation": simple + " " + why_matters,
+            "step_by_step": [f"1. Understand what {day_title} means with the shopping example", f"2. Look at the tiny code — read it line by line", f"3. Run it and see '{expected}'", "4. Change one value and run again"],
+            "practical_example": f"We model a Product from our shopping story with {topic}.",
+            "examples": [{"title": code_title, "code": code, "explanation": explanation, "expected_output": expected}],
+            "try_it_yourself": "Change the product name to 'Phone' and price to 499, then run again. What changed?",
+            "common_mistakes": ["Forgetting a semicolon or bracket — the error points to the line before", "Mixing up Name vs name (C# is case-sensitive)"],
+            "exercise": f"Create a Customer with Name and Email, print it like we did for Product.",
+            "homework": f"Add a second product and a method that calculates total price for both. Test it.",
+            "challenge": "Can you add a discount: if price > 500, show 10% off?",
+            "quick_review": [f"{day_title} lets you model real things", "You ran code and saw {expected}", "Next you will build on this"],
+            "what_you_can_do_now": [f"Create a simple {day_title} example", "Explain it to a friend in plain words"],
+            "questions": [f"What does {day_title} do?", f"Why do we model a Product this way?", "What happens if you change the price?"],
+            "next_preview": f"Tomorrow we will take this {day_title} and use it in a slightly bigger scenario.",
+        }
+    else:
+        # Non-code topic fallback
+        return {
+            "topic": day_title,
+            "learning_objective": objective,
+            "why_matters": why_matters or f"Helps you master {topic}",
+            "real_world_example": f"Think of a real situation where {day_title.lower()} matters — for example, planning a small project or explaining it to a teammate.",
+            "simple_explanation": f"Today we explore {day_title}. {objective} We will use a simple story to make it click.",
+            "concept_explanation": f"{day_title} in {topic} helps you solve real problems. We start simple, then connect to practice.",
+            "step_by_step": [f"Understand {day_title} with a simple story", "See how it works in practice", "Try a small exercise yourself"],
+            "practical_example": f"A practical scenario for {day_title} with {topic}.",
+            "examples": [{"title": f"{day_title} example", "code": "", "explanation": "Illustrative example", "expected_output": ""}],
+            "try_it_yourself": f"Explain {day_title} to someone using your own example.",
+            "common_mistakes": ["Trying to memorize instead of doing", "Skipping the exercise"],
+            "exercise": f"Write down your own example for {day_title} with {topic}.",
+            "homework": f"Find a real-world case where {day_title.lower()} is used and note what you learned.",
+            "challenge": f"Can you teach {day_title} to someone else?",
+            "quick_review": [f"Reviewed {day_title}", "Connected to real example"],
+            "what_you_can_do_now": [f"Explain {day_title} clearly"],
+            "questions": [f"What is {day_title}?", f"Why does it matter?", "Can you give an example?"],
+            "next_preview": f"Next: Day {day+1}",
+        }
+
+def _is_weak_block(block: dict) -> tuple[bool, str]:
+    """Detect weak/generic lessons that should be regenerated."""
+    ce = (block.get("concept_explanation") or block.get("simple_explanation") or "")
+    ex = block.get("exercise") or ""
+    rw = block.get("real_world_example") or ""
+    steps = block.get("step_by_step") or []
+    examples = block.get("examples") or []
+    # Heuristics
+    if len(ce) < 200:
+        return True, "concept_explanation too short (<200)"
+    if "This builds on previous days" in ce and len(ce) < 400:
+        return True, "generic fallback phrase"
+    if len(steps) < 3 or any("Step 1: Understand" in s and "concept" in s for s in steps):
+        # generic steps like "Step 1: Understand X concept 1"
+        if len(ce) < 600:
+            return True, "generic step_by_step"
+    if not rw or len(rw) < 80:
+        return True, "missing real_world_example"
+    if not examples or not any(e.get("code", "").strip() for e in examples):
+        # allow non-code topics to have empty code, but check if topic is code-like
+        topic = (block.get("topic") or "").lower()
+        if any(k in topic for k in ["c#", "python", "code", "programming", ".net"]):
+            return True, "missing code example for code topic"
+    if len(ex) < 30 or "Try modifying the example" in ex and len(ex) < 80:
+        return True, "generic exercise"
+    return False, ""
 
 def _validate_block(block: dict) -> tuple[bool, list[str]]:
-    """Factual/code validation without LLM: check required fields, code syntax via try-compile."""
+    """Mentor-quality validation: required fields, code, exercises, no jargon dump."""
     issues = []
-    if not block.get("learning_objective"):
+    # Required
+    if not block.get("learning_objective") or len(block["learning_objective"]) < 15:
         issues.append("missing learning_objective")
-    if not block.get("concept_explanation") or len(block["concept_explanation"]) < 30:
-        issues.append("concept_explanation too short")
-    # Code syntax check for python/js/csharp snippets
+    ce = block.get("concept_explanation") or block.get("simple_explanation") or ""
+    if not ce or len(ce) < 80:
+        issues.append("concept_explanation too short (<80)")
+    if len(ce) > 5000:
+        issues.append("concept_explanation too long")
+    # Must have practical grounding
+    if not block.get("real_world_example") or len(block["real_world_example"]) < 50:
+        issues.append("missing real_world_example")
+    if not block.get("simple_explanation") and len(ce) < 100:
+        issues.append("missing simple_explanation")
+    steps = block.get("step_by_step") or []
+    if len(steps) < 3:
+        issues.append("step_by_step needs 3-5 steps")
+    # Check for huge paragraphs (should be short)
+    for para in ce.split("\n\n"):
+        if len(para) > 800:
+            issues.append("paragraph too long (>800 chars) — split for readability")
+            break
+    # Generic AI language detection
+    generic_phrases = ["As an AI", "In conclusion", "In summary, this lesson", "It is important to note"]
+    for gp in generic_phrases:
+        if gp.lower() in ce.lower():
+            issues.append(f"generic AI phrase: {gp}")
+    # Code syntax check
     for ex in block.get("examples", [])[:2]:
         code = ex.get("code", "")
-        if code.strip().startswith("import ") or "def " in code or "class " in code:
-            try:
-                import ast
-                if "python" in code.lower() or "def " in code:
-                    ast.parse(code)
-            except SyntaxError as e:
-                issues.append(f"code syntax: {e.msg}")
+        if code.strip():
+            # Python
+            if "def " in code or "import " in code or "class " in code and "public " not in code:
+                # Heuristic: if it looks like Python, try parse
+                if "using System" not in code and "Console.WriteLine" not in code:
+                    try:
+                        import ast
+                        # Only try Python parse if not C#
+                        if ";" not in code or "python" in (ex.get("title","").lower()):
+                            ast.parse(code)
+                    except SyntaxError as e:
+                        issues.append(f"code syntax: {e.msg}")
+            # C# basic check: must have Main if it's C# example
+            if "using System" in code and "static void Main" not in code:
+                issues.append("C# example missing Main method")
+    # Exercises
+    if not block.get("exercise") or len(block["exercise"]) < 20:
+        issues.append("missing exercise")
+    if block.get("exercise") and len(block["exercise"]) < 30:
+        issues.append("exercise too short")
+    # Homework should be present
+    if not block.get("homework") or len(block["homework"]) < 20:
+        issues.append("missing homework")
+    # Common mistakes
+    if not block.get("common_mistakes") or len(block.get("common_mistakes") or []) < 1:
+        issues.append("missing common_mistakes")
+    # Quick review
+    if not block.get("quick_review") or len(block.get("quick_review") or []) < 2:
+        issues.append("quick_review needs 2-3 bullets")
+    # What you can do now
+    if not block.get("what_you_can_do_now") or len(block.get("what_you_can_do_now") or []) < 1:
+        issues.append("missing what_you_can_do_now")
     return (len(issues) == 0, issues)
 
 # ---------- Public API used by scheduler and admin ----------
 async def create_learning_path(topic: str, duration: int, goal: str = "", level: str = "beginner", created_by: str = "admin") -> dict:
     db = get_db()
     slug = _slug(topic)
-    # Enforce single active per topic slug? Allow multiple but only one active per topic
     existing_active = await db["learning_paths"].find_one({"slug": slug, "status": "active"})
     if existing_active:
-        # Pause previous if new is active? Keep as is, new will be planned initially
         pass
     roadmap_data = await _generate_roadmap(topic, duration, goal, level)
     now = utcnow()
@@ -247,13 +475,11 @@ async def create_learning_path(topic: str, duration: int, goal: str = "", level:
         "last_run_at": None,
         "next_run_at": now,
     }
-    # Check duplicate by content hash
     dup = await db["learning_paths"].find_one({"slug": slug, "content_hash": doc["content_hash"]})
     if dup:
         return dup
     res = await db["learning_paths"].insert_one(doc)
     doc["_id"] = res.inserted_id
-    # Create placeholder blocks (planned)
     for day in roadmap_data.get("roadmap", []):
         block_doc = {
             "path_id": res.inserted_id,
@@ -276,19 +502,15 @@ async def create_learning_path(topic: str, duration: int, goal: str = "", level:
     return doc
 
 async def run_daily(triggered_by: str = "scheduler") -> dict:
-    """Daily 06:00 IST job: inspect active paths, generate/validate next block."""
+    """Daily 06:30 IST job: inspect active paths, generate/validate next block."""
     db = get_db()
     from app.services import agent_config
     cfg = await agent_config.get_agent(db, "rajiblabs-learning") if "get_agent" in dir(agent_config) else None
-    # If agent disabled, no-op
     if cfg and not cfg.get("enabled", True):
         return {"status": "no_action", "reason": "agent disabled"}
     now = utcnow()
-    # Find live paths (canonical "active" plus legacy/synonym rows that were
-    # stored as "live"/"published" before status normalization existed).
     cur = db["learning_paths"].find({"status": {"$in": ["active", "live", "published"]}})
     paths = [d async for d in cur]
-    # Also include planned that should become active (first run)
     if not paths:
         cur2 = db["learning_paths"].find({"status": "planned"}).sort("created_at", 1).limit(1)
         first = [d async for d in cur2]
@@ -300,25 +522,27 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
     for path in paths:
         slug = path["slug"]
         duration = int(path.get("duration", 10))
-        # Determine next day to publish
         blocks = [d async for d in db["learning_blocks"].find({"path_id": path["_id"]}).sort("day_number", 1)]
-        # Find first planned/ready block, or needs_review
         next_block = None
         for b in blocks:
             if b.get("status") in ("planned", "needs_review"):
                 next_block = b
                 break
+            # Also check if published block is weak — should be improved
+            if b.get("status") == "published":
+                weak, reason = _is_weak_block(b)
+                if weak:
+                    log.info("Block %s day %s is weak (%s) — will regenerate", slug, b.get("day_number"), reason)
+                    next_block = b
+                    break
         if not next_block:
-            # Check if all published/completed -> mark path completed
             if all(b.get("status") in ("published", "completed", "archived") for b in blocks) and len(blocks) >= duration:
                 await db["learning_paths"].update_one({"_id": path["_id"]}, {"$set": {"status": "completed", "progress": 100, "updated_at": now}})
                 results.append({"path": slug, "action": "completed"})
                 continue
             else:
-                # No planned block but still missing -> generate missing
                 max_day = max([b.get("day_number", 0) for b in blocks] or [0])
                 if max_day < duration:
-                    # Create placeholder for next day
                     roadmap = path.get("roadmap", [])
                     title = roadmap[max_day]["title"] if max_day < len(roadmap) else f"Day {max_day+1}"
                     obj = roadmap[max_day] if max_day < len(roadmap) else {"title": title, "objective": "", "why_matters": ""}
@@ -334,30 +558,39 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
         if not next_block:
             results.append({"path": slug, "action": "no_action", "reason": "no planned block"})
             continue
-        # Validate existing content hash to avoid regen
-        # If block already published and hash matches, skip
-        prev_text = next_block.get("concept_explanation", "")
-        # Generate block
-        prev_block = None
+        # Build progressive context: full roadmap + previous blocks summary
+        prev_ctx = ""
+        prev_summary = ""
         if next_block["day_number"] > 1:
-            prev_block = await db["learning_blocks"].find_one({"path_id": path["_id"], "day_number": next_block["day_number"]-1})
-        prev_ctx = prev_block.get("topic", "") if prev_block else ""
-        gen = await _generate_daily_block(path["topic"], next_block["day_number"], next_block.get("title",""), next_block.get("learning_objective",""), next_block.get("why_matters",""), prev_ctx)
-        # Validate
+            prev_blocks = [b for b in blocks if b.get("day_number", 0) < next_block["day_number"]]
+            # Summarize previous days for the LLM
+            parts = []
+            for pb in prev_blocks[-3:]:  # last 3 for context window
+                parts.append(f"Day {pb.get('day_number')}: {pb.get('title') or pb.get('topic')} — {pb.get('learning_objective','')[:120]}")
+            prev_summary = "\n".join(parts)
+            prev_ctx = prev_summary
+        # Also include full roadmap for global understanding
+        full_roadmap = path.get("roadmap", [])
+        gen = await _generate_daily_block(
+            path["topic"], next_block["day_number"], next_block.get("title",""), 
+            next_block.get("learning_objective",""), next_block.get("why_matters",""), 
+            prev_ctx, duration=duration, full_roadmap=full_roadmap, prev_blocks_summary=prev_summary
+        )
         ok, issues = _validate_block(gen)
-        new_hash = _hash(gen.get("concept_explanation",""), gen.get("exercise",""))
+        new_hash = _hash(gen.get("concept_explanation",""), gen.get("exercise",""), gen.get("real_world_example",""))
+        # If hash matches and not weak, skip
         if next_block.get("content_hash") == new_hash and next_block.get("status") == "published":
-            results.append({"path": slug, "day": next_block["day_number"], "action": "unchanged", "hash": new_hash})
-            continue
+            weak, _ = _is_weak_block(next_block)
+            if not weak:
+                results.append({"path": slug, "day": next_block["day_number"], "action": "unchanged", "hash": new_hash})
+                continue
         if not ok:
-            # Mark needs_review, don't publish
             await db["learning_blocks"].update_one({"_id": next_block["_id"]}, {"$set": {
                 "status": "needs_review", "content_hash": new_hash, "validation_issues": issues, "updated_at": now,
                 **gen
             }})
             results.append({"path": slug, "day": next_block["day_number"], "action": "needs_review", "issues": issues})
             continue
-        # Publish
         update_doc = {
             **gen,
             "status": "published",
@@ -366,19 +599,30 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
             "generated_at": now,
             "validated_at": now,
             "updated_at": now,
+            "validation_issues": [],
         }
         await db["learning_blocks"].update_one({"_id": next_block["_id"]}, {"$set": update_doc})
-        # Update path progress
         published_count = await db["learning_blocks"].count_documents({"path_id": path["_id"], "status": {"$in": ["published", "completed"]}})
-        # Count includes this one if it was just published? Need +1 if it was planned
         if next_block.get("status") == "planned":
             published_count += 1
         progress = int((published_count / duration) * 100) if duration else 0
         await db["learning_paths"].update_one({"_id": path["_id"]}, {"$set": {"current_day": next_block["day_number"], "progress": min(100, progress), "updated_at": now, "last_run_at": now}})
-        # RAG upsert
         try:
             from app.services import rag_ingest
-            content = f"{gen['topic']}\n{gen['concept_explanation']}\n{gen['exercise']}\n{gen['homework']}"
+            content_parts = [
+                gen.get('topic',''),
+                gen.get('learning_objective',''),
+                gen.get('real_world_example',''),
+                gen.get('simple_explanation',''),
+                gen.get('concept_explanation',''),
+                gen.get('practical_example',''),
+            ]
+            # include code as well for RAG
+            for ex in gen.get('examples', [])[:1]:
+                content_parts.append(ex.get('code',''))
+                content_parts.append(ex.get('explanation',''))
+            content_parts.extend([gen.get('exercise',''), gen.get('homework','')])
+            content = "\n".join([c for c in content_parts if c])
             await rag_ingest.upsert_document(
                 "learning", f"learning:{slug}:{next_block['day_number']}",
                 f"{path['topic']} — Day {next_block['day_number']}: {gen['topic']}",
@@ -387,10 +631,10 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
         except Exception as e:
             log.warning("learning RAG failed %s day %s: %s", slug, next_block["day_number"], e)
         results.append({"path": slug, "day": next_block["day_number"], "action": "published"})
-    # Record run
     run_doc = {"triggered_by": triggered_by, "results": results, "started_at": now, "finished_at": utcnow(), "status": "success" if results else "no_action"}
     await db["learning_agent_runs"].insert_one(run_doc)
     try:
         await audit(triggered_by, "LEARNING_AGENT_RUN", "daily", {"results": results})
     except: pass
     return {"status": "success", "results": results}
+

@@ -10,13 +10,19 @@ type Block = {
   title?: string;
   learning_objective: string;
   why_matters: string;
+  real_world_example?: string;
+  simple_explanation?: string;
   concept_explanation: string;
   step_by_step?: string[];
+  practical_example?: string;
   examples?: { title: string; code: string; explanation: string; expected_output?: string }[];
+  try_it_yourself?: string;
+  common_mistakes?: string[];
   exercise: string;
   homework?: string;
   challenge?: string;
   quick_review?: string[];
+  what_you_can_do_now?: string[];
   questions?: string[];
   next_preview?: string;
 };
@@ -194,7 +200,7 @@ export default function LearningPathDetail() {
                       display: "flex", alignItems: "center", gap: 12, width: "100%",
                       padding: "10px 14px", borderRadius: 10, border: "1px solid",
                       borderColor: isCurrent ? "var(--rlz-violet)" : "var(--rlz-border)",
-                      background: isCurrent ? "var(--rlz-violet-soft)" : "var(--rlz-surface-2)",
+                      background: isCurrent ? "var(--rla-violet-soft)" : "var(--rla-surface)",
                       cursor: "pointer", textAlign: "left", transition: "all 0.2s",
                     }}
                   >
@@ -250,56 +256,109 @@ export default function LearningPathDetail() {
               <i className="material-symbols-outlined">auto_stories</i> Day {block.day_number} — {block.topic || block.title}
             </div>
 
-            {/* Objective */}
+            {/* What you will learn + Why this matters */}
             <div className="rlz-ld-section" style={{ marginTop: 0, background: "rgba(124,58,237,0.04)", borderColor: "rgba(124,58,237,0.15)" }}>
               <h3>
-                <i className="material-symbols-outlined">flag</i> Today's Objective
+                <i className="material-symbols-outlined">flag</i> What you will learn
               </h3>
               <p style={{ fontWeight: 600, color: "var(--rlz-text)", fontSize: "1rem" }}>{block.learning_objective}</p>
-              <h4 style={{ marginTop: 10, fontSize: "0.88rem", color: "var(--rlz-text-dim)" }}>Why this matters</h4>
-              <p style={{ marginTop: 4 }}>{block.why_matters}</p>
+              <h4 style={{ marginTop: 12, fontSize: "0.88rem", color: "var(--rla-text-dim)", display:"flex", gap:6, alignItems:"center"}}><i className="material-symbols-outlined" style={{fontSize:"1rem"}}>favorite</i> Why this matters</h4>
+              <p style={{ marginTop: 4, color:"var(--rla-text-dim)" }}>{block.why_matters}</p>
             </div>
 
-            {/* Concept */}
+            {/* Real-world example - FIRST, before theory */}
+            {block.real_world_example && (
+              <div className="rlz-ld-section" style={{ background: "rgba(8,145,178,0.06)", borderColor:"rgba(8,145,178,0.18)"}}>
+                <h3>
+                  <i className="material-symbols-outlined">public</i> Real-world example
+                </h3>
+                <p style={{ lineHeight:1.75 }}>{block.real_world_example}</p>
+              </div>
+            )}
+
+            {/* Simple explanation */}
             <div className="rlz-ld-section">
               <h3>
-                <i className="material-symbols-outlined">lightbulb</i> Concept
+                <i className="material-symbols-outlined">lightbulb</i> Simple explanation
               </h3>
               <div style={{ lineHeight: 1.75 }}>
-                <Markdown text={block.concept_explanation || ""} />
+                <Markdown text={block.simple_explanation || block.concept_explanation || ""} />
               </div>
+              {block.concept_explanation && block.simple_explanation && block.concept_explanation !== block.simple_explanation && (
+                <div style={{ marginTop:14, padding:"12px 14px", background:"var(--rla-bg)", border:"1px solid var(--rla-border)", borderRadius:10 }}>
+                  <h4 style={{fontSize:"0.85rem", fontWeight:600, marginBottom:6}}>A bit deeper</h4>
+                  <div style={{ lineHeight:1.7}}><Markdown text={block.concept_explanation} /></div>
+                </div>
+              )}
               {!!block.step_by_step?.length && (
-                <ol style={{ marginLeft: 18, marginTop: 12, paddingLeft: 0 }}>
-                  {block.step_by_step.map((s, i) => (
-                    <li key={i} style={{ color: "var(--rlz-text-dim)", fontSize: "0.92rem", lineHeight: 1.7, marginBottom: 4 }}>{s}</li>
-                  ))}
-                </ol>
+                <div style={{marginTop:14}}>
+                  <h4 style={{fontSize:"0.88rem", fontWeight:600, display:"flex", gap:6, alignItems:"center"}}><i className="material-symbols-outlined" style={{fontSize:"1rem", color:"var(--rla-cyan)"}}>format_list_numbered</i> Step-by-step</h4>
+                  <ol style={{ marginLeft: 18, marginTop: 8, paddingLeft: 0 }}>
+                    {block.step_by_step.map((s, i) => (
+                      <li key={i} style={{ color: "var(--rlz-text-dim)", fontSize: "0.92rem", lineHeight: 1.7, marginBottom: 6 }}><span style={{fontWeight:600, color:"var(--rla-text)"}}>{i+1}.</span> {s}</li>
+                    ))}
+                  </ol>
+                </div>
               )}
             </div>
 
-            {/* Examples */}
-            {!!block.examples?.length && (
+            {/* Practical example description */}
+            {block.practical_example && (
               <div className="rlz-ld-section">
                 <h3>
-                  <i className="material-symbols-outlined">code</i> Example{block.examples.length > 1 ? "s" : ""}
+                  <i className="material-symbols-outlined">visibility</i> Practical example
                 </h3>
-                {block.examples.map((ex, i) => (
+                <p style={{ lineHeight:1.75 }}>{block.practical_example}</p>
+              </div>
+            )}
+
+            {/* Code Examples */}
+            {!!block.examples?.length && block.examples.some(e=>e.code?.trim()) && (
+              <div className="rlz-ld-section">
+                <h3>
+                  <i className="material-symbols-outlined">code</i> Code — see it run
+                </h3>
+                {block.examples.filter(e=>e.code?.trim()).map((ex, i) => (
                   <div key={i} className="rlz-ld-code-block">
                     <span className="rlz-ld-code-label">{ex.title}</span>
                     <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ex.code}</pre>
-                    <div className="rlz-ld-code-explain">{ex.explanation}</div>
+                    {ex.explanation && <div className="rlz-ld-code-explain"><b>How it works:</b> {ex.explanation}</div>}
                     {ex.expected_output && (
-                      <div className="rlz-ld-code-output">▶ {ex.expected_output}</div>
+                      <div className="rlz-ld-code-output">▶ Expected: {ex.expected_output}</div>
                     )}
                   </div>
                 ))}
               </div>
             )}
 
+            {/* Try it yourself */}
+            {block.try_it_yourself && (
+              <div className="rlz-ld-section" style={{background:"rgba(16,185,129,0.06)", borderColor:"rgba(16,185,129,0.18)"}}>
+                <h3>
+                  <i className="material-symbols-outlined">touch_app</i> Try it yourself
+                </h3>
+                <p style={{ lineHeight:1.7 }}>{block.try_it_yourself}</p>
+              </div>
+            )}
+
+            {/* Common mistakes */}
+            {!!block.common_mistakes?.length && (
+              <div className="rlz-ld-section" style={{borderLeft:"3px solid var(--rla-amber)"}}>
+                <h3 style={{color:"var(--rla-amber)"}}>
+                  <i className="material-symbols-outlined">warning</i> Common mistakes
+                </h3>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
+                  {block.common_mistakes.map((m, i) => (
+                    <li key={i} style={{ color: "var(--rlz-text-dim)", fontSize: "0.92rem", lineHeight: 1.7 }}>{m}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Exercise */}
-            <div className="rlz-ld-exercise">
+            <div className="rlz-ld-exercise" style={{marginTop:24}}>
               <h3>
-                <i className="material-symbols-outlined">fitness_center</i> Exercise
+                <i className="material-symbols-outlined">fitness_center</i> Exercise — your turn
               </h3>
               <p>{block.exercise}</p>
               {progress ? (
@@ -322,7 +381,7 @@ export default function LearningPathDetail() {
             {(block.homework || block.challenge) && (
               <div style={{ display: "grid", gap: 14, marginTop: 24 }}>
                 {block.homework && (
-                  <div className="rlz-ld-section">
+                  <div className="rlz-ld-section" style={{background:"rgba(251,191,36,0.06)", borderColor:"rgba(251,191,36,0.25)"}}>
                     <h3>
                       <i className="material-symbols-outlined">edit_note</i> Homework
                     </h3>
@@ -332,7 +391,7 @@ export default function LearningPathDetail() {
                 {block.challenge && (
                   <div className="rlz-ld-section">
                     <h3>
-                      <i className="material-symbols-outlined">emoji_events</i> Challenge
+                      <i className="material-symbols-outlined">emoji_events</i> Challenge (optional)
                     </h3>
                     <p>{block.challenge}</p>
                   </div>
@@ -340,11 +399,11 @@ export default function LearningPathDetail() {
               </div>
             )}
 
-            {/* Quick review */}
+            {/* Quick recap */}
             {!!block.quick_review?.length && (
               <div className="rlz-ld-section">
                 <h3>
-                  <i className="material-symbols-outlined">replay</i> Quick Review
+                  <i className="material-symbols-outlined">replay</i> Quick recap
                 </h3>
                 <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
                   {block.quick_review.map((q, i) => (
@@ -354,11 +413,25 @@ export default function LearningPathDetail() {
               </div>
             )}
 
+            {/* What you can do now */}
+            {!!block.what_you_can_do_now?.length && (
+              <div className="rlz-ld-section" style={{background:"rgba(16,185,129,0.06)", borderColor:"rgba(16,185,129,0.2)"}}>
+                <h3 style={{color:"var(--rla-green)"}}>
+                  <i className="material-symbols-outlined">verified</i> What you can do now
+                </h3>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
+                  {block.what_you_can_do_now.map((w, i) => (
+                    <li key={i} style={{ color: "var(--rlz-text-dim)", fontSize: "0.92rem", lineHeight: 1.7 }}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Questions */}
             {!!block.questions?.length && (
               <div className="rlz-ld-section">
                 <h3>
-                  <i className="material-symbols-outlined">quiz</i> Check Yourself
+                  <i className="material-symbols-outlined">quiz</i> Check yourself
                 </h3>
                 <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
                   {block.questions.map((q, i) => (
@@ -372,7 +445,7 @@ export default function LearningPathDetail() {
             {block.next_preview && (
               <div style={{ marginTop: 20, padding: "14px 18px", background: "var(--rlz-bg)", border: "1px dashed var(--rlz-border)", borderRadius: 12 }}>
                 <p style={{ color: "var(--rlz-text-dim)", fontSize: "0.88rem", margin: 0 }}>
-                  <strong style={{ color: "var(--rlz-violet)" }}>Before Day {block.day_number + 1}:</strong> {block.next_preview}
+                  <strong style={{ color: "var(--rlz-violet)" }}>Next — Day {block.day_number + 1}:</strong> {block.next_preview}
                 </p>
               </div>
             )}

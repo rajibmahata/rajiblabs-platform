@@ -132,4 +132,25 @@ async def extract_and_store(resume_id: str) -> str:
         await consolidate_resume_projects(db, triggered_by=f"resume:{resume_id}")
     except Exception as e:
         log.warning("resume project consolidation skipped: %s", e)
+    # Resume → Skills sync (Profile Agent owned, deterministic, no LLM):
+    # previously skills refreshed only on the daily agent run, so freshly
+    # uploaded resume skills never appeared until 06:00. Same best-effort
+    # pattern as projects above; sync_skills is hash-versioned internally.
+    try:
+        from app.services.skill_intelligence import sync_skills
+        await sync_skills(triggered_by=f"resume:{resume_id}")
+    except Exception as e:
+        log.warning("resume skill sync skipped: %s", e)
+    # Alert when the ACTIVE resume has no usable text: without extraction the
+    # public resume RAG, skills and projects all silently go stale. Archived
+    # resumes stay quiet (history only).
+    try:
+        if fresh and fresh.get("active") and not (scrubbed or "").strip():
+            from app.services.notify import log_error
+            await log_error("resume_extraction", "Active resume has no extracted text",
+                            f"resume:{resume_id} — re-upload the PDF/DOCX or check storage. "
+                            "Skills, projects and resume RAG are stale until extraction succeeds.",
+                            level="warning", logger="app.services.resume_text")
+    except Exception:
+        pass
     return scrubbed

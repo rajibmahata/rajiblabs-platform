@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
+import { InlineLoader } from "../../components/admin/ui";
+import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 const BLANK_COMPANY: any = { name: "", website: "", industry: "", careers_url: "", linkedin_url: "", location: "", description: "", active: true, notes: "" };
@@ -18,7 +20,9 @@ export default function CareerCompanies() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [cform, setCform] = useState<any>({ ...BLANK_CONTACT });
   const [cedit, setCedit] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { run, isLoading } = useAsyncActions();
+  const busy = isLoading("action");
+  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
 
   const load = () => {
     const p = new URLSearchParams();

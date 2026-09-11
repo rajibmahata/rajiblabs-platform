@@ -151,6 +151,43 @@ def _enrich_from_github(doc_patch: dict, repo: dict | None) -> list[dict]:
     return evidence
 
 
+async def _link_career_role(db, client: str) -> str:
+    """Match a resume project client to a verified career entry → Rajib's role.
+
+    Compares against profiles.career[].client/company (case-insensitive
+    substring both ways). Returns "" when nothing matches — never invents.
+    The project detail page renders this as "Rajib's Role" with the career
+    entry as its verified source."""
+    client = (client or "").strip()
+    if len(client) < 3:
+        return ""
+    try:
+        prof = await db["profiles"].find_one() or {}
+        cl = client.lower()
+        for c in prof.get("career") or []:
+            for field in (c.get("client") or "", c.get("company") or ""):
+                f = (field or "").strip()
+                if len(f) >= 3 and (f.lower() in cl or cl in f.lower()):
+                    role = (c.get("role") or "").strip()
+                    if role:
+                        period = (c.get("period") or "").strip()
+                        return f"{role}" + (f" ({period})" if period else "")
+        # Fallback: experience collection (published career entries)
+        try:
+            async for e in db["experience"].find({"status": "published"}):
+                for field in (e.get("client") or "", e.get("company") or ""):
+                    f = (field or "").strip()
+                    if len(f) >= 3 and (f.lower() in cl or cl in f.lower()):
+                        role = (e.get("role") or e.get("role_title") or "").strip()
+                        if role:
+                            return role
+        except Exception:
+            pass
+    except Exception as e:
+        log.warning("career role linkage skipped: %s", e)
+    return ""
+
+
 async def _maybe_create_portfolio_draft(db, slug: str, name: str, short_description: str,
                                         technologies: list, client: str, stats: dict) -> dict | None:
     """Create a portfolio DRAFT for a worthy project (opt-in via criteria).
@@ -580,6 +617,12 @@ async def consolidate_resume_projects(db=None, triggered_by: str = "profile_agen
             for field in ["problem", "solution", "business_value"]:
                 if not (existing.get(field) or "").strip() and proj.get(field):
                     patch[field] = proj[field][:800]
+            # Rajib's role from the verified career entry matching this
+            # project's client (never invented; empty when no match)
+            if not (existing.get("role") or "").strip() and "role" not in locked:
+                linked = await _link_career_role(db, client)
+                if linked:
+                    patch["role"] = linked[:200]
             # GitHub enrichment from the STORED repo record (no API calls):
             # verified URL + topics/language tech + description→solution fallback.
             gh_patch = {"technologies": list(patch.get("technologies") or existing_techs),
@@ -676,6 +719,7 @@ async def consolidate_resume_projects(db=None, triggered_by: str = "profile_agen
                 len({e.get("source") for e in evidence}),
                 bool(live_url), bool(github_url), client)
             worthy = score >= threshold
+            role = await _link_career_role(db, client)
             doc = {
                 "slug": slug,
                 "name": name,
@@ -689,7 +733,7 @@ async def consolidate_resume_projects(db=None, triggered_by: str = "profile_agen
                 "problem": (proj.get("problem") or "")[:1000],
                 "solution": solution,
                 "business_value": (proj.get("business_value") or "")[:1000],
-                "role": "",
+                "role": role[:200],
                 "learnings": "",
                 "beneficiaries": "",
                 "domain": "",

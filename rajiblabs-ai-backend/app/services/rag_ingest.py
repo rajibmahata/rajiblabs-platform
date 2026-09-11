@@ -452,6 +452,50 @@ async def ingest_resume() -> dict:
                     stats["errors"].append(str(e)[:200])
     except Exception as e:
         log.warning("resume file ingest skipped: %s", e)
+    # Historical (non-active) resumes: internal knowledge only. Indexed with
+    # public_access OFF so the public concierge can never retrieve them, while
+    # admin/workbench retrieval still can. Content-hash dedup skips unchanged.
+    try:
+        from app.services import kb_policy as _kb
+        _ = _kb  # fail fast if policy module unavailable
+        cur = db["resumes"].find({"active": {"$ne": True}})
+        async for resume in cur:
+            extracted = (resume.get("extracted_text") or "").strip()
+            if not extracted:
+                continue
+            try:
+                r = await upsert_document(
+                    "resume", f"resume:history:{resume.get('_id')}",
+                    f"Rajib Mahata — Resume v{resume.get('version', '?')} "
+                    f"({resume.get('filename') or resume.get('file_name') or 'archived'}) [internal]",
+                    _scrub_resume_text(extracted)[:20000],
+                    guardrails={"public_access": False},
+                    tags=["resume", "history", "internal"])
+                stats[r["status"]] += 1
+            except Exception as e:
+                stats["failed"] += 1
+                stats["errors"].append(str(e)[:200])
+    except Exception as e:
+        log.warning("resume history ingest skipped: %s", e)
+    # Orphan sweep: knowledge docs for deleted resumes must not linger.
+    # (Archived-but-present resumes keep their history docs by design.)
+    try:
+        live_ids = set()
+        async for resume in db["resumes"].find({}, {"_id": 1}):
+            live_ids.add(f"resume:file:{resume['_id']}")
+            live_ids.add(f"resume:history:{resume['_id']}")
+        async for kd in db["knowledge_documents"].find(
+                {"source_type": "resume", "status": "active"}):
+            sid = kd.get("source_id", "")
+            if sid.startswith(("resume:file:", "resume:history:")) \
+                    and sid not in live_ids \
+                    and sid != "resume:approved-public":
+                try:
+                    await deactivate_document(str(kd["_id"]))
+                except Exception:
+                    pass
+    except Exception as e:
+        log.warning("resume orphan sweep skipped: %s", e)
     return stats
 
 

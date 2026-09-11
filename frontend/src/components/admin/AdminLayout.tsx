@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import "../../styles/admin.css";
 import { logout, me } from "../../services/auth";
 import { api } from "../../services/api";
+import { useAsyncActions } from "./async";
 
 interface NavEntry { to: string; label: string; icon: string; exact?: boolean; badge?: string | number; dot?: boolean }
 
@@ -60,7 +61,8 @@ export default function AdminLayout() {
   const [showResults, setShowResults] = useState(false);
   const [notifs, setNotifs] = useState<{ title?: string; message?: string; created_at?: string; is_read?: boolean }[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const { run: runSync, isLoading: isSyncLoading } = useAsyncActions();
+  const syncing = isSyncLoading("global-sync");
   const [toastMsg, setToastMsg] = useState<{ title: string; msg: string } | null>(null);
   const toastTimer = useRef<number | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -108,19 +110,13 @@ export default function AdminLayout() {
     ? FLAT.filter((n) => n.label.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 7)
     : [];
 
-  const doSync = async () => {
-    if (syncing) return;
-    setSyncing(true);
-    showToast("Sync started", "pulling latest GitHub repositories…");
-    try {
+  const doSync = () => {
+    runSync("global-sync", async () => {
+      showToast("Sync started", "pulling latest GitHub repositories…");
       const r = await api.post<{ added?: number; updated?: number; found?: number }>("/api/admin/github/sync");
       const found = r.found ?? r.added ?? 0;
       showToast("Sync complete", `${found} repositor${found === 1 ? "y" : "ies"} found.`);
-    } catch (e) {
-      showToast("Sync failed", String(e instanceof Error ? e.message : e).slice(0, 120));
-    } finally {
-      setSyncing(false);
-    }
+    }, { errorTitle: "Sync failed" });
   };
   const doLogout = async () => { await logout().catch(() => {}); nav2("/admin/login"); };
   const initials = (email || "RM").replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase() || "RM";

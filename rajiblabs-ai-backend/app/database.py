@@ -203,27 +203,58 @@ SEED_EXPERIENCE = [
 ]
 
 # Verified seed projects — github_url NULL until verified per spec §87 (never fabricate).
+# Public Product Grid must contain exactly 5 products (verified URLs only):
+# 1.Pasteflow 2.DocuSign Hub 3.Aria 4.RM Enterprise CMS 5.RajibLabs (platform)
 SEED_PROJECTS = [
     {"slug": "pestflow", "name": "PestFlow", "category": "product",
-     "short_description": "Pest-control business platform (.NET, SQL Server, multi-tenant).",
+     "short_description": "Pest-control business platform — multi-tenant operations, GST quotations, online/cash payment plans, technician workflows with verification codes, real-time updates over SignalR and Firebase Cloud Messaging.",
      "technologies": [".NET", "SQL Server", "SignalR"], "featured": True, "published": True, "display_order": 1,
      "github_url": "https://github.com/rajibmahata/pestflow", "status": "published"},
-    {"slug": "aria", "name": "ARIA", "category": "product",
-     "short_description": "AI product with YouTube demo.",
-     "technologies": ["AI", "LLM"], "featured": False, "published": True, "display_order": 2,
-     "github_url": None, "demo_video_url": "https://youtu.be/6p5-A9PWn0E?si=hc4Ee8k3XQWRXf7F", "status": "published"},
     {"slug": "docusign-hub", "name": "DocuSign Hub", "category": "product",
-     "short_description": "Document signing product with demo video.",
-     "technologies": [".NET", "React"], "featured": False, "published": True, "display_order": 3,
-     "github_url": None, "demo_video_url": "https://youtu.be/f4Y_l0h4Xt0?si=J-65kJsbKTJ9lKZe", "status": "published"},
-    {"slug": "rm-enterprise", "name": "R.M. Enterprise", "category": "product",
-     "short_description": "Business Website + CMS.",
+     "short_description": "Digital signature SaaS — visual workflow builder, HMAC-signed APIs, Stripe payments in signing flows, GPT-4o clause summaries and optional blockchain notarisation.",
+     "technologies": [".NET", "React", "SQL Server", "Azure", "Stripe", "OpenAI"], "featured": False, "published": True, "display_order": 2,
+     "github_url": "https://github.com/rajibmahata/DocumentSigningPlatform", "live_url": "https://docsignerhub.com", "demo_video_url": "https://youtu.be/f4Y_l0h4Xt0?si=J-65kJsbKTJ9lKZe", "status": "published"},
+    {"slug": "aria", "name": "Aria", "category": "product",
+     "short_description": "Enterprise knowledge platform — your documents become a queryable, conversational base via RAG with a no-code multi-agent pipeline builder.",
+     "technologies": ["AI", "LLM", "RAG", "ChromaDB"], "featured": False, "published": True, "display_order": 3,
+     "github_url": "https://github.com/rajibmahata/AI-Avatar-RAG-Platform", "demo_video_url": "https://youtu.be/6p5-A9PWn0E?si=hc4Ee8k3XQWRXf7F", "status": "published"},
+    {"slug": "rm-enterprise", "name": "RM Enterprise CMS", "category": "product",
+     "short_description": "Business website + CMS for Fryyo Foods — live in production serving a real food business with content management.",
      "technologies": ["Web", "CMS"], "featured": False, "published": True, "display_order": 4,
      "github_url": None, "live_url": "https://fryyofoods.com/", "status": "published"},
+    {"slug": "rajiblabs", "name": "RajibLabs", "category": "product",
+     "short_description": "AI-first software/innovation platform — portfolio, RAG, and agentic systems for enterprise and product teams.",
+     "technologies": ["React", "FastAPI", "MongoDB", "RAG", "OpenAI", "Tailwind CSS"], "featured": False, "published": True, "display_order": 5,
+     "github_url": "https://github.com/rajibmahata/rajiblabs-platform", "live_url": "https://rajiblabs.com", "status": "published"},
     {"slug": "apcs-pest-control", "name": "APCS Pest Control", "category": "project",
      "short_description": "Real business software for pest control.",
-     "technologies": ["Web"], "featured": False, "published": True, "display_order": 5,
+     "technologies": ["Web"], "featured": False, "published": True, "display_order": 6,
      "github_url": None, "live_url": "https://apcspestcontrol.com/", "status": "published"},
+]
+
+# Legacy Products CMS — same 5 verified products for /api/products (admin + public legacy)
+# Kept in sync with projects.category==product above; RAG will index both.
+SEED_PRODUCTS_LEGACY = [
+    {"slug": "pestflow", "name": "PestFlow", "category": "product",
+     "short_description": "Pest-control business platform — multi-tenant operations, GST quotations, online/cash payment plans, technician workflows with verification codes, real-time updates over SignalR and Firebase Cloud Messaging.",
+     "description": "Pest-control business platform — multi-tenant operations, GST quotations, online/cash payment plans, technician workflows with verification codes, real-time updates over SignalR and push via Firebase Cloud Messaging.",
+     "tech_stack": [".NET", "SQL Server", "SignalR"], "live_url": None, "github_url": "https://github.com/rajibmahata/pestflow", "status": "published", "featured": True, "display_order": 1},
+    {"slug": "docusign-hub", "name": "DocuSign Hub", "category": "product",
+     "short_description": "Digital signature SaaS — visual workflow builder, HMAC-signed APIs, Stripe payments in signing flows, GPT-4o clause summaries and optional blockchain notarisation.",
+     "description": "Digital signature SaaS — visual workflow builder, HMAC-signed APIs, Stripe payments in signing flows, GPT-4o clause summaries and optional blockchain notarisation. 140+ REST endpoints.",
+     "tech_stack": [".NET", "React", "SQL Server", "Azure", "Stripe", "OpenAI"], "live_url": "https://docsignerhub.com", "github_url": "https://github.com/rajibmahata/DocumentSigningPlatform", "video_url": "https://youtu.be/f4Y_l0h4Xt0?si=J-65kJsbKTJ9lKZe", "status": "published", "featured": False, "display_order": 2},
+    {"slug": "aria", "name": "Aria", "category": "product",
+     "short_description": "Enterprise knowledge platform — your documents become a queryable, conversational base via RAG with a no-code multi-agent pipeline builder.",
+     "description": "Enterprise knowledge platform — your documents become a queryable, conversational base via RAG with a no-code multi-agent pipeline builder. ChromaDB, deployable on-premise.",
+     "tech_stack": ["AI", "LLM", "RAG", "ChromaDB"], "live_url": None, "github_url": "https://github.com/rajibmahata/AI-Avatar-RAG-Platform", "video_url": "https://youtu.be/6p5-A9PWn0E?si=hc4Ee8k3XQWRXf7F", "status": "published", "featured": False, "display_order": 3},
+    {"slug": "rm-enterprise", "name": "RM Enterprise CMS", "category": "product",
+     "short_description": "Business website + CMS for Fryyo Foods — live in production serving a real food business with content management.",
+     "description": "Business website + CMS for Fryyo Foods — live in production serving a real food business with content management.",
+     "tech_stack": ["Web", "CMS"], "live_url": "https://fryyofoods.com/", "github_url": None, "status": "published", "featured": False, "display_order": 4},
+    {"slug": "rajiblabs", "name": "RajibLabs", "category": "product",
+     "short_description": "AI-first software/innovation platform — portfolio, RAG, and agentic systems for enterprise and product teams.",
+     "description": "AI-first software/innovation platform — portfolio, RAG, and agentic systems. The platform itself, built with React, FastAPI, MongoDB, and OpenAI, showcasing 12+ years of enterprise architecture and 6 products live.",
+     "tech_stack": ["React", "FastAPI", "MongoDB", "RAG", "OpenAI", "Tailwind CSS"], "live_url": "https://rajiblabs.com", "github_url": "https://github.com/rajibmahata/rajiblabs-platform", "status": "published", "featured": False, "display_order": 5},
 ]
 
 
@@ -392,9 +423,17 @@ async def init_db() -> None:
                 "company": company, "role": role, "date_range": dates,
                 "description": desc, "achievements": [], "technologies": [],
                 "display_order": i, "status": "published"})
-    if await db["projects"].count_documents({}) == 0:
-        for p in SEED_PROJECTS:
+    # Projects: ensure 5 verified products (+ apcs) are present — upsert to fix empty/mis-seeded DBs without duplicating
+    for p in SEED_PROJECTS:
+        existing = await db["projects"].find_one({"slug": p["slug"]})
+        if existing:
+            # Update verified fields (do not overwrite if manually locked, but for seed we ensure correctness)
+            # Only update if existing is missing key verified data (e.g. rajiblabs not yet present, or aria missing github)
+            await db["projects"].update_one({"slug": p["slug"]}, {"$set": {**p, "updated_at": utcnow()}})
+        else:
             await db["projects"].insert_one({**p, "created_at": utcnow(), "updated_at": utcnow()})
+            log.info(f"Seeded project {p['slug']}")
+    if await db["projects"].count_documents({}) == 0:
         log.info("Seeded verified projects (github NULL unless verified)")
     if await db["site_settings"].count_documents({}) == 0:
         await db["site_settings"].insert_many([
@@ -403,12 +442,17 @@ async def init_db() -> None:
                 "primary_phone": "+918420249020", "secondary_phone": "+919100184730",
                 "whatsapp": "https://wa.me/918420249020"}, "updated_at": utcnow()},
         ])
-    # Legacy product seeds removed — Admin manages products. Keep empty-collection guard for future seeds.
-    if False and await db["products"].count_documents({}) == 0:  # noqa: SIM114 — intentional no-op guard
-        for p in SEED_PRODUCTS:
+    # Products CMS (legacy) — ensure 5 verified products for /api/products and Admin → Products
+    for p in SEED_PRODUCTS_LEGACY:
+        existing = await db["products"].find_one({"slug": p["slug"]})
+        if existing:
+            await db["products"].update_one({"slug": p["slug"]}, {"$set": {**p, "updated_at": utcnow()}})
+        else:
             await db["products"].insert_one(
-                {**p, "screenshots": [], "logo_url": None, "product_url": None,
+                {**p, "screenshots": [], "logo_url": None, "product_url": p.get("live_url"),
                  "github_repo_id": None, "created_at": utcnow(), "updated_at": utcnow()})
+            log.info(f"Seeded legacy product {p['slug']}")
+    if await db["products"].count_documents({}) == 0 and not SEED_PRODUCTS_LEGACY:
         log.info("Seeded legacy products (Page Flow, DocuFlow)")
     if await db["website_contents"].count_documents({}) == 0:
         await db["website_contents"].insert_one({

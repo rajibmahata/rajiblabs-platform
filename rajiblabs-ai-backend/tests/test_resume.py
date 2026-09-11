@@ -31,6 +31,59 @@ async def get_admin_token(client: AsyncClient) -> str:
         pass
     return ""
 
+# Prefixes of filenames this module ever uploads (for teardown matching).
+_TEST_PREFIXES = ("test_resume_", "seq_resume_", "pub_test_", "archived_test",
+                  "newer.pdf", "rag_test.pdf")
+
+
+@pytest.fixture(autouse=True)
+async def _resume_isolation():
+    """Guard the SHARED dev database from test pollution (root-cause fix).
+
+    Uploads archive every resume row, so even a passing run dethrones the
+    real published resume; a failing run additionally leaves junk rows with
+    dead /tmp paths that become the published resume with zero extraction.
+    Snapshot before, delete created rows after, restore the previously
+    published resume.
+    """
+    db = get_db()
+    try:
+        await db.command("ping")
+    except Exception:
+        yield
+        return
+    before_ids: set[str] = set()
+    published_id = None
+    try:
+        async for r in db["resumes"].find({}):
+            before_ids.add(str(r["_id"]))
+        pub = await db["resumes"].find_one({"status": "published", "active": True})
+        published_id = str(pub["_id"]) if pub else None
+    except Exception:
+        pass
+    yield
+    try:
+        async for r in db["resumes"].find({}):
+            rid = str(r["_id"])
+            fn = (r.get("filename") or r.get("file_name") or "")
+            if rid not in before_ids or fn.startswith(_TEST_PREFIXES):
+                await db["resumes"].delete_one({"_id": r["_id"]})
+        if published_id:
+            from bson import ObjectId
+            try:
+                oid = ObjectId(published_id)
+            except Exception:
+                oid = None
+            if oid is not None and await db["resumes"].find_one({"_id": oid}):
+                await db["resumes"].update_many(
+                    {}, {"$set": {"status": "archived", "active": False}})
+                await db["resumes"].update_one(
+                    {"_id": oid},
+                    {"$set": {"status": "published", "active": True}})
+    except Exception:
+        pass
+
+
 @pytest.fixture(autouse=True)
 def _patch_upload_dir(tmp_path, monkeypatch):
     # Use writable temp dir for uploads in tests (data/uploads is root-owned)

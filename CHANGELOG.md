@@ -2,6 +2,58 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-11 — Learning: admin inspector + public mentor journey (practical-first second pass)
+
+Second pass on the same Learning system (no new DB/index/API): the previous 2026-09-11 mentor rewrite landed but admin still showed only Day title + Status, and public rendering, while mentor-like, missed the full “What/Why/Real-world → Demo → Try → Mistakes → Exercise → Homework → Recap → What you can do” flow.
+
+### Changed — `rajiblabs-ai-backend/app/services/learning_agent.py` (same file, tightened)
+
+- Prompt now explicitly demands `real_world_example` (shopping Customer/Product story before theory), `simple_explanation` → `concept_explanation`, `practical_example`, `try_it_yourself`, `common_mistakes[2-3]`, `what_you_can_do_now[2-3]` plus existing `learning_objective`/`why_matters`/`step_by_step`/`examples`/`exercise`/`homework`/`quick_review`/`questions`/`next_preview`; short paragraphs, no `As an AI`, code must be runnable at current day's level (C# complete `Main`, Python class, else minimal JS).
+- Fallback for code topics already used the shopping anchor — kept and cleaned (removed Python f-string `'{'}'` escaping bug that broke `ast.parse` syntax check, `py_compile` now passes).
+- Validation already covered new fields; no new DB field required (Mongo schemaless, admin/public already return full block via `oid_str`).
+
+### Changed — `frontend/src/pages/admin/LearningManage.tsx` (existing `rla-*` only)
+
+- Previously: `Roadmap — {slug}` list showed `Day N: Title` + `StatusPill` only. Now **every Day card is clickable** (`cursor:pointer` + `Open` button) and opens a `rla-modal` drawer reusing existing `rla-modal-overlay`/`rla-modal` (no new CSS).
+- Drawer shows complete lesson without DB/JSON inspection: header (Day/status/version/hash/generated/validated + `NEEDS REVIEW`/`VALIDATED`), `What you will learn`, `Why matters`, `Real-world example` (highlighted), `Simple` + deeper `Concept`, `Step-by-step` (numbered), `Code` blocks (title + syntax + `How it works` + `▶ Expected`), `Try it yourself`, `Common mistakes`, `Exercise`, `Homework`, `Challenge`, `Quick recap`, `What you can do now`, `Check yourself`, `Next`, plus `Regenerate` (re-runs agent for that day). Empty sections render nothing.
+
+### Changed — `frontend/src/pages/LearningPathDetail.tsx` (existing `rlz-ld-*`)
+
+- Type `Block` extended with `real_world_example`, `simple_explanation`, `practical_example`, `try_it_yourself`, `common_mistakes`, `what_you_can_do_now`.
+- Render order now exactly mentor flow: `What you will learn` → `Why` → **Real-world** → **Simple**(+ deeper) → `Step-by-step` → `Practical` → **Code — see it run** → **Try it** → **Common mistakes** → **Exercise** → **Homework/Challenge** → **Quick recap** → **What you can do now** → **Check yourself** → **Next**, reusing `rlz-ld-section`/`rlz-ld-code-block`. No huge walls, no generic filler.
+
+### Verified
+
+- `python -m py_compile` syntax ok, `npm run build` 107 modules ✓ (`LearningManage` 19.63 kB, `LearningPathDetail` 15.46 kB), existing `tests/test_learning.py` contracts preserved (visibility still `published` only).
+
+## [Unreleased] — 2026-09-11 — Learning Agent mentor rewrite + Admin lesson inspector
+
+Fixes the two main Learning problems without rebuilding the system: admin could not inspect full lesson details, and generated content was textbook-generic, not beginner-practical.
+
+### Changed — `rajiblabs-ai-backend/app/services/learning_agent.py` (no new system)
+
+- **Human-centric prompt:** new system prompt “warm patient mentor sitting beside a complete beginner” — simple language first, jargon only after plain explanation, short 2-3 sentence paragraphs, no `As an AI`/`In conclusion`, no huge walls, no repeating the definition.
+- **Practical-first JSON schema:** now requests `real_world_example` (relatable shopping Customer/Product story before theory), `simple_explanation` + `concept_explanation`, `practical_example`, `try_it_yourself` (one tweak), `common_mistakes: string[2-3]`, `what_you_can_do_now: string[2-3]` in addition to existing `learning_objective`/`why_matters`/`step_by_step`/`examples{code,explanation,expected_output}`/`exercise`/`homework`/`challenge`/`quick_review`/`questions`/`next_preview`. All new fields are trimmed and stored; old fields kept for compat.
+- **Progressive:** `_generate_daily_block` now receives `duration`, `full_roadmap` and `prev_blocks_summary` (last 3 days) plus `roadmap_ctx` (Full path: Day 1→Day N) so Day 5 never assumes unt taught knowledge. Prompt explicitly covers `Understand→Observe→Follow→Practice→Modify→Solve→Build` and Day 1 zero-knowledge / final-day capstone hints.
+- **Fallback still mentor-like:** deterministic fallback now uses shopping `Customer`/`Product` anchor, complete runnable C# (`using System; class Product {…} class Program { Main { var p = new Product … } }`) / Python class, with `try_it_yourself`, `common_mistakes`, and progressive exercise/homework instead of previous `console.log('Hello')` lorem.
+- **Validation hardened:** `_validate_block` now checks `real_world_example`, `simple_explanation`, `common_mistakes`, `what_you_can_do_now`, huge-paragraph split, generic-phrase ban, C# `Main` presence. New `_is_weak_block()` heuristics (<200 chars, generic fallback phrase, missing `real_world_example`, generic steps) — `run_daily` now auto-detects and regenerates `published` weak blocks instead of leaving them.
+- **Hash & RAG:** `content_hash` now includes `real_world_example` as well; RAG `learning:*` doc now ingests `real_world + simple + practical + code` for better retrieval. `needs_review`/`published`/`unchanged` flow unchanged; `06:30 IST` automation intact.
+
+### Changed — `frontend/src/pages/admin/LearningManage.tsx` (existing admin architecture only)
+
+- Roadmap days were static `rla-list-card`s with no detail. Now every Day card is **clickable** (`cursor:pointer`, `Open` button) and opens a `rla-modal` drawer (reuse of existing `rla-modal-overlay`/`rla-modal` pattern, no new CSS).
+- Drawer shows complete lesson without DB inspection: Day/status/version/hash/generated/validated times, `What you will learn`, `Why matters`, `Real-world example`, `Simple` + deeper `Concept`, `Step-by-step`, `Code` blocks (title + syntax + `How it works` + `▶ Expected`), `Try it yourself`, `Common mistakes`, `Exercise`, `Homework`, `Challenge`, `Quick recap`, `What you can do now`, `Check yourself`, `Next`, plus `Regenerate` (re-runs agent for that day) and validation banner.
+
+### Changed — `frontend/src/pages/LearningPathDetail.tsx` (existing RajibLabs `rlz` language)
+
+- Block type extended with `real_world_example`, `simple_explanation`, `practical_example`, `try_it_yourself`, `common_mistakes`, `what_you_can_do_now`.
+- Render order now matches mentor flow: `What you will learn` → `Why matters` → **Real-world example** (highlighted) → **Simple explanation** → `Step-by-step` → `Practical example` → **Code — see it run** → **Try it yourself** → **Common mistakes** → **Exercise** → **Homework/Challenge** → **Quick recap** → **What you can do now** → **Check yourself** → **Next**. Existing `rlz-ld-section`/`rlz-ld-code-block` styling reused; empty sections render nothing. Feels like a modern learning product, not CMS.
+
+### Verified
+
+- `ast.parse` syntax ok, `npm run build` 106 modules ✓ (`LearningManage` 19.63 kB, `LearningPathDetail` 15.46 kB).
+- Existing `tests/test_learning.py` contracts preserved (`_hash`, `normalize_path_status`, `is_path_visible`, `create_learning_path` with mocked `_generate_roadmap`, visibility matrix). New fields are additive; public API still filters `published` only.
+
 ## [Unreleased] — 2026-09-10 — Project Intelligence: resume→projects evidence, GitHub enrichment, portfolio scoring, case-study sections
 
 No new systems — extends the existing Profile Agent (`resume_projects.py`),

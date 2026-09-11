@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../services/api";
-import { Empty, Field, PageHead, Panel, StatusPill } from "./ui";
+import { Empty, Field, PageHead, Panel, StatusPill, BlockLoader } from "./ui";
+import { InlineLoader } from "./ui";
+import { useAsyncActions } from "./async";
 import { toast } from "./toast";
 import Markdown from "../Markdown";
 
@@ -63,8 +65,9 @@ export default function CatalogManager(cfg: CatalogKind) {
   const [form, setForm] = useState<any>({ ...EMPTY_FORM });
   const [editId, setEditId] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [uploading, setUploading] = useState<string | null>(null);
+  const { run, isLoading } = useAsyncActions();
+  const busy = isLoading("save") || isLoading("upload-featuredImage") || isLoading("upload-gallery");
+  const uploading = isLoading("upload-featuredImage") ? "featuredImage" : isLoading("upload-gallery") ? "gallery" : null;
   const fileRef = useRef<HTMLInputElement | null>(null);
   const galleryRef = useRef<HTMLInputElement | null>(null);
   const pageSize = 20;
@@ -174,55 +177,40 @@ export default function CatalogManager(cfg: CatalogKind) {
     return p;
   };
 
-  const save = async (stayOpen: boolean) => {
+  const save = (stayOpen: boolean) => {
     const errs = validate();
     setErrors(errs);
     if (errs.length) return;
-    setBusy(true);
-    try {
+    run("save", async () => {
       const body = payload();
-      const saved = editId
-        ? await api.put<any>(`${base}/${editId}`, body)
-        : await api.post<any>(base, body);
-      toast("Saved", `${saved[cfg.nameKey] || cfg.title} saved.`);
+      const saved = editId ? await api.put<any>(`${base}/${editId}`, body) : await api.post<any>(base, body);
       load(page);
       if (stayOpen && saved.id) { setEditId(saved.id); setForm({ ...form, ...saved, techStack: toCSV(saved.techStack), tags: toCSV(saved.tags), features: toCSV(saved.features), aiCapabilities: toCSV(saved.aiCapabilities), cloudCapabilities: toCSV(saved.cloudCapabilities) }); setModal("edit"); }
       else setModal("closed");
-    } catch (e: any) { setErrors([String(e.message || e).slice(0, 300)]); } finally { setBusy(false); }
+      return saved;
+    }, { successTitle: "Saved", successMsg: `${form[cfg.nameKey] || cfg.title} saved.`, errorTitle: "Save failed" }).catch(()=>{});
   };
 
-  const toggleStatus = async (item: any) => {
+  const toggleStatus = (item: any) => {
     const next = item.status === "published" ? "draft" : "published";
-    try {
-      await api.patch(`${base}/${item.id}/status`, { status: next });
-      toast(next === "published" ? "Published" : "Unpublished", `${item[cfg.nameKey]} is now ${next}.`);
-      load(page);
-    } catch (e: any) { toast("Update failed", String(e.message || e).slice(0, 120)); }
+    run(`status-${item.id}`, async () => { await api.patch(`${base}/${item.id}/status`, { status: next }); load(page); }, { successTitle: next === "published" ? "Published" : "Unpublished", successMsg: `${item[cfg.nameKey]} is now ${next}.`, errorTitle: "Update failed" });
   };
-  const toggleFeatured = async (item: any) => {
-    try {
-      await api.patch(`${base}/${item.id}/featured`, { featured: !item.featured });
-      load(page);
-    } catch (e: any) { toast("Update failed", String(e.message || e).slice(0, 120)); }
-  };
-  const remove = async (item: any) => {
+  const toggleFeatured = (item: any) => run(`featured-${item.id}`, async () => { await api.patch(`${base}/${item.id}/featured`, { featured: !item.featured }); load(page); }, { successTitle: item.featured ? "Unfeatured" : "Featured", errorTitle: "Update failed" });
+  const remove = (item: any) => {
     if (!confirm(`Delete "${item[cfg.nameKey]}"? This removes it and its knowledge vectors.`)) return;
-    try { await api.del(`${base}/${item.id}`); toast("Deleted", ""); load(page); }
-    catch (e: any) { toast("Delete failed", String(e.message || e).slice(0, 120)); }
+    run(`delete-${item.id}`, async () => { await api.del(`${base}/${item.id}`); load(page); }, { successTitle: "Deleted", errorTitle: "Delete failed" });
   };
 
-  const uploadInto = async (file: File | undefined, field: "featuredImage" | "gallery") => {
+  const uploadInto = (file: File | undefined, field: "featuredImage" | "gallery") => {
     if (!file) return;
-    setUploading(field);
-    try {
+    run(`upload-${field}`, async () => {
       const fd = new FormData();
       fd.append("file", file);
       const r = await api.upload<{ url: string }>(`/api/admin/uploads/image?kind=${cfg.kind}`, fd);
       if (field === "featuredImage") set("featuredImage", r.url);
       else set("gallery", [...(form.gallery || []), r.url]);
-      toast("Uploaded", r.url);
-    } catch (e: any) { setErrors([`Image upload failed: ${String(e.message || e).slice(0, 200)}`]); }
-    finally { setUploading(null); }
+      return r;
+    }, { successTitle: "Uploaded", errorTitle: "Image upload failed" }).catch(()=>{});
   };
   const removeImage = async (url: string, field: "featuredImage" | "gallery") => {
     try { await api.del(`/api/admin/uploads?path=${encodeURIComponent(url)}`); } catch { /* keep going */ }
@@ -290,7 +278,7 @@ export default function CatalogManager(cfg: CatalogKind) {
       </Panel>
 
       {modal !== "closed" && (
-        <div className="rla-modal-overlay" onClick={() => !busy && setModal("closed")}>
+        <div className="rla-modal-overlay" onClick={() => !isLoading("save") && setModal("closed")}>
           <div className="rla-modal rla-modal-wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`${cfg.title} editor`}>
             <div className="rla-modal-head">
               <h3>{modal === "create" ? `Add ${cfg.title.slice(0, -1)}` : modal === "view" ? "View" : `Edit ${form[cfg.nameKey] || ""}`}</h3>
@@ -342,6 +330,7 @@ export default function CatalogManager(cfg: CatalogKind) {
               </div>
             ) : (
               <div>
+                {isLoading("save") && <div style={{marginBottom:12}}><InlineLoader text="Saving content..." /></div>}
                 {errors.length > 0 && <div className="rla-alert-error">{errors.map((e, i) => <div key={i}>{e}</div>)}</div>}
                 <h4 className="rla-h4">Basic Information</h4>
                 <div className="rla-form-grid">
@@ -460,8 +449,8 @@ export default function CatalogManager(cfg: CatalogKind) {
                 </div>
                 {!readOnly && (
                   <div className="rla-inline-actions" style={{ marginTop: 16 }}>
-                    <button onClick={() => save(false)} disabled={busy} className="rla-btn rla-btn-primary rla-btn-sm">{busy ? "Saving…" : "Save"}</button>
-                    <button onClick={() => save(true)} disabled={busy} className="rla-btn rla-btn-ghost rla-btn-sm">Save & Continue</button>
+                    <button onClick={() => save(false)} disabled={isLoading("save")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("save")}><i className={`fas ${isLoading("save") ? "fa-spinner fa-spin" : "fa-check"}`} /> {isLoading("save") ? "Saving..." : "Save"}</button>
+                    <button onClick={() => save(true)} disabled={isLoading("save")} className="rla-btn rla-btn-ghost rla-btn-sm" aria-busy={isLoading("save")}>{isLoading("save") ? <InlineLoader text="Saving..." /> : "Save & Continue"}</button>
                     <button onClick={() => setModal("preview")} className="rla-btn rla-btn-ghost rla-btn-sm">Preview</button>
                     <button onClick={() => setModal("closed")} className="rla-btn rla-btn-ghost rla-btn-sm">Cancel</button>
                     {editId && <button onClick={() => { const it = items.find((x) => x.id === editId); if (it) remove(it); setModal("closed"); }} className="rla-mini-btn danger" title="Delete"><i className="fas fa-trash" /> Delete</button>}

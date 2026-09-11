@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, PageHead, StatusPill } from "../../components/admin/ui";
+import { InlineLoader } from "../../components/admin/ui";
+import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 const STATUSES = ["all", "approved", "generated", "needs_review", "needs_update"];
@@ -13,7 +15,9 @@ export default function TranslationsManage() {
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<any[]>([]);
   const [coverage, setCoverage] = useState<any[]>([]);
-  const [busy, setBusy] = useState(false);
+  const { run, isLoading } = useAsyncActions();
+  const busy = isLoading("action");
+  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
   const [editing, setEditing] = useState<any>(null);
   const [editText, setEditText] = useState("");
   const [compare, setCompare] = useState<any>(null);

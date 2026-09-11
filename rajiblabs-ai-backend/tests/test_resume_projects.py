@@ -229,3 +229,108 @@ async def test_portfolio_autodraft_off_by_default(fakedb, canned):
     fakedb["resumes"] = FakeColl([_resume(2)])
     await rp.consolidate_resume_projects(fakedb, triggered_by="test")
     assert await fakedb["portfolio"].find_one({"slug": "pestflow"}) is None
+
+
+async def test_role_linked_from_matching_career(fakedb, canned, monkeypatch):
+    fakedb["resumes"] = FakeColl([_resume(2)])
+    fakedb["profiles"] = FakeColl([{
+        "_id": "prof", "career": [
+            {"company": "ABC Corp", "role": "Solutions Architect",
+             "period": "2022-2024", "client": "ABC Corp"}]}])
+
+    async def _one(text):
+        return [{"name": "PestFlow", "short_description": "Enterprise platform",
+                 "technologies": [], "client": "ABC Corp", "period": ""}]
+
+    monkeypatch.setattr(rp, "extract_projects_from_text", _one)
+    await rp.consolidate_resume_projects(fakedb, triggered_by="test")
+    pest = await fakedb["projects"].find_one({"slug": "pestflow"})
+    assert pest["role"] == "Solutions Architect (2022-2024)"
+
+
+async def test_role_empty_without_career_match(fakedb, canned, monkeypatch):
+    fakedb["resumes"] = FakeColl([_resume(2)])
+    fakedb["profiles"] = FakeColl([{"_id": "prof", "career": []}])
+
+    async def _one(text):
+        return [{"name": "PestFlow", "short_description": "Enterprise platform",
+                 "technologies": [], "client": "Unknown Client", "period": ""}]
+
+    monkeypatch.setattr(rp, "extract_projects_from_text", _one)
+    await rp.consolidate_resume_projects(fakedb, triggered_by="test")
+    pest = await fakedb["projects"].find_one({"slug": "pestflow"})
+    assert pest["role"] == ""  # never invented
+
+
+async def test_history_indexed_admin_only_and_orphans_swept(monkeypatch):
+    import app.services.rag_ingest as ri
+    db = FakeDB()
+    db["profiles"] = FakeColl([])
+    db["resumes"] = FakeColl([
+        {"_id": "active1", "version": 2, "active": True,
+         "extracted_text": "Active resume text here"},
+        {"_id": "old1", "version": 1, "active": False,
+         "extracted_text": "Historical resume text here"},
+        {"_id": "empty1", "version": 0, "active": False, "extracted_text": ""},
+    ])
+    db["knowledge_documents"] = FakeColl([
+        {"_id": "k-gone", "source_type": "resume", "source_id": "resume:file:deleted9",
+         "status": "active"},
+        {"_id": "k-live", "source_type": "resume", "source_id": "resume:file:active1",
+         "status": "active"},
+    ])
+    calls = []
+    deactivated = []
+
+    async def _fake_upsert(source_type, source_id, title, content, **kw):
+        calls.append({"source_id": source_id,
+                      "guardrails": kw.get("guardrails"),
+                      "tags": kw.get("tags")})
+        return {"status": "created"}
+
+    async def _fake_deactivate(document_id):
+        deactivated.append(document_id)
+        return True
+
+    monkeypatch.setattr(ri, "upsert_document", _fake_upsert)
+    monkeypatch.setattr(ri, "deactivate_document", _fake_deactivate)
+    monkeypatch.setattr(ri, "get_db", lambda: db)
+    stats = await ri.ingest_resume()
+    by_id = {c["source_id"]: c for c in calls}
+    # active resume indexed publicly (no guardrails override)
+    assert "resume:file:active1" in by_id
+    assert by_id["resume:file:active1"]["guardrails"] is None
+    # historical resume indexed admin-only
+    assert "resume:history:old1" in by_id
+    assert by_id["resume:history:old1"]["guardrails"] == {"public_access": False}
+    # empty historical resume skipped
+    assert not any("empty1" in sid for sid in by_id)
+    # orphan for deleted resume swept, live docs untouched
+    assert deactivated == ["k-gone"]
+    assert stats["created"] >= 2
+
+
+async def test_extract_triggers_skill_sync(tmp_path, monkeypatch):
+    import app.services.resume_text as rt
+    db = FakeDB()
+    pdf = tmp_path / "r.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\nhello")
+    db["resumes"] = FakeColl([{
+        "_id": "rx", "legacy_id": "rx", "version": 1, "active": False,
+        "status": "archived", "stored_path": str(pdf), "extracted_text": ""}])
+    monkeypatch.setattr(rt, "get_db", lambda: db)
+    seen = {}
+
+    async def _fake_sync(triggered_by=""):
+        seen["by"] = triggered_by
+        return {"created": 0}
+
+    async def _fake_consolidate(_db=None, triggered_by=""):
+        return {}
+
+    monkeypatch.setattr("app.services.skill_intelligence.sync_skills", _fake_sync)
+    # consolidate is imported inside extract_and_store; patch at its home module
+    import app.services.resume_projects as _rp
+    monkeypatch.setattr(_rp, "consolidate_resume_projects", _fake_consolidate)
+    await rt.extract_and_store("rx")
+    assert seen.get("by") == "resume:rx"

@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
+import { InlineLoader } from "../../components/admin/ui";
+import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 const EMPTY_FORM: any = { name: "", subject: "", preheader: "", html: "", text: "", category: "general", status: "draft" };
@@ -13,7 +15,9 @@ export default function TemplatesManage() {
   const [form, setForm] = useState<any>({ ...EMPTY_FORM });
   const [editId, setEditId] = useState<string | null>(null);
   const [preview, setPreview] = useState<any>(null);
-  const [busy, setBusy] = useState(false);
+  const { run, isLoading } = useAsyncActions();
+  const busy = isLoading("action");
+  const setBusy = (_: boolean) => {}; // compat for legacy code, now driven by useAsyncActions
 
   const load = () => { api.get<any>("/api/admin/marketing/templates").then((r) => setItems(r.items || [])).catch(() => {}); };
   useEffect(() => { load(); }, []);

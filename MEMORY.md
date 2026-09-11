@@ -27,7 +27,8 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   (`ai_agents` store), `workbench.py`, `github_service.py`, `translation_*`,
   `resume_text.py` (PDF/DOCX extraction), `resume_projects.py` (resume→projects
   consolidation, Profile Agent owned), `ai_economy.py` (LEVEL 0 structured +
-  caches), `skill_intelligence.py`/`domain_intelligence.py` (evidence-backed).
+  caches), `skill_intelligence.py`/`domain_intelligence.py` (evidence-backed),
+  `learning_agent.py` (mentor daily blocks, RAG-grounded, hash-versioned).
 - `rajiblabs-ai-backend/tests/` — `test_api.py`, `test_lead_chat.py`, `test_rag.py`,
   `test_workbench.py`, `test_concierge.py`, `test_github_knowledge.py`, `test_kb_policy.py`,
   `test_i18n.py` (~199 collected). HTTP mocks via `respx` (in requirements; install if missing).
@@ -179,6 +180,17 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   edit via `/api/admin/agents/*`, never via prompt edits.
 - Chat turns persist intent/tools/sources/lead/latency/model on `customer_messages`
   (+ `agent_slug`); admin stats aggregate from there.
+
+## Learning Agent rules (do not break)
+
+- Mentor, not textbook: `learning_agent._generate_daily_block` uses a warm, simple-language system prompt. Real-world scenario (e.g. Customer/Product shopping story) comes BEFORE any theory; jargon is introduced only after plain explanation. Short paragraphs (2-3 sentences), no huge walls, no generic AI phrases.
+- Practical-first structure every day: `what you will learn` → `why matters` → `real_world_example` → `simple_explanation`/`concept_explanation` → `step_by_step (3-5 actionable)` → `practical_example` → `code example (runnable, beginner-level, complete Main for C#)` + `explanation` + `expected_output` → `try_it_yourself` (one tweak) → `common_mistakes (2-3)` → `exercise (5-10 min)` → `homework (15-20 min)` → `quick_review (3)` → `what_you_can_do_now (2-3)` → `questions (3)` → `next_preview`. Only render when data exists.
+- Progressive: agent is given full `roadmap` + last 3 days summary (`prev_blocks_summary`) and `duration`; Day 1 is zero-knowledge, Day N never assumes future knowledge (`Understand → Observe → Follow → Practice → Modify → Solve → Build`).
+- RAG-first, LLM-last: `rag_query.retrieve(f"{topic} {day_title}")` top_k 3 grounds the prompt; `content_hash` (`concept+exercise+real_world`) dedupes unchanged lessons; `needs_review`/`published` statuses control re-generation. Unchanged hash → `unchanged` (no LLM).
+- Validation is mentor-quality: `_validate_block` checks `real_world_example`, `simple_explanation`, `step_by_step 3-5`, `common_mistakes`, `what_you_can_do_now`, code `Main` for C#, exercise/homework length, generic phrase bans. `_is_weak_block` catches short/generic fallback lessons (e.g. `<200` chars, missing `real_world_example`, generic steps) and forces regeneration on next `run_daily`.
+- Admin detail is the source of truth: `GET /api/admin/learning/paths/{slug}/blocks` returns full blocks (all new fields), admin `LearningManage` makes every Day card clickable → `rla-modal` drawer showing complete lesson (objective, real-world, code, try, mistakes, exercise, homework, recap, what-you-can-do, validation, version, hash, generated/validated times). No DB/JSON inspection needed.
+- Public `LearningPathDetail` renders the same mentor order with `Markdown` for concept, `rlz-ld-*` sections, progress and roadmap. Public API only serves `published`/`completed` blocks on `active`/`completed` paths.
+- Never break: path creation (`Topic+Duration→roadmap→Day 1..N`), day scheduling, `06:30 IST` automation, `learning_paths`/`learning_blocks`/`learning_progress`/`learning_agent_runs` indexes, RAG `learning:*` docs, `/api/learning/*` + `/api/admin/learning/*` auth.
 
 ## AI orchestrator failure behavior (do not break)
 

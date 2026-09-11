@@ -2,59 +2,51 @@
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
+import { InlineLoader } from "../../components/admin/ui";
+import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 export default function GitHubManage() {
-  const [repos, setRepos] = useState<any[]>([]); const [log, setLog] = useState<any>(null); const [syncing, setSyncing] = useState(false); const [filter, setFilter] = useState("all");
-  const [cfg, setCfg] = useState<any>(null); const [token, setToken] = useState(""); const [acct, setAcct] = useState<any>(null); const [testing, setTesting] = useState(false);
-  const [kbRepos, setKbRepos] = useState<any[]>([]); const [kbSyncing, setKbSyncing] = useState<string | null>(null);
+  const [repos, setRepos] = useState<any[]>([]); const [log, setLog] = useState<any>(null);
+  const [filter, setFilter] = useState("all");
+  const [cfg, setCfg] = useState<any>(null); const [token, setToken] = useState(""); const [acct, setAcct] = useState<any>(null);
+  const [kbRepos, setKbRepos] = useState<any[]>([]);
+  const { run, isLoading } = useAsyncActions();
   const load = () => { api.get<any[]>("/api/admin/github/repos").then((r) => setRepos(Array.isArray(r) ? r : [])).catch(() => {}); api.get<any>("/api/admin/github/sync-log").then(setLog).catch(() => {}); };
   const loadKb = () => {
     api.get<any>("/api/admin/github/config").then(setCfg).catch(() => {});
     api.get<any[]>("/api/admin/github/repositories").then((r) => setKbRepos(Array.isArray(r) ? r : [])).catch(() => {});
   };
   useEffect(() => { load(); loadKb(); }, []);
-  const sync = async () => { setSyncing(true); try { const r = await api.post<any>("/api/admin/github/sync"); load(); toast("Sync complete", `${r.found ?? r.added ?? 0} repositories found.`); } catch (e: any) { toast("Sync failed", String(e.message || e).slice(0, 120)); } finally { setSyncing(false); } };
-  const patch = async (id: string, body: any) => { await api.patch(`/api/admin/github/repos/${id}`, body); load(); };
-  const saveToken = async () => {
+  const sync = () => run("sync", async () => { const r = await api.post<any>("/api/admin/github/sync"); load(); return r; }, { successTitle: "Sync complete", successMsg: "Repositories synced.", errorTitle: "Sync failed" }).then((r:any)=>{ if(r) toast("Sync complete", `${r.found ?? r.added ?? 0} repositories found.`); }).catch(()=>{});
+  const patch = (id: string, body: any) => run(`patch-${id}`, async () => { await api.patch(`/api/admin/github/repos/${id}`, body); load(); }, { successTitle: "Updated", errorTitle: "Update failed" });
+  const saveToken = () => {
     if (!token.trim()) { toast("Token required", "Paste a GitHub personal access token first."); return; }
-    try { await api.post("/api/admin/github/config", { token: token.trim() }); setToken(""); setAcct(null); loadKb(); toast("Token saved", "Stored server-side only — never displayed again."); }
-    catch (e: any) { toast("Save failed", String(e.message || e).slice(0, 160)); }
+    run("saveToken", async () => { await api.post("/api/admin/github/config", { token: token.trim() }); setToken(""); setAcct(null); loadKb(); }, { successTitle: "Token saved", successMsg: "Stored server-side only — never displayed again.", errorTitle: "Save failed" });
   };
-  const testToken = async () => {
-    setTesting(true);
-    try { const r = await api.post<any>("/api/admin/github/test", token.trim() ? { token: token.trim() } : {}); setAcct(r); toast("Connected", `${r.login} · ${r.public_repos} public repos`); }
-    catch (e: any) { setAcct(null); toast("Connection failed", String(e.message || e).slice(0, 160)); } finally { setTesting(false); }
-  };
-  const revokeToken = async () => {
+  const testToken = () => run("testToken", async () => { const r = await api.post<any>("/api/admin/github/test", token.trim() ? { token: token.trim() } : {}); setAcct(r); return r; }, { successTitle: "Connected", errorTitle: "Connection failed" }).then((r:any)=>{ if(r) toast("Connected", `${r.login} · ${r.public_repos} public repos`); }).catch(()=> setAcct(null));
+  const revokeToken = () => {
     if (!confirm("Remove the stored token? (Env-configured token, if any, still applies.)")) return;
-    try { await api.del("/api/admin/github/config"); setAcct(null); loadKb(); toast("Token removed", ""); }
-    catch (e: any) { toast("Revoke failed", String(e.message || e).slice(0, 120)); }
+    run("revoke", async () => { await api.del("/api/admin/github/config"); setAcct(null); loadKb(); }, { successTitle: "Token removed", errorTitle: "Revoke failed" });
   };
-  const kbToggle = async (id: string, enabled: boolean) => {
-    try { await api.patch(`/api/admin/github/repositories/${id}`, { rag_enabled: enabled }); loadKb(); }
-    catch (e: any) { toast("Update failed", String(e.message || e).slice(0, 120)); }
-  };
-  const kbSync = async (id: string, name: string) => {
-    setKbSyncing(id);
-    try { const r = await api.post<any>(`/api/admin/github/repositories/${id}/sync`); loadKb(); toast("Knowledge synced", `${name}: ${r.created ?? 0} new · ${r.updated ?? 0} updated · ${r.stale_removed ?? 0} removed`); }
-    catch (e: any) { toast("Sync failed", String(e.message || e).slice(0, 160)); loadKb(); } finally { setKbSyncing(null); }
-  };
+  const kbToggle = (id: string, enabled: boolean) => run(`kbtoggle-${id}`, async () => { await api.patch(`/api/admin/github/repositories/${id}`, { rag_enabled: enabled }); loadKb(); }, { successTitle: enabled ? "Enabled" : "Disabled", successMsg: enabled ? "Back in RAG retrieval." : "Removed from RAG retrieval.", errorTitle: "Update failed" });
+  const kbSync = (id: string, name: string) => run(`kbsync-${id}`, async () => { const r = await api.post<any>(`/api/admin/github/repositories/${id}/sync`); loadKb(); return r; }, { successTitle: "Knowledge synced", errorTitle: "Sync failed" }).then((r:any)=>{ if(r) toast("Knowledge synced", `${name}: ${r.created ?? 0} new · ${r.updated ?? 0} updated · ${r.stale_removed ?? 0} removed`); }).catch(()=> loadKb());
   const filtered = repos.filter(r => filter === "all" || r.syncStatus === filter || r.classification === filter);
   return (
     <div>
       <PageHead title="GitHub Projects" desc={<>Server-side sync via <span className="rla-code">GITHUB_TOKEN</span> (never exposed). AI summaries are heuristic — review before publish.</>}
-        actions={<button onClick={sync} disabled={syncing} className="rla-btn rla-btn-primary rla-btn-sm"><i className={`fas fa-rotate${syncing ? " fa-spin" : ""}`} /> {syncing ? "Syncing…" : "Sync GitHub Now"}</button>} />
+        actions={<button onClick={sync} disabled={isLoading("sync")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("sync")}><i className={`fas fa-rotate${isLoading("sync") ? " fa-spin" : ""}`} /> {isLoading("sync") ? "Syncing…" : "Sync GitHub Now"}</button>} />
+      {isLoading("sync") && <div style={{marginBottom:12}}><InlineLoader text="Syncing GitHub — pulling repositories and AI summaries..." /></div>}
       {log && <Panel title="Last sync" sub={`${new Date(log.startedAt).toLocaleString()} · Found ${log.found} · Added ${log.added} · Updated ${log.updated}`}><span /></Panel>}
       <div style={{ height: 16 }} />
       <Panel title="Connection" sub={cfg ? `Token ${cfg.masked || "—"} · source: ${cfg.source} · owner: ${cfg.owner}${cfg.updated_at ? ` · updated ${new Date(cfg.updated_at).toLocaleString()}` : ""}` : "Token status unknown"}>
         <div className="rla-form-grid">
           <Field label="Personal access token (write-only, never displayed)" span>
             <div className="rla-inline-actions">
-              <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={cfg?.configured ? "•••• (saved — paste to replace)" : "ghp_…"} className="rla-input" autoComplete="off" />
-              <button onClick={saveToken} className="rla-btn rla-btn-primary rla-btn-sm">Save</button>
-              <button onClick={testToken} disabled={testing} className="rla-btn rla-btn-ghost rla-btn-sm">{testing ? "Testing…" : "Test"}</button>
-              {cfg?.configured && <button onClick={revokeToken} className="rla-mini-btn danger" title="Remove stored token"><i className="fas fa-trash" /></button>}
+              <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={cfg?.configured ? "•••• (saved — paste to replace)" : "ghp_…"} className="rla-input" autoComplete="off" disabled={isLoading("saveToken") || isLoading("testToken")} />
+              <button onClick={saveToken} disabled={isLoading("saveToken")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("saveToken")}>{isLoading("saveToken") ? <InlineLoader text="Saving..." /> : "Save"}</button>
+              <button onClick={testToken} disabled={isLoading("testToken")} className="rla-btn rla-btn-ghost rla-btn-sm" aria-busy={isLoading("testToken")}>{isLoading("testToken") ? <InlineLoader text="Testing..." /> : "Test"}</button>
+              {cfg?.configured && <button onClick={revokeToken} disabled={isLoading("revoke")} className="rla-mini-btn danger" title="Remove stored token"><i className="fas fa-trash" /></button>}
             </div>
           </Field>
         </div>
@@ -73,10 +65,10 @@ export default function GitHubManage() {
                   <td><StatusPill status={r.rag_enabled === false ? "disabled" : "enabled"} /></td>
                   <td className="text-xs">{r.rag_last_synced_at ? new Date(r.rag_last_synced_at).toLocaleString() : "never"}</td>
                   <td><div className="rla-row-actions" style={{ justifyContent: "flex-end" }}>
-                    <button onClick={() => kbSync(r.id, r.full_name)} disabled={kbSyncing === r.id || r.rag_enabled === false} className="rla-btn rla-btn-primary rla-btn-sm" title={r.rag_enabled === false ? "Enable first" : "Sync now"}>{kbSyncing === r.id ? "Syncing…" : "Sync Now"}</button>
+                    <button onClick={() => kbSync(r.id, r.full_name)} disabled={isLoading(`kbsync-${r.id}`) || r.rag_enabled === false} className="rla-btn rla-btn-primary rla-btn-sm" title={r.rag_enabled === false ? "Enable first" : "Sync now"}>{isLoading(`kbsync-${r.id}`) ? <InlineLoader text="Syncing..." /> : "Sync Now"}</button>
                     {r.rag_enabled === false
-                      ? <button onClick={() => kbToggle(r.id, true)} className="rla-btn rla-btn-ghost rla-btn-sm">Enable</button>
-                      : <button onClick={() => kbToggle(r.id, false)} className="rla-btn rla-btn-ghost rla-btn-sm">Disable</button>}
+                      ? <button onClick={() => kbToggle(r.id, true)} disabled={isLoading(`kbtoggle-${r.id}`)} className="rla-btn rla-btn-ghost rla-btn-sm">{isLoading(`kbtoggle-${r.id}`) ? <InlineLoader text="Enabling..." /> : "Enable"}</button>
+                      : <button onClick={() => kbToggle(r.id, false)} disabled={isLoading(`kbtoggle-${r.id}`)} className="rla-btn rla-btn-ghost rla-btn-sm">{isLoading(`kbtoggle-${r.id}`) ? <InlineLoader text="Disabling..." /> : "Disable"}</button>}
                   </div></td>
                 </tr>
               ))}
@@ -103,10 +95,10 @@ export default function GitHubManage() {
             </div>
             <div className="text-sm mt-1">{r.aiSummary || r.description || "—"}</div>
             <div className="rla-inline-actions" style={{ marginTop: 10 }}>
-              <button onClick={() => patch(r.id, { syncStatus: "published" })} className="rla-btn rla-btn-primary rla-btn-sm">Publish</button>
-              <button onClick={() => patch(r.id, { syncStatus: "ignored" })} className="rla-btn rla-btn-ghost rla-btn-sm">Ignore</button>
-              <button onClick={() => patch(r.id, { syncStatus: "hidden" })} className="rla-btn rla-btn-ghost rla-btn-sm">Hide</button>
-              <button onClick={() => { const s = prompt("Edit AI summary", r.aiSummary || ""); if (s !== null) patch(r.id, { aiSummary: s }); }} className="rla-btn rla-btn-ghost rla-btn-sm">Edit</button>
+              <button onClick={() => patch(r.id, { syncStatus: "published" })} disabled={isLoading(`patch-${r.id}`)} className="rla-btn rla-btn-primary rla-btn-sm">{isLoading(`patch-${r.id}`) ? <InlineLoader text="Publishing..." /> : "Publish"}</button>
+              <button onClick={() => patch(r.id, { syncStatus: "ignored" })} disabled={isLoading(`patch-${r.id}`)} className="rla-btn rla-btn-ghost rla-btn-sm">Ignore</button>
+              <button onClick={() => patch(r.id, { syncStatus: "hidden" })} disabled={isLoading(`patch-${r.id}`)} className="rla-btn rla-btn-ghost rla-btn-sm">Hide</button>
+              <button onClick={() => { const s = prompt("Edit AI summary", r.aiSummary || ""); if (s !== null) patch(r.id, { aiSummary: s }); }} disabled={isLoading(`patch-${r.id}`)} className="rla-btn rla-btn-ghost rla-btn-sm">Edit</button>
             </div>
           </div>
         ))}

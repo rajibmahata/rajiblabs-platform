@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { api } from "../../services/api";
-import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
+import { Chip, Empty, Field, PageHead, Panel, StatusPill, BlockLoader } from "../../components/admin/ui";
+import { InlineLoader } from "../../components/admin/ui";
+import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
 
 const DEFAULT_EVAL = [  { question: "Who is Rajib Mahata?", expected_keywords: ["Rajib", "Mahata"] },
@@ -46,7 +48,8 @@ export default function KnowledgeManage() {  const [dash, setDash] = useState<an
   const [docs, setDocs] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [busy, setBusy] = useState(false);
+  const { run, isLoading } = useAsyncActions();
+  const busy = isLoading("reindex-mongodb") || isLoading("reindex-github") || isLoading("save") || isLoading("eval");
   const [evalRes, setEvalRes] = useState<any>(null);
   const [form, setForm] = useState({ title: "", content: "", url: "" });
   const [editing, setEditing] = useState<any>(null);
@@ -67,72 +70,48 @@ export default function KnowledgeManage() {  const [dash, setDash] = useState<an
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setTimeout(load, 400); return () => clearTimeout(t); }, [search, filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const reindex = async (source: string) => {
-    setBusy(true);
-    try { const r = await api.post<any>(`/api/admin/rag/reindex?source=${source}`); load(); toast("Re-ingest done", `${r.created} new · ${r.updated} updated · ${r.unchanged} unchanged · ${r.failed} failed`); }
-    catch (e: any) { toast("Re-ingest failed", String(e.message || e).slice(0, 120)); } finally { setBusy(false); }
-  };
+  const reindex = (source: string) => run(`reindex-${source}`, async () => { const r = await api.post<any>(`/api/admin/rag/reindex?source=${source}`); load(); return r; }, { successTitle: "Re-ingest done", errorTitle: "Re-ingest failed" }).then((r:any)=>{ if(r) toast("Re-ingest done", `${r.created} new · ${r.updated} updated · ${r.unchanged} unchanged · ${r.failed} failed`); }).catch(()=>{});
   const resetForm = () => {
     setForm({ title: "", content: "", url: "" }); setEditing(null);
     setGuards({}); setHallu({});
   };
-  const save = async () => {
+  const save = () => {
     if (!form.title.trim() || form.content.trim().length < 10) { toast("Validation", "Title + at least 10 characters of content are required."); return; }
-    setBusy(true);
-    try {
+    run("save", async () => {
       const payload = { ...form, guardrails: guards, hallucination_control: hallu };
       if (editing) await api.put(`/api/admin/rag/documents/${editing.id}`, { ...editing, ...payload });
       else await api.post("/api/admin/rag/documents", { ...payload, source_type: "admin_knowledge" });
       resetForm(); load();
-    } catch (e: any) { toast("Save failed", String(e.message || e).slice(0, 120)); } finally { setBusy(false); }
+    }, { successTitle: editing ? "Saved & Re-indexed" : "Added & Indexed", errorTitle: "Save failed" });
   };
-  const docAction = async (id: string, action: "unpublish" | "reindex" | "delete") => {
+  const docAction = (id: string, action: "unpublish" | "reindex" | "delete") => {
     if (action === "delete" && !confirm("Delete this document and its vectors?")) return;
-    try {
-      if (action === "delete") await api.del(`/api/admin/rag/documents/${id}`);
-      else await api.post(`/api/admin/rag/documents/${id}/${action}`);
-      load();
-    } catch (e: any) { toast("Action failed", String(e.message || e).slice(0, 120)); }
+    run(`doc-${id}-${action}`, async () => { if (action === "delete") await api.del(`/api/admin/rag/documents/${id}`); else await api.post(`/api/admin/rag/documents/${id}/${action}`); load(); }, { successTitle: action==="delete" ? "Deleted" : action==="reindex" ? "Re-indexed" : "Unpublished", errorTitle: "Action failed" });
   };
-  const ghAction = async (repo: string, action: "sync" | "reindex" | "disable" | "enable" | "delete") => {
+  const ghAction = (repo: string, action: "sync" | "reindex" | "disable" | "enable" | "delete") => {
     const id = encodeURIComponent(repo);
-    try {
-      setBusy(true);
-      if (action === "sync") {
-        const r = await api.post<any>(`/api/admin/github/repositories/${id}/sync`);
-        toast("Knowledge synced", `${repo}: ${r.created ?? 0} new · ${r.updated ?? 0} updated · ${r.stale_removed ?? 0} removed`);
-      } else if (action === "reindex") {
-        await api.post(`/api/admin/github/repositories/${id}/reindex`);
-        toast("Re-index queued", `${repo} fully re-indexed.`);
-      } else if (action === "enable") {
-        await api.patch(`/api/admin/github/repositories/${id}`, { rag_enabled: true });
-        toast("Enabled", `${repo} back in RAG retrieval.`);
-      } else if (action === "disable") {
-        await api.post(`/api/admin/github/repositories/${id}/disable`);
-        toast("Disabled", `${repo} removed from RAG retrieval.`);
-      } else {
-        if (!confirm(`Delete ALL indexed knowledge for ${repo}? (Repo record kept; vectors removed.)`)) return;
-        await api.del(`/api/admin/github/repositories/${id}/knowledge`);
-        toast("Deleted", `${repo} knowledge removed.`);
-      }
+    if (action === "delete" && !confirm(`Delete ALL indexed knowledge for ${repo}? (Repo record kept; vectors removed.)`)) return;
+    const titles: Record<string,string> = { sync: "Knowledge synced", reindex: "Re-index queued", enable: "Enabled", disable: "Disabled", delete: "Deleted" };
+    run(`gh-${repo}-${action}`, async () => {
+      if (action === "sync") { const r = await api.post<any>(`/api/admin/github/repositories/${id}/sync`); toast("Knowledge synced", `${repo}: ${r.created ?? 0} new · ${r.updated ?? 0} updated · ${r.stale_removed ?? 0} removed`); }
+      else if (action === "reindex") { await api.post(`/api/admin/github/repositories/${id}/reindex`); }
+      else if (action === "enable") { await api.patch(`/api/admin/github/repositories/${id}`, { rag_enabled: true }); }
+      else if (action === "disable") { await api.post(`/api/admin/github/repositories/${id}/disable`); }
+      else { await api.del(`/api/admin/github/repositories/${id}/knowledge`); }
       load();
-    } catch (e: any) { toast("Action failed", String(e.message || e).slice(0, 160)); } finally { setBusy(false); }
+    }, { successTitle: titles[action], errorTitle: "Action failed" });
   };
   const ghView = (repo: string) => { setSearch(repo); setFilter("all"); window.scrollTo({ top: document.body.scrollHeight }); };
-  const runEval = async () => {
-    setBusy(true);
-    try { setEvalRes(await api.post<any>("/api/admin/rag/evaluate", { items: DEFAULT_EVAL })); }
-    catch (e: any) { toast("Evaluation failed", String(e.message || e).slice(0, 120)); } finally { setBusy(false); }
-  };
+  const runEval = () => run("eval", async () => { const r = await api.post<any>("/api/admin/rag/evaluate", { items: DEFAULT_EVAL }); setEvalRes(r); }, { successTitle: "Evaluation done", errorTitle: "Evaluation failed" });
 
   const bySource = dash?.by_source ?? {};
   return (
     <div>
       <PageHead title="Knowledge Base" desc="MongoDB is the source of truth; vectors re-index automatically on every edit. Only public content is ever indexed."
         actions={<>
-          <button onClick={() => reindex("mongodb")} disabled={busy} className="rla-btn rla-btn-primary rla-btn-sm"><i className="fas fa-database" /> {busy ? "Working…" : "Re-ingest Site"}</button>
-          <button onClick={() => reindex("github")} disabled={busy} className="rla-btn rla-btn-primary rla-btn-sm"><i className="fab fa-github" /> Re-ingest GitHub</button>
-          <button onClick={runEval} disabled={busy} className="rla-btn rla-btn-ghost rla-btn-sm"><i className="fas fa-vial" /> Run Evaluation</button>
+          <button onClick={() => reindex("mongodb")} disabled={isLoading("reindex-mongodb")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("reindex-mongodb")}><i className={`fas fa-database ${isLoading("reindex-mongodb") ? "fa-spin" : ""}`} /> {isLoading("reindex-mongodb") ? "Re-ingesting..." : "Re-ingest Site"}</button>
+          <button onClick={() => reindex("github")} disabled={isLoading("reindex-github")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("reindex-github")}><i className={`fab fa-github ${isLoading("reindex-github") ? "fa-spin" : ""}`} /> {isLoading("reindex-github") ? "Re-ingesting..." : "Re-ingest GitHub"}</button>
+          <button onClick={runEval} disabled={isLoading("eval")} className="rla-btn rla-btn-ghost rla-btn-sm" aria-busy={isLoading("eval")}>{isLoading("eval") ? <InlineLoader text="Evaluating..." /> : <><i className="fas fa-vial" /> Run Evaluation</>}</button>
         </>} />
       {dash && (
         <div className="rla-kpi-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
@@ -162,6 +141,7 @@ export default function KnowledgeManage() {  const [dash, setDash] = useState<an
         </div>
       )}
 
+      {(isLoading("reindex-mongodb") || isLoading("reindex-github")) && <div style={{marginBottom:12}}><InlineLoader text={isLoading("reindex-mongodb") ? "Re-ingesting site content..." : "Re-ingesting GitHub..."} /></div>}
       <Panel title="GitHub sources" sub="Synced repositories in the shared knowledge layer (configure token + sync in GitHub Projects)">
         <div className="rla-table-wrap">
           <table className="rla-table">

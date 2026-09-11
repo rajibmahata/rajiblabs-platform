@@ -55,3 +55,66 @@ export function Field({ label, children, span }: { label: string; children: Reac
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="rla-empty">{children}</div>;
 }
+
+export function InlineLoader({ text = "Loading..." }: { text?: string }) {
+  return (
+    <span className="rla-inline-loader" aria-live="polite" aria-busy="true">
+      <i className="fas fa-spinner fa-spin" aria-hidden="true" />
+      <span>{text}</span>
+    </span>
+  );
+}
+
+export function BlockLoader({ text = "Loading...", sub }: { text?: string; sub?: string }) {
+  return (
+    <div className="rla-block-loader" role="status" aria-live="polite" aria-busy="true">
+      <span className="rla-loader-ring" aria-hidden="true"><i className="fas fa-spinner fa-spin" /></span>
+      <div>
+        <b>{text}</b>
+        {sub && <span>{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+export function StepProgress({
+  steps,
+  current,
+  status = "processing",
+}: {
+  steps: string[];
+  current: number;
+  status?: "processing" | "done" | "error";
+}) {
+  return (
+    <div className="rla-step-progress" role="status" aria-live="polite" aria-busy={status === "processing"}>
+      {steps.map((label, i) => {
+        const isDone = i < current;
+        const isCurrent = i === current && status === "processing";
+        const isError = i === current && status === "error";
+        return (
+          <div key={label} className={`rla-step ${isDone ? "done" : ""} ${isCurrent ? "current" : ""} ${isError ? "error" : ""}`}>
+            <span className="rla-step-dot" aria-hidden="true">
+              {isDone ? <i className="fas fa-check" /> : isCurrent ? <i className="fas fa-spinner fa-spin" /> : isError ? <i className="fas fa-exclamation" /> : <span>{i + 1}</span>}
+            </span>
+            <span className="rla-step-label">{label}</span>
+            {isCurrent && <span className="rla-step-pulse" aria-hidden="true" />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function AsyncButton({
+  loading,
+  loadingText,
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean; loadingText?: string }) {
+  return (
+    <button {...props} disabled={loading || props.disabled} aria-busy={loading ? "true" : undefined} className={`${props.className || ""} ${loading ? "is-loading" : ""}`.trim()}>
+      {loading ? <InlineLoader text={loadingText || "Working..."} /> : children}
+    </button>
+  );
+}

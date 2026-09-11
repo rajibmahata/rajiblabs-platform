@@ -408,6 +408,39 @@
 .rla-danger-text { color: var(--rla-red); }
 @media (max-width: 768px) { .rla-form-grid { grid-template-columns: 1fr; } }
 
+/* loaders — subtle, professional, consistent */
+.rla-inline-loader { display: inline-flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 600; color: var(--rla-text-dim); }
+.rla-inline-loader i { color: var(--rla-violet); font-size: .9rem; }
+.rla-block-loader {
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px;
+  background: var(--rla-surface); border: 1px solid var(--rla-border); border-radius: 12px;
+  box-shadow: var(--rla-shadow-sm);
+}
+.rla-block-loader b { display: block; font-size: .88rem; font-weight: 700; color: var(--rla-text); }
+.rla-block-loader span { display: block; font-size: .78rem; color: var(--rla-text-faint); margin-top: 2px; }
+.rla-loader-ring {
+  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--rla-violet-soft); color: var(--rla-violet); font-size: .95rem;
+}
+.rla-step-progress { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; }
+.rla-step { display: flex; align-items: center; gap: 12px; font-size: .84rem; color: var(--rla-text-faint); transition: color .3s; }
+.rla-step-label { flex: 1; font-weight: 500; }
+.rla-step-dot {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--rla-bg); border: 1px solid var(--rla-border); color: var(--rla-text-faint);
+  font-size: .7rem; font-weight: 700; transition: all .3s;
+}
+.rla-step.done { color: var(--rla-green); }
+.rla-step.done .rla-step-dot { background: var(--rla-green-soft); border-color: var(--rla-green); color: var(--rla-green); }
+.rla-step.current { color: var(--rla-text); font-weight: 600; }
+.rla-step.current .rla-step-dot { background: var(--rla-violet-soft); border-color: var(--rla-violet); color: var(--rla-violet); }
+.rla-step.error { color: var(--rla-red); }
+.rla-step.error .rla-step-dot { background: var(--rla-red-soft); border-color: var(--rla-red); color: var(--rla-red); }
+.rla-step-pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--rla-violet); animation: rla-pulse 1.4s infinite; margin-left: auto; }
+@keyframes rla-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .5; transform: scale(.85); } }
+.rla-btn.is-loading { opacity: .72; pointer-events: none; }
+.rla-btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
 /* toast */
 .rla-toast {
   position: fixed; bottom: 24px; right: 24px; z-index: 500; display: flex; align-items: center; gap: 12px;
