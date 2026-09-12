@@ -275,7 +275,6 @@ async def ensure_indexes(db=None) -> None:
         "email_sends": [[("campaign_id", 1)], [("lead_id", 1)],
                         [("token", 1)], [("sent_at", -1)],
                         [("lead_id", 1), ("sent_at", -1)]],
-        "marketing_agent_runs": [[("started_at", -1)], [("status", 1)]],
         "notifications": [[("is_read", 1)], [("created_at", -1)]],
         "admins": [[("emails", 1)]],
         "customer_conversations": [[("session_token", 1)], [("lead_id", 1)]],
@@ -316,7 +315,6 @@ async def ensure_indexes(db=None) -> None:
         # Profile Intelligence Agent (proposals, runs, tasks)
         "profile_agent_proposals": [[("status", 1)], [("target_collection", 1)],
                                     [("created_at", -1)]],
-        "profile_agent_runs": [[("started_at", -1)], [("status", 1)]],
         "profile_agent_tasks": [[("status", 1)], [("created_at", -1)]],
         # Professional domain intelligence (Profile Manager Agent)
         "professional_domains": [[("slug", 1)], [("status", 1)], [("featured", 1)],
@@ -326,7 +324,16 @@ async def ensure_indexes(db=None) -> None:
         "learning_paths": [[("slug", 1)], [("status", 1)], [("topic", 1)], [("updated_at", -1)]],
         "learning_blocks": [[("path_id", 1), ("day_number", 1)], [("status", 1)], [("path_id", 1)], [("updated_at", -1)]],
         "learning_progress": [[("path_id", 1)], [("user_id", 1)]],
+        # AI usage tracking (LLM call log — every token, every cost)
+        "ai_usage": [[("created_at", -1)], [("tag", 1), ("created_at", -1)],
+                      [("provider", 1)], [("model", 1)],
+                      [("cache_hit", 1), ("created_at", -1)],
+                      [("tag", 1), ("model", 1), ("created_at", -1)]],
+        # Agent execution runs (unified query across agent-specific collections)
+        "profile_agent_runs": [[("started_at", -1)], [("status", 1)],
+                               [("agent", 1), ("started_at", -1)]],
         "learning_agent_runs": [[("started_at", -1)], [("status", 1)]],
+        "marketing_agent_runs": [[("started_at", -1)], [("status", 1)]],
         # Multilingual framework: language master + translation records + hot cache
         "languages": [[("enabled", 1)], [("sort_order", 1)]],
         "translations": [[("key", 1), ("target_language", 1)],

@@ -52,8 +52,10 @@ async def record_usage(db, *, provider: str, model: str, tag: str,
                        latency_ms: int = 0, usage_obj: dict | None = None,
                        cache_hit: bool = False,
                        retrieval_hit: bool | None = None,
-                       fallback_reason: str | None = None) -> None:
-    """Measurable every LLM/embedding call. Never raises, never logs secrets."""
+                       fallback_reason: str | None = None,
+                       response_type: str | None = None) -> None:
+    """Measurable every LLM/embedding call. Never raises, never logs secrets.
+    response_type: RAG_ONLY | STRUCTURED_LOOKUP | CACHE | LLM_FALLBACK | LLM_SYNTHESIS"""
     try:
         usage_obj = usage_obj or {}
         in_tok = int(usage_obj.get("prompt_tokens") or 0) or estimate_tokens(in_text)
@@ -68,6 +70,7 @@ async def record_usage(db, *, provider: str, model: str, tag: str,
             "cache_hit": bool(cache_hit),
             "retrieval_hit": retrieval_hit, "fallback_reason": fallback_reason,
             "estimated": not bool(usage_obj),
+            "response_type": response_type,
             "created_at": utcnow()})
     except Exception as e:
         log.warning("usage record failed: %s", e)

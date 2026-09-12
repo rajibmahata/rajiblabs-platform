@@ -52,6 +52,188 @@ def test_public_visibility_matrix_pure():
     assert is_path_visible(None) is False
     assert is_path_visible({}) is False
 
+
+# ---------- validate_block_quality tests ----------
+
+def _good_block(**overrides):
+    """Build a high-quality block that passes all quality checks."""
+    base = {
+        "day_number": 2,
+        "topic": "Variables",
+        "learning_objective": "Create a variable and print its value to the console",
+        "why_matters": "Every program stores data — variables are how you hold a customer name, a price, or a score in your shopping app",
+        "real_world_example": "Imagine you are building a small shopping app. A Customer has a name and email. A Product has a name and price. Today you learn how to store these pieces of data.",
+        "simple_explanation": "A variable is like a labeled box. You put a value inside and give it a name. Later you can open the box and use the value.",
+        "concept_explanation": "In programming a variable stores a value. Think of it as a container with a label. You create it, name it, and use it.",
+        "step_by_step": [
+            "Create a variable called customerName with your name",
+            "Print the variable to see its value",
+            "Change the value and print again",
+        ],
+        "examples": [{"title": "Hello variable", "code": "x = 1\nprint(x)", "explanation": "We create x and print it", "expected_output": "1"}],
+        "try_it_yourself": "Change the value from 1 to 42 and run again",
+        "common_mistakes": ["Forgetting to assign a value before using it — Python will give a NameError because the box is empty"],
+        "exercise": "Create a variable called price, set it to 9.99, and print it",
+        "homework": "Create two variables, add them, and print the result",
+        "quick_review": ["Variables store values", "You can change a variable value"],
+        "what_you_can_do_now": ["Create a variable and print it", "Change a variable value"],
+        "questions": ["What is a variable?", "How do you create one?"],
+    }
+    base.update(overrides)
+    return base
+
+
+def test_quality_passes_on_good_block():
+    from app.services.learning_agent import validate_block_quality
+    passed, issues, improvements = validate_block_quality(_good_block(), day=2, topic="Python")
+    assert passed is True
+    assert issues == []
+
+
+def test_quality_fails_on_abstract_real_world():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(real_world_example="In general, this is typically useful for many things in broad terms")
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert passed is False
+    assert any("too short" in i or "abstract" in i for i in issues + improvements)
+
+
+def test_quality_fails_on_short_real_world():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(real_world_example="Short example")
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert passed is False
+    assert any("too short" in i for i in issues)
+
+
+def test_quality_flags_no_doing_words_in_objective():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(learning_objective="Understanding variables and their importance in programming")
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    # Should have improvement about doing words
+    assert any("DO" in imp for imp in improvements)
+
+
+def test_quality_flags_code_without_explanation():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(examples=[{"title": "Example", "code": "x = 1\nprint(x)", "explanation": "", "expected_output": "1"}])
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert any("no explanation" in i for i in issues)
+
+
+def test_quality_flags_short_exercise():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(exercise="Do something")
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert any("too short" in i for i in issues)
+
+
+def test_quality_flags_vague_try_it():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(try_it_yourself="Try it")
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert any("vague" in imp for imp in improvements)
+
+
+def test_quality_flags_generic_why_matters():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(why_matters="This is important")
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert any("generic" in imp or "short" in i for imp, i in [(imp, "") for imp in improvements] + [("", i) for i in issues])
+
+
+def test_quality_flags_vague_abilities():
+    from app.services.learning_agent import validate_block_quality
+    block = _good_block(what_you_can_do_now=["Understand variables", "Know about types"])
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert any("vague" in imp for imp in improvements)
+
+
+def test_quality_detects_repetition_from_prev_day():
+    from app.services.learning_agent import validate_block_quality
+    prev = {"learning_objective": "Create a variable and print its value to the console"}
+    block = _good_block(learning_objective="Create a variable and print its value to the console")
+    passed, issues, improvements = validate_block_quality(block, day=2, prev_block=prev)
+    assert any("overlaps" in imp for imp in improvements)
+
+
+def test_quality_long_code_in_early_days():
+    from app.services.learning_agent import validate_block_quality
+    long_code = "x = 1\n" * 100  # >500 chars
+    block = _good_block(examples=[{"title": "Long", "code": long_code, "explanation": "Long code", "expected_output": ""}])
+    passed, issues, improvements = validate_block_quality(block, day=2)
+    assert any("long" in imp for imp in improvements)
+
+
+# ---------- validate_path_coherence tests ----------
+
+def test_path_coherence_empty_blocks():
+    from app.services.learning_agent import validate_path_coherence
+    path = {"topic": "Python", "duration": 5, "roadmap": [], "prerequisites": []}
+    ok, issues = validate_path_coherence(path, [])
+    assert ok is False
+    assert any("No blocks" in i for i in issues)
+
+
+def test_path_coherence_repeated_titles():
+    from app.services.learning_agent import validate_path_coherence
+    path = {"topic": "Python", "duration": 3, "roadmap": [], "prerequisites": []}
+    blocks = [
+        {"day_number": 1, "title": "Intro", "status": "published"},
+        {"day_number": 2, "title": "Intro", "status": "published"},
+        {"day_number": 3, "title": "Functions", "status": "published"},
+    ]
+    ok, issues = validate_path_coherence(path, blocks)
+    assert any("repeats" in i for i in issues)
+
+
+def test_path_coherence_day1_advanced_concepts():
+    from app.services.learning_agent import validate_path_coherence
+    path = {"topic": "C#", "duration": 5, "roadmap": [], "prerequisites": []}
+    blocks = [
+        {"day_number": 1, "title": "Interfaces", "learning_objective": "Understand interfaces and generics", "status": "published"},
+    ]
+    ok, issues = validate_path_coherence(path, blocks)
+    assert any("advanced" in i.lower() for i in issues)
+
+
+def test_path_coherence_missing_exercises_in_later_days():
+    from app.services.learning_agent import validate_path_coherence
+    path = {"topic": "Python", "duration": 5, "roadmap": [], "prerequisites": []}
+    blocks = [
+        {"day_number": 1, "title": "Intro", "status": "published"},
+        {"day_number": 2, "title": "Vars", "status": "published"},
+        {"day_number": 3, "title": "Functions", "status": "published", "exercise": "Do something"},
+        {"day_number": 4, "title": "Classes", "status": "published"},
+        {"day_number": 5, "title": "Projects", "status": "published"},
+    ]
+    ok, issues = validate_path_coherence(path, blocks)
+    assert any("without exercise" in i for i in issues)
+
+
+def test_path_coherence_too_many_prerequisites():
+    from app.services.learning_agent import validate_path_coherence
+    path = {"topic": "Python", "duration": 5, "roadmap": [], "prerequisites": ["A", "B", "C", "D", "E"]}
+    blocks = [
+        {"day_number": 1, "title": "Intro", "status": "published"},
+        {"day_number": 2, "title": "Vars", "status": "published"},
+    ]
+    ok, issues = validate_path_coherence(path, blocks)
+    assert any("prerequisites" in i.lower() for i in issues)
+
+
+def test_path_coherence_passes_on_good_path():
+    from app.services.learning_agent import validate_path_coherence
+    path = {"topic": "Python", "duration": 3, "roadmap": [], "prerequisites": ["Basic computer use"]}
+    blocks = [
+        {"day_number": 1, "title": "First Steps", "learning_objective": "Create your first program", "status": "published", "exercise": "Run hello world", "examples": [{"code": "print('hello')"}]},
+        {"day_number": 2, "title": "Variables", "learning_objective": "Create a variable and use it", "status": "published", "exercise": "Store a number", "examples": [{"code": "x = 1"}]},
+        {"day_number": 3, "title": "Functions", "learning_objective": "Write a function that adds two numbers", "status": "published", "exercise": "Write add function", "examples": [{"code": "def add(a,b): return a+b"}]},
+    ]
+    ok, issues = validate_path_coherence(path, blocks)
+    assert ok is True
+    assert issues == []
+
 @pytest.mark.asyncio
 async def test_learning_path_create_and_blocks():
     from unittest.mock import AsyncMock, patch

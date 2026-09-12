@@ -735,6 +735,11 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
                     log.info("Block %s day %s is weak (%s) — will regenerate", slug, b.get("day_number"), reason)
                     next_block = b
                     break
+                # Also regenerate if quality validator left improvement notes
+                if b.get("quality_improvements"):
+                    log.info("Block %s day %s has quality improvements — will regenerate", slug, b.get("day_number"))
+                    next_block = b
+                    break
         if not next_block:
             if all(b.get("status") in ("published", "completed", "archived") for b in blocks) and len(blocks) >= duration:
                 await db["learning_paths"].update_one({"_id": path["_id"]}, {"$set": {"status": "completed", "progress": 100, "updated_at": now}})

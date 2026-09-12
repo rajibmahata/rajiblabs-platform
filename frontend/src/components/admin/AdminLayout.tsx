@@ -12,6 +12,8 @@ const NAV: { label: string; items: NavEntry[] }[] = [
     { to: "/admin", label: "Dashboard", icon: "fas fa-gauge-high", exact: true },
     { to: "/admin/ai-workbench", label: "AI Proposal Studio", icon: "fas fa-wand-magic-sparkles" },
     { to: "/admin/ops/summary", label: "AI Operations", icon: "fas fa-microchip" },
+    { to: "/admin/ops/runs", label: "Run History", icon: "fas fa-clock-rotate-left" },
+    { to: "/admin/ops/token-budget", label: "Token Budget", icon: "fas fa-coins" },
     { to: "/admin/logs", label: "System Logs", icon: "fas fa-wave-square" },
   ]},
   { label: "Content", items: [

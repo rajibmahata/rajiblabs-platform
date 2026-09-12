@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [rag, setRag] = useState<any>(null);
   const [proposals, setProposals] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [opsSummary, setOpsSummary] = useState<any>(null);
 
   useEffect(() => {
     const arr = (v: any) => (Array.isArray(v) ? v : []);
@@ -39,6 +40,7 @@ export default function Dashboard() {
     get<any>("/api/admin/products").then((p) => setProducts(arr(p)));
     get<any>("/api/admin/rag/dashboard").then((r) => r && setRag(r));
     get<any>("/api/admin/ai/proposals").then((p) => setProposals(arr(p)));
+    get<any>("/api/admin/ops/summary").then((s) => s && setOpsSummary(s));
   }, []);
 
   const doSync = async () => {
@@ -279,6 +281,83 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── AI Operations Quick View ── */}
+      {opsSummary && (
+        <div className="rla-panel-grid">
+          <div className="rla-panel">
+            <div className="rla-panel-head">
+              <div><h3><i className="fas fa-microchip" style={{ marginRight: 6, color: "var(--rla-violet)" }} />AI Operations</h3><p>Today's LLM usage &amp; cost</p></div>
+              <Link to="/admin/ops/summary" className="rla-panel-link">Full view <i className="fas fa-arrow-right" /></Link>
+            </div>
+            <div className="rla-panel-body">
+              <div className="rla-kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                {[
+                  { label: "LLM Calls", value: opsSummary.today?.calls ?? 0, color: "var(--rla-violet)" },
+                  { label: "Tokens", value: `${((opsSummary.today?.total_tokens ?? 0) / 1000).toFixed(1)}k`, color: "var(--rla-cyan)" },
+                  { label: "Cost Today", value: `$${(opsSummary.today?.cost_usd ?? 0).toFixed(4)}`, color: "var(--rla-green)" },
+                  { label: "Cache Hits", value: `${opsSummary.today?.cache_hit_rate ?? 0}%`, color: "var(--rla-amber)" },
+                ].map((s) => (
+                  <div key={s.label} style={{ background: `${s.color}08`, borderRadius: 8, padding: "10px 12px", border: `1px solid ${s.color}20` }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.value}</div>
+                    <div style={{ fontSize: 11, color: "var(--rla-text-dim)" }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {opsSummary.response_types && Object.entries(opsSummary.response_types).map(([rt, count]) => (
+                  <span key={rt} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: rt.startsWith("LLM") ? "var(--rla-amber-soft)" : "var(--rla-green-soft)", color: rt.startsWith("LLM") ? "var(--rla-amber)" : "var(--rla-green)" }}>
+                    {rt}: {String(count)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rla-panel">
+            <div className="rla-panel-head">
+              <div><h3><i className="fas fa-robot" style={{ marginRight: 6, color: "var(--rla-cyan)" }} />Agent Health</h3><p>Registered agents status</p></div>
+              <Link to="/admin/ops/agents" className="rla-panel-link">Details <i className="fas fa-arrow-right" /></Link>
+            </div>
+            <div className="rla-panel-body">
+              {opsSummary.agents?.slice(0, 5).map((a: any) => (
+                <div key={a.slug} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--rla-border)" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 99, background: a.has_running_job ? "var(--rla-amber)" : a.enabled ? "var(--rla-green)" : "var(--rla-text-faint)" }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{a.name}</div>
+                    <div style={{ fontSize: 11, color: "var(--rla-text-dim)" }}>{a.agent_type} · {a.turns ?? 0} turns · {a.errors ?? 0} errors</div>
+                  </div>
+                  {a.has_running_job && <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 6, background: "var(--rla-amber-soft)", color: "var(--rla-amber)" }}>RUNNING</span>}
+                </div>
+              ))}
+              {opsSummary.agent_health && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--rla-text-dim)" }}>
+                  {opsSummary.agent_health.enabled} enabled · {opsSummary.agent_health.running} running · {opsSummary.agent_health.with_errors} with errors
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Recent Errors ── */}
+      {opsSummary?.recent_errors?.length > 0 && (
+        <div className="rla-panel">
+          <div className="rla-panel-head">
+            <div><h3><i className="fas fa-triangle-exclamation" style={{ marginRight: 6, color: "var(--rla-red)" }} />Recent Errors</h3><p>Last 24 hours</p></div>
+            <Link to="/admin/logs" className="rla-panel-link">All logs <i className="fas fa-arrow-right" /></Link>
+          </div>
+          <div className="rla-panel-body">
+            {opsSummary.recent_errors.slice(0, 5).map((e: any) => (
+              <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--rla-border)" }}>
+                <span style={{ fontSize: 12, padding: "2px 6px", borderRadius: 6, background: "var(--rla-red-soft)", color: "var(--rla-red)", fontWeight: 600 }}>{e.source}</span>
+                <div style={{ flex: 1, fontSize: 13, color: "var(--rla-text-dim)" }}>{e.message}</div>
+                <span style={{ fontSize: 11, color: "var(--rla-text-faint)" }}>{fmtDT(e.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rla-panel">
         <div className="rla-panel-head">
