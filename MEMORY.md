@@ -10,6 +10,8 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   GitHubManage, KnowledgeManage, LanguagesManage, LeadsManage, LogsManage,
   PortfolioManage, ProductsManage, ProfileManage, ResumeManage, Settings,
   TranslationsManage, Workbench (AI Proposal Studio), + Login.
+  Agent & AI Ops: AgentOpsSummaryPage, AgentOpsConversationsPage,
+  AgentOpsAgentDetailPage.
 - `frontend/src/components/admin/` — `AdminLayout.tsx` (shell + NAV groups), `ui.tsx`
   (template primitives), `toast.ts` (toast bus), `ProtectedRoute.tsx`.
 - `frontend/src/styles/admin.css` — entire admin design system, scoped under `.rl-admin`.
@@ -18,7 +20,8 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - `frontend/src/components/ChatWidget.tsx` — homepage concierge chat (ask→agent
   endpoint, plan→pipeline; starters from `/api/public/agent/config`).
 - `rajiblabs-ai-backend/app/routers/` — `admin_*` (JWT: auth, projects, logs, rag,
-  workbench, languages, agents), `public.py`, `chat.py`, `lead_chat.py`,
+  workbench, languages, agents), `admin_ops.py` (agent execution visibility,
+  usage/cost, conversations, cache health), `public.py`, `chat.py`, `lead_chat.py`,
   `rag.py` (public RAG), `legacy.py` (v1 compat), `github.py` (token config +
   knowledge-sync lifecycle), `concierge.py` (public agent chat).
 - `rajiblabs-ai-backend/app/services/` — `lead_ai.AIService` (THE orchestrator),

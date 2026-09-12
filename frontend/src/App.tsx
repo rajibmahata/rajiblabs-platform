@@ -37,6 +37,9 @@ const DomainDetail = lazy(() => import("./pages/DomainDetail"));
 const Workbench = lazy(() => import("./pages/admin/Workbench"));
 const LogsManage = lazy(() => import("./pages/admin/LogsManage"));
 const Settings = lazy(() => import("./pages/admin/Settings"));
+const AgentOpsSummary = lazy(() => import("./pages/admin/AgentOpsSummaryPage"));
+const AgentOpsConversations = lazy(() => import("./pages/admin/AgentOpsConversationsPage"));
+const AgentOpsAgentDetail = lazy(() => import("./pages/admin/AgentOpsAgentDetailPage"));
 
 const PortfolioDetail = () => <ProjectDetail kind="portfolio" />;
 const ProductDetail = () => <ProjectDetail kind="product" />;
@@ -84,6 +87,10 @@ export default function App() {
             <Route path="translations" element={<TranslationsManage />} />
             <Route path="logs" element={<LogsManage />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="ops/summary" element={<AgentOpsSummary />} />
+            <Route path="ops/conversations" element={<AgentOpsConversations />} />
+            <Route path="ops/conversations/:conversationId" element={<AgentOpsConversations />} />
+            <Route path="ops/agents/:slug" element={<AgentOpsAgentDetail />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

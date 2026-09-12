@@ -2,6 +2,64 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-11 — Agent & AI Operations Dashboard
+
+New centralized dashboard for agent execution visibility, LLM usage/cost
+tracking, and RAG-first analytics. Surfaces existing `ai_usage`, `ai_agents`,
+`customer_messages`, `embedding_cache`, and `response_cache` collections
+through a single admin section.
+
+### Added — `rajiblabs-ai-backend/app/routers/admin_ops.py` (new)
+
+- `GET /api/admin/ops/summary`: aggregated today stats (calls, tokens, cost,
+  cache hit rate, fallbacks), weekly totals, all agent stats, conversation
+  counts, lead count, provider + tag breakdown.
+- `GET /api/admin/ops/usage-timeline?days=N`: daily cost/calls/tokens for
+  sparkline charts (default 14 days).
+- `GET /api/admin/ops/conversations`: paginated customer_messages with LLM
+  metadata, filterable by agent and has_llm.
+- `GET /api/admin/ops/conversations/{id}`: full conversation history for a
+  session.
+- `GET /api/admin/ops/agents/{slug}`: per-agent config, stats, 24h usage
+  from ai_usage, recent runs from agent-specific run collections.
+- `GET /api/admin/ops/cache`: embedding/response cache sizes + KB version.
+- `GET /api/admin/ops/health`: 1h error rate + avg latency.
+
+### Added — `frontend/src/pages/admin/AgentOpsSummaryPage.tsx` (new)
+
+- 8 stat cards (calls, tokens, cost, cache rate, week cost, active sessions,
+  leads, fallbacks).
+- 14-day bar charts for daily cost and calls.
+- Provider + tag breakdown tables.
+- Agent cards with turn/tool/lead/error counts, linking to detail page.
+
+### Added — `frontend/src/pages/admin/AgentOpsConversationsPage.tsx` (new)
+
+- Paginated conversation list with sender, message preview, intent, LLM flag,
+  relative timestamp.
+- Agent + has_llm filters.
+- Click-through to full conversation detail drawer (messages, tool calls,
+  sources, LLM provider/model, duration).
+
+### Added — `frontend/src/pages/admin/AgentOpsAgentDetailPage.tsx` (new)
+
+- Per-agent stat cards (24h usage + lifetime totals).
+- Recent runs list with status dot, trigger, timestamp.
+- Agent config summary (type, slug, enabled, public).
+
+### Changed — `frontend/src/App.tsx`
+
+- Lazy imports + routes: `/admin/ops/summary`, `/admin/ops/conversations`,
+  `/admin/ops/conversations/:conversationId`, `/admin/ops/agents/:slug`.
+
+### Changed — `frontend/src/components/admin/AdminLayout.tsx`
+
+- Added "AI Operations" nav entry under Overview group.
+
+### Changed — `rajiblabs-ai-backend/app/main.py`
+
+- Registered `admin_ops.router` with tag "Admin Agent Operations".
+
 ## [Unreleased] — 2026-09-11 — Admin async UX: shared loaders + toasts everywhere
 
 Resume upload gave no indication anything was happening (single backend request,
