@@ -2,6 +2,89 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-12 — Agent & AI Operations Dashboard v2: full visibility, controls, analytics
+
+Complete centralized dashboard for agent execution visibility, OpenAI usage/cost
+tracking, token budgets, and RAG-first analytics. Covers every requirement:
+active agents, run history, step-by-step activity, token control, response type
+tracking, error diagnostics, agent enable/disable/run-now.
+
+### Added — `rajiblabs-ai-backend/app/database.py`
+
+- `ai_usage` indexes: `(created_at)`, `(tag, created_at)`, `(provider)`, `(model)`,
+  `(cache_hit, created_at)`, `(tag, model, created_at)`. Previously full collection scans.
+
+### Changed — `rajiblabs-ai-backend/app/services/ai_economy.py`
+
+- `record_usage()` accepts new `response_type` parameter: RAG_ONLY | STRUCTURED_LOOKUP |
+  CACHE | LLM_FALLBACK | LLM_SYNTHESIS. Stored in `ai_usage` for RAG-first analytics.
+
+### Rewritten — `rajiblabs-ai-backend/app/routers/admin_ops.py` (311 → 580+ lines)
+
+New endpoints:
+- `GET /api/admin/ops/summary` — Enhanced: today/week/month stats, response type breakdown,
+  agent health (running/enabled/errors), recent errors (24h), system health (1h latency/error rate).
+- `GET /api/admin/ops/analytics` — Date-range analytics: by_agent cost/token ranking,
+  by_model breakdown, by_response_type, top_cost_agent, avg tokens/request.
+- `GET /api/admin/ops/agents` — All agents with health, last run, running status, 24h usage.
+- `PUT /api/admin/ops/agents/{slug}/toggle` — Enable/disable agent (audit logged).
+- `POST /api/admin/ops/agents/{slug}/run` — Trigger immediate agent run (non-blocking).
+- `GET /api/admin/ops/runs` — Unified cross-agent run history (profile/learning/marketing).
+  Filterable by agent, status, date_from, date_to. Paginated.
+- `GET /api/admin/ops/runs/{id}` — Full run detail across any agent collection.
+- `GET /api/admin/ops/response-types` — RAG-first analytics: daily breakdown of
+  RAG_ONLY vs LLM vs CACHE vs STRUCTURED_LOOKUP.
+- `GET /api/admin/ops/token-budget` — Get token budget configuration.
+- `PUT /api/admin/ops/token-budget` — Update token budget (audit logged).
+- `GET /api/admin/ops/token-budget/check` — Check if request is within daily/monthly budget.
+- `GET /api/admin/ops/errors` — Recent errors from error_logs, filterable by agent.
+
+### Changed — `frontend/src/pages/admin/Dashboard.tsx`
+
+- Added AI Operations quick view: today's LLM calls/tokens/cost/cache rate, response
+  type breakdown. Links to full ops summary.
+- Added Agent Health grid: registered agents with status dots, turns/errors, running indicator.
+- Added Recent Errors (24h) panel with source/message/time.
+
+### Rewritten — `frontend/src/pages/admin/AgentOpsSummaryPage.tsx`
+
+- 8 stat cards (calls, tokens, cost today/week/month, cache rate, fallbacks, sessions).
+- 14-day cost bar chart.
+- Response type breakdown (RAG_ONLY/LLM/CACHE).
+- Agent health grid with enable/disable status, turns/errors.
+- Recent errors (24h) with source and message.
+- System health (1h): calls, latency, error rate, cache sizes.
+- Links to Run History, Conversations, Token Budget.
+
+### Added — `frontend/src/pages/admin/RunHistoryPage.tsx` (new)
+
+- Unified cross-agent run history (profile/learning/marketing).
+- Searchable, paginated, filterable by agent + status.
+- Click-through to full run detail (sources, proposed/applied, errors, health, full document).
+
+### Added — `frontend/src/pages/admin/TokenBudgetPage.tsx` (new)
+
+- Current usage status (today/month tokens, remaining).
+- Budget configuration: daily/monthly token budget, max tokens/request,
+  fallback model, allowed models, LLM enabled toggle, RAG-first enforcement.
+- Save with audit logging.
+
+### Changed — `frontend/src/pages/admin/AgentOpsAgentDetailPage.tsx`
+
+- Enable/Disable toggle button + Run Now button.
+- Token usage breakdown by model (24h).
+- Recent runs with status, proposed/applied, duration, error count.
+- Link to full run history filtered by agent.
+
+### Changed — `frontend/src/App.tsx`
+
+- Lazy imports + routes: `/admin/ops/runs`, `/admin/ops/runs/:runId`,
+  `/admin/ops/agents`, `/admin/ops/token-budget`.
+
+### Changed — `frontend/src/components/admin/AdminLayout.tsx`
+
+- Added "Run History" and "Token Budget" nav entries under Overview group.
+
 ## [Unreleased] — 2026-09-12 — Learning system: navigation fix, beginner validator, admin validation view
 
 Three fixes and a new validator for the Learning system.

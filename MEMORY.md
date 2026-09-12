@@ -6,11 +6,12 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 
 ## Repo layout
 
-- `frontend/src/pages/admin/` — 18 pages: AgentsManage, ContentManage, Dashboard,
+- `frontend/src/pages/admin/` — 20 pages: AgentsManage, ContentManage, Dashboard,
   GitHubManage, KnowledgeManage, LanguagesManage, LeadsManage, LogsManage,
   PortfolioManage, ProductsManage, ProfileManage, ResumeManage, Settings,
   TranslationsManage, Workbench (AI Proposal Studio), Login,
-  AgentOpsSummaryPage, AgentOpsConversationsPage, AgentOpsAgentDetailPage.
+  AgentOpsSummaryPage, AgentOpsConversationsPage, AgentOpsAgentDetailPage,
+  RunHistoryPage, TokenBudgetPage.
 - `frontend/src/components/admin/` — `AdminLayout.tsx` (shell + NAV groups), `ui.tsx`
   (template primitives), `toast.ts` (toast bus), `ProtectedRoute.tsx`.
 - `frontend/src/styles/admin.css` — entire admin design system, scoped under `.rl-admin`.
@@ -19,8 +20,8 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - `frontend/src/components/ChatWidget.tsx` — homepage concierge chat (ask→agent
   endpoint, plan→pipeline; starters from `/api/public/agent/config`).
 - `rajiblabs-ai-backend/app/routers/` — `admin_*` (JWT: auth, projects, logs, rag,
-  workbench, languages, agents), `admin_ops.py` (agent execution visibility,
-  usage/cost, conversations, cache health), `public.py`, `chat.py`, `lead_chat.py`,
+  workbench, languages, agents), `admin_ops.py` (agent ops dashboard: summary, analytics,
+  runs, conversations, token budget, agent toggle/run, response types, errors), `public.py`, `chat.py`, `lead_chat.py`,
   `rag.py` (public RAG), `legacy.py` (v1 compat), `github.py` (token config +
   knowledge-sync lifecycle), `concierge.py` (public agent chat).
 - `rajiblabs-ai-backend/app/services/` — `lead_ai.AIService` (THE orchestrator),
@@ -139,6 +140,13 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   triggers on BOTH HTTP 404 AND `EmptyContent`. EmptyContent means the model
   responded but produced no output — don't burn retries on the same model.
   Fallback is a one-shot rewrite of the chain, not an infinite loop.
+- **Response type tracking** (`ai_economy.record_usage(response_type=...)`):
+  RAG_ONLY | STRUCTURED_LOOKUP | CACHE | LLM_FALLBACK | LLM_SYNTHESIS.
+  Stored in `ai_usage` for RAG-first analytics. Every LLM call should tag itself.
+- **Token budget** stored in `site_settings.token_budget`. Admin-configurable:
+  daily/monthly token limits, per-agent budgets, max tokens/request, allowed
+  models, fallback model, LLM enabled/disabled, RAG-first enforcement.
+  Checked via `GET /api/admin/ops/token-budget/check` before LLM calls.
 - **Concurrent tool execution** in concierge uses `asyncio.gather`. Never run independent
   tools sequentially. `search_knowledge`, `get_projects`, `get_contact_information`
   are independent and must run in parallel.
@@ -146,6 +154,8 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   Never schedule resource-intensive agents at the same time.
 - **AIService._http** is a reusable `httpx.AsyncClient`. Never create a new client per
   `_complete()` call. The client is shared across all providers and retries.
+- **ai_usage indexes**: `(created_at)`, `(tag, created_at)`, `(provider)`, `(model)`,
+  `(cache_hit, created_at)`, `(tag, model, created_at)`. All ops queries rely on these.
 - **Embedding cache**: content-hash keyed in `embedding_cache` collection, TTL
   `rag_cache_ttl_seconds`. Never re-embed unchanged content. `cached_embed()` handles this.
 - **Lead chat fast path** (`lead_pipeline.process_chat_message`): Level 0/1
