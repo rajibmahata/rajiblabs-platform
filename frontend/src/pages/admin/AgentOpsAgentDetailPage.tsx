@@ -4,10 +4,6 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../../services/api";
 import { toast } from "../../components/admin/toast";
 
-const get = async <T,>(p: string): Promise<T | null> => {
-  try { return await api.get<T>(p); } catch { return null; }
-};
-
 function relTime(iso?: string) {
   if (!iso) return "—";
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
