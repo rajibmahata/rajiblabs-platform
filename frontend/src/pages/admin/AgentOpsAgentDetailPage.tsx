@@ -54,7 +54,7 @@ export default function AgentOpsAgentDetailPage() {
   const doToggle = async () => {
     setToggling(true);
     try {
-      const r = await api.put<any>(`/api/admin/ops/agents/${slug}/toggle`);
+      const r = await api.put<any>(`/api/admin/ops/agents/${slug}/toggle`, {});
       toast("Updated", `${data?.name} ${r.enabled ? "enabled" : "disabled"}`);
       load();
     } catch (e) {
