@@ -249,6 +249,54 @@ async def ensure_learning_seed(db=None) -> dict:
     return doc
 
 
+MARKETING_SLUG = "rajiblabs-marketing"
+
+DEFAULT_MARKETING_AGENT = {
+    "name": "RajibLabs Marketing Intelligence Agent",
+    "slug": MARKETING_SLUG,
+    "description": "Discovers content, drafts campaigns, and manages email marketing with audience/cadence gates.",
+    "enabled": True,
+    "public_enabled": False,
+    "agent_type": "marketing",
+    "system_prompt": (
+        "You are the Marketing Intelligence Agent. Discover relevant content, "
+        "draft marketing campaigns, and manage email sends. Always enforce "
+        "audience, cadence, duplicate, and approval gates."
+    ),
+    "allowed_tools": [
+        "search_knowledge", "get_profile", "analyze_resume",
+        "get_github_repositories", "validate_urls", "create_admin_task",
+    ],
+    "knowledge_sources": list(DEFAULT_SOURCE_POLICY),
+    "knowledge_policy": dict(DEFAULT_SOURCE_POLICY),
+    "guardrail_policy": "marketing",
+    "hallucination_policy": "verified-only",
+    "response_policy": "verified-only",
+    "response_style": "persuasive, evidence-backed",
+    "lead_capture_enabled": True,
+    "lead_fields": ["email", "name", "company", "interest"],
+    "fallback_message": "Marketing Intelligence: no campaign action taken.",
+    "policy": {
+        "auto_create_drafts": True,
+        "auto_publish": False,
+        "approval_required_for": ["send", "publish", "delete"],
+        "run_frequency": "daily",
+    },
+    "schedule": {"cron": "0 9 * * *", "timezone": "Asia/Kolkata"},
+}
+
+
+async def ensure_marketing_seed(db=None) -> dict:
+    db = get_db() if db is None else db
+    existing = await db["ai_agents"].find_one({"slug": MARKETING_SLUG})
+    if existing:
+        return existing
+    doc = {**DEFAULT_MARKETING_AGENT, "created_at": utcnow(), "updated_at": utcnow(),
+           "stats": {"runs": 0, "proposals": 0, "applied": 0, "errors": 0}}
+    await db["ai_agents"].insert_one(doc)
+    return doc
+
+
 async def get_agent(db, slug: str = CONCIERGE_SLUG) -> dict | None:
     if slug == CONCIERGE_SLUG:
         return await ensure_seed(db)
@@ -256,6 +304,8 @@ async def get_agent(db, slug: str = CONCIERGE_SLUG) -> dict | None:
         return await ensure_profile_seed(db)
     if slug == LEARNING_SLUG:
         return await ensure_learning_seed(db)
+    if slug == MARKETING_SLUG:
+        return await ensure_marketing_seed(db)
     return await db["ai_agents"].find_one({"slug": slug})
 
 
@@ -264,6 +314,7 @@ async def list_agents(db) -> list[dict]:
     await ensure_profile_seed(db)
     await ensure_career_seed(db)
     await ensure_learning_seed(db)
+    await ensure_marketing_seed(db)
     return [d async for d in db["ai_agents"].find().sort("created_at", 1)]
 
 

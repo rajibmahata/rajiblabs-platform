@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../../services/api";
 
 interface Msg { id: string; conversation_id: string; session_token: string; sender: string; message: string; intent?: string; tools_called?: string[]; agent_slug?: string; ai_provider?: string; ai_model?: string; duration_ms?: number; created_at?: string }
-interface DetailMsg { id: string; sender: string; message: string; intent?: string; tools_called?: string[]; sources_used?: any[]; ai_provider?: string; ai_model?: string; duration_ms?: number; created_at?: string }
+interface DetailMsg { id: string; sender: string; message: string; intent?: string; tools_called?: string[]; sources_used?: Record<string, unknown>[]; ai_provider?: string; ai_model?: string; duration_ms?: number; created_at?: string }
 
 function relativeTime(iso?: string) {
   if (!iso) return "";
@@ -25,27 +25,29 @@ export default function AgentOpsConversationsPage() {
   const [hasLlm, setHasLlm] = useState<boolean | null>(null);
   const [detail, setDetail] = useState<{ conversation_id: string; messages: DetailMsg[] } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
   const limit = 30;
 
   const load = useCallback(() => {
-    setLoading(true);
     const params = new URLSearchParams({ limit: String(limit), offset: String(page * limit) });
     if (agent) params.set("agent", agent);
     if (hasLlm !== null) params.set("has_llm", String(hasLlm));
+    let active = true;
     api.get<{ messages: Msg[]; total: number }>(`/api/admin/ops/conversations?${params}`)
-      .then((r) => { setMessages(r.messages || []); setTotal(r.total); })
+      .then((r) => { if (active) { setMessages(r.messages || []); setTotal(r.total); } })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [page, agent, hasLlm]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { return load(); }, [load]);
 
   useEffect(() => {
-    if (!conversationId) { setDetail(null); return; }
-    setDetailLoading(true);
+    if (!conversationId) return;
+    let active = true;
     api.get<{ conversation_id: string; messages: DetailMsg[] }>(`/api/admin/ops/conversations/${conversationId}`)
-      .then(setDetail).catch(() => setDetail(null)).finally(() => setDetailLoading(false));
+      .then((d) => { if (active) setDetail(d); })
+      .catch(() => { if (active) setDetail(null); });
+    return () => { active = false; };
   }, [conversationId]);
 
   // Conversation detail drawer
@@ -61,7 +63,7 @@ export default function AgentOpsConversationsPage() {
             <i className="fas fa-arrow-left" style={{ marginRight: 4 }} /> Back
           </Link>
         </div>
-        {detailLoading && <div style={{ padding: 20, color: "var(--rla-text-dim)" }}>Loading…</div>}
+        {!detail && <div style={{ padding: 20, color: "var(--rla-text-dim)" }}>Loading…</div>}
         {detail && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {detail.messages.map((m) => (

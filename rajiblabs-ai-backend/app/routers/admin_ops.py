@@ -16,6 +16,9 @@ RUN_COLLECTIONS = {
     "rajiblabs-marketing": "marketing_agent_runs",
 }
 
+# Prevent asyncio task GC: background tasks are held here until completion
+_background_tasks: set = set()
+
 
 def _oid(oid_str: str) -> ObjectId | None:
     try:
@@ -447,24 +450,27 @@ async def ops_agent_run(slug: str, db=Depends(get_db)):
         except Exception:
             pass
     # Dispatch to the appropriate agent runner
+    # All agent functions accept only (triggered_by: str) — no db parameter.
+    import asyncio
+    task = None
     try:
         if slug == "rajiblabs-profile":
             from app.services.profile_agent import run_profile_agent
-            import asyncio
-            asyncio.create_task(run_profile_agent(db=db, triggered_by="admin"))
+            task = asyncio.create_task(run_profile_agent(triggered_by="admin"))
         elif slug == "rajiblabs-learning":
-            from app.services.learning_agent import run_learning_agent
-            import asyncio
-            asyncio.create_task(run_learning_agent(db=db, triggered_by="admin"))
+            from app.services.learning_agent import run_daily as run_learning
+            task = asyncio.create_task(run_learning(triggered_by="admin"))
         elif slug == "rajiblabs-marketing":
-            from app.services.marketing_agent import MarketingAgent
-            ma = MarketingAgent(db)
-            import asyncio
-            asyncio.create_task(ma.run_scheduled(triggered_by="admin"))
+            from app.services.marketing_agent import run_daily as run_marketing
+            task = asyncio.create_task(run_marketing(triggered_by="admin"))
         else:
             return JSONResponse({"error": f"run not implemented for {slug}"}, status_code=400)
     except Exception as e:
         return JSONResponse({"error": f"dispatch failed: {str(e)[:200]}"}, status_code=500)
+    # Prevent GC of the background task
+    if task is not None:
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
     from app.services.notify import audit
     try:

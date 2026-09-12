@@ -3,10 +3,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../../services/api";
 
-const get = async <T,>(p: string): Promise<T | null> => {
-  try { return await api.get<T>(p); } catch { return null; }
-};
-
 function relTime(iso?: string) {
   if (!iso) return "—";
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -51,27 +47,29 @@ export default function RunHistoryPage() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<any>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const limit = 30;
 
   const load = useCallback(() => {
-    setLoading(true);
     const params = new URLSearchParams({ limit: String(limit), offset: String(page * limit) });
     if (agent) params.set("agent", agent);
     if (status) params.set("status", status);
-    get<any>(`/api/admin/ops/runs?${params}`)
-      .then((r) => { setRuns(r?.runs || []); setTotal(r?.total || 0); })
+    let active = true;
+    api.get<any>(`/api/admin/ops/runs?${params}`)
+      .then((r) => { if (active) { setRuns(r?.runs || []); setTotal(r?.total || 0); } })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [page, agent, status]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { return load(); }, [load]);
 
   useEffect(() => {
-    if (!runId) { setDetail(null); return; }
-    setDetailLoading(true);
-    get<any>(`/api/admin/ops/runs/${runId}`)
-      .then(setDetail).catch(() => setDetail(null)).finally(() => setDetailLoading(false));
+    if (!runId) return;
+    let active = true;
+    api.get<any>(`/api/admin/ops/runs/${runId}`)
+      .then((d) => { if (active) setDetail(d); })
+      .catch(() => { if (active) setDetail(null); });
+    return () => { active = false; };
   }, [runId]);
 
   // Detail view
@@ -87,7 +85,7 @@ export default function RunHistoryPage() {
             <i className="fas fa-arrow-left" style={{ marginRight: 4 }} /> Back to Runs
           </Link>
         </div>
-        {detailLoading && <div style={{ padding: 20, color: "var(--rla-text-dim)" }}>Loading…</div>}
+        {!detail && <div style={{ padding: 20, color: "var(--rla-text-dim)" }}>Loading…</div>}
         {detail && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* Run header */}

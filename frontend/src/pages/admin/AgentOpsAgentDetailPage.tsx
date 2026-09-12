@@ -39,14 +39,21 @@ export default function AgentOpsAgentDetailPage() {
   const [toggling, setToggling] = useState(false);
   const [running, setRunning] = useState(false);
 
+  useEffect(() => {
+    if (!slug) return;
+    let active = true;
+    api.get<any>(`/api/admin/ops/agents/${slug}`)
+      .then((d) => { if (active) setData(d); })
+      .catch(() => { if (active) setData(null); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [slug]);
+
   const load = () => {
     if (!slug) return;
-    setLoading(true);
-    get<any>(`/api/admin/ops/agents/${slug}`)
-      .then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+    api.get<any>(`/api/admin/ops/agents/${slug}`)
+      .then(setData).catch(() => setData(null));
   };
-
-  useEffect(() => { load(); }, [slug]);
 
   const doToggle = async () => {
     setToggling(true);
@@ -64,7 +71,7 @@ export default function AgentOpsAgentDetailPage() {
   const doRun = async () => {
     setRunning(true);
     try {
-      const r = await api.post<any>(`/api/admin/ops/agents/${slug}/run`);
+      await api.post<any>(`/api/admin/ops/agents/${slug}/run`);
       toast("Dispatched", `${data?.name} run triggered`);
       setTimeout(load, 2000);
     } catch (e) {

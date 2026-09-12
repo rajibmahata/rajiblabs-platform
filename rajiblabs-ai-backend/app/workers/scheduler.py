@@ -14,9 +14,14 @@ def start_scheduler() -> AsyncIOScheduler:
         return _sched
     s = get_settings()
     _sched = AsyncIOScheduler(timezone=s.app_timezone)
-    from app.agents.daily_agent import run_daily_agent
-    _sched.add_job(run_daily_agent, CronTrigger(hour=s.daily_agent_hour, minute=s.daily_agent_minute),
-                   id="daily-agent", replace_existing=True, max_instances=1)
+    # Daily Agent — configurable hour/minute (default 02:00)
+    try:
+        from app.agents.daily_agent import run_daily_agent
+        _sched.add_job(run_daily_agent, CronTrigger(hour=s.daily_agent_hour, minute=s.daily_agent_minute),
+                       id="daily-agent", replace_existing=True, max_instances=1)
+        log.info("Scheduler added daily-agent daily %02d:%02d %s", s.daily_agent_hour, s.daily_agent_minute, s.app_timezone)
+    except Exception as e:
+        log.warning("Daily agent scheduler not added: %s", e)
     # Profile Intelligence Agent — daily 06:00 Asia/Kolkata
     try:
         from app.services.profile_agent import run_profile_agent

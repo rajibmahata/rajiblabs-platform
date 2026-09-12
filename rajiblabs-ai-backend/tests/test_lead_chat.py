@@ -650,7 +650,7 @@ async def test_24_empty_content_retries_then_ai_error(monkeypatch, fake_ai_key):
     import pytest as pt
     with pt.raises(lead_ai.AIError):
         await svc.chat_with_lead([], "hi", "knowledge", {})
-    assert calls["n"] == 3  # transient-style: all attempts used
+    assert calls["n"] == 2  # original + 1 fallback, then break
 
 
 @pytest.mark.asyncio

@@ -20,8 +20,9 @@ async def lifespan(app: FastAPI):
         from app.workers.scheduler import start_scheduler
         if settings.daily_agent_enabled:
             start_scheduler()
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger("rajiblabs").warning("Scheduler failed to start: %s", e)
     yield
 
 
