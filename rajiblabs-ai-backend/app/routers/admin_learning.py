@@ -112,3 +112,46 @@ async def run_all(email: str = Depends(require_admin)):
     from app.services.learning_agent import run_daily as run_learning
     res=await run_learning(triggered_by=f"admin:{email}")
     return res
+
+@router.get("/paths/{slug}/validate")
+async def validate_path(slug: str, email: str = Depends(require_admin)):
+    """Run block-level + path-level validation on a learning path. Returns detailed results."""
+    from app.services.learning_agent import validate_block_quality, validate_path_coherence
+    db=get_db()
+    path=await db["learning_paths"].find_one({"slug":slug})
+    if not path: raise HTTPException(404,"Not found")
+    blocks=[b async for d in [db["learning_blocks"].find({"path_id": path["_id"]}).sort("day_number",1)] for b in d]
+    # Block-level validation
+    block_results = []
+    prev_block = None
+    for b in blocks:
+        q_passed, q_issues, q_improvements = validate_block_quality(
+            b, day=b.get("day_number",0), topic=path.get("topic",""), prev_block=prev_block
+        )
+        block_results.append({
+            "day": b.get("day_number"),
+            "title": b.get("title") or b.get("topic"),
+            "status": b.get("status"),
+            "passed": q_passed,
+            "issues": q_issues,
+            "improvements": q_improvements,
+        })
+        prev_block = b
+    # Path-level validation
+    path_ok, path_issues = validate_path_coherence(path, blocks)
+    # Store results
+    await db["learning_paths"].update_one({"_id": path["_id"]}, {"$set": {
+        "path_validation_issues": path_issues,
+        "block_validation_results": block_results,
+        "last_validated_at": utcnow(),
+        "updated_at": utcnow(),
+    }})
+    return {
+        "path_passed": path_ok,
+        "path_issues": path_issues,
+        "blocks": block_results,
+        "total_blocks": len(blocks),
+        "passed_blocks": sum(1 for b in block_results if b["passed"]),
+        "failed_blocks": sum(1 for b in block_results if not b["passed"]),
+        "blocks_with_improvements": sum(1 for b in block_results if b["improvements"]),
+    }

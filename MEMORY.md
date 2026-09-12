@@ -6,12 +6,11 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 
 ## Repo layout
 
-- `frontend/src/pages/admin/` — 15 pages: AgentsManage, ContentManage, Dashboard,
+- `frontend/src/pages/admin/` — 18 pages: AgentsManage, ContentManage, Dashboard,
   GitHubManage, KnowledgeManage, LanguagesManage, LeadsManage, LogsManage,
   PortfolioManage, ProductsManage, ProfileManage, ResumeManage, Settings,
-  TranslationsManage, Workbench (AI Proposal Studio), + Login.
-  Agent & AI Ops: AgentOpsSummaryPage, AgentOpsConversationsPage,
-  AgentOpsAgentDetailPage.
+  TranslationsManage, Workbench (AI Proposal Studio), Login,
+  AgentOpsSummaryPage, AgentOpsConversationsPage, AgentOpsAgentDetailPage.
 - `frontend/src/components/admin/` — `AdminLayout.tsx` (shell + NAV groups), `ui.tsx`
   (template primitives), `toast.ts` (toast bus), `ProtectedRoute.tsx`.
 - `frontend/src/styles/admin.css` — entire admin design system, scoped under `.rl-admin`.
@@ -136,6 +135,10 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   Never call `site_settings.find_one({"key": "kb_version"})` directly in hot paths.
 - **gpt-5 token budgets** are tiered: concierge 800, marketing 1400, scope 2000,
   generation 4000. Never request more than needed. `max_completion_tokens` (not `max_tokens`).
+- **AI fallback chain** (`lead_ai.py`): `openai_fallback_model` (default `gpt-4o-mini`)
+  triggers on BOTH HTTP 404 AND `EmptyContent`. EmptyContent means the model
+  responded but produced no output — don't burn retries on the same model.
+  Fallback is a one-shot rewrite of the chain, not an infinite loop.
 - **Concurrent tool execution** in concierge uses `asyncio.gather`. Never run independent
   tools sequentially. `search_knowledge`, `get_projects`, `get_contact_information`
   are independent and must run in parallel.
@@ -438,3 +441,35 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `rajiblabs-ai-backend/data/uploads/`. `app/static/` + `app/templates/` are
   empty dirs. `scripts/sync_linkedin_learning.py` is cron-style manual, unwired
   to any scheduler.
+
+## Learning system — navigation and validation
+
+- **Navigation**: `Learning.tsx` and `LearningPathDetail.tsx` use `RlzHeader`
+  (not `RlzNav`) for standalone page navigation. `RlzHeader` is a lightweight
+  sticky header with RajibLabs logo + Home link + breadcrumb trail. `RlzNav` is
+  homepage-only (anchor links like `#learning`). Never add `RlzNav` to
+  standalone pages.
+- **Validation lifecycle**: blocks go through `_validate_block()` (structural)
+  then `validate_block_quality()` (beginner-focused, 12 checks). Quality issues
+  don't block publishing but store `quality_improvements` for the next
+  regeneration cycle. `validate_path_coherence()` runs after all blocks are
+  processed, storing `path_validation_issues` on the path doc.
+- **Quality checks** (in `validate_block_quality`): objective must state DOING
+  not KNOWING, real-world examples must be concrete (not abstract), no jargon
+  dumping, actionable steps (not "understand/learn"), code must have
+  explanations, exercises must match day level, try-it must be specific,
+  common mistakes must explain WHY, quick review must be non-filler, abilities
+  must be concrete, why-matters must connect to real life, logical flow from
+  previous day.
+- **Path checks** (in `validate_path_coherence`): no repeated topics, no
+  difficulty jumps (Day 1 must be gentle), practical progression (exercises in
+  later days), duration realism, reasonable prerequisites (0-3).
+- **Admin validation**: `GET /api/admin/learning/paths/{slug}/validate` runs
+  both block and path validation, stores results, returns detailed report.
+  Admin UI shows "Validate Path" button, quality improvement counts in block
+  list, and quality feedback in lesson detail modal.
+- **Status vocabulary**: `VISIBLE_PATH_STATUSES` = (active, completed, live,
+  published). `VISIBLE_BLOCK_STATUSES` = (published, completed).
+  `BLOCK_STATUS_LIFECYCLE` = (draft, generating, validating, needs_improvement,
+  ready, published, completed, archived). `BLOCK_IMMATURE_STATUSES` = (draft,
+  generating, validating, needs_improvement, ready).

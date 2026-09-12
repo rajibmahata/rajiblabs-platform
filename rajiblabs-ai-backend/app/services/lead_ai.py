@@ -304,6 +304,19 @@ class AIService:
                 snippets.append(scrub_text(e.reason or "")[:300])
                 log.warning("AI %s refused for %s: %s", name, tag, e.reason[:120])
                 break
+            except _EmptyContent as e:
+                errors.append(f"{name}: {e}")
+                log.warning("AI %s empty content for %s (finish=%s)", name, tag, e.finish)
+                # EmptyContent means the model responded but produced nothing.
+                # Try the fallback model instead of burning retries on the same input.
+                fb = (s.openai_fallback_model or "").strip()
+                if fb and f"{name}:{fb}" not in tried_models:
+                    chain = [(pn, pk, pb, fb if pn == name else pm)
+                             for pn, pk, pb, pm in chain]
+                    log.warning("AI %s retrying %s with fallback model %s after empty content",
+                                name, tag, fb)
+                    continue
+                break
             except _HttpError as e:
                 errors.append(f"{name}: {e}")
                 snippets.append(scrub_text(e.snippet or "")[:300])

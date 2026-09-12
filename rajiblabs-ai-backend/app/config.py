@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # One-shot fallback when the primary model 404s (unknown/inaccessible).
     # gpt-5.6-luna is real (GPT-5.6 cheap tier, $0.20/$1.20) — higher quality
     # than nano for the fallback path. Override via env if needed.
-    openai_fallback_model: str = "gpt-5.6-luna"
+    openai_fallback_model: str = "gpt-4o-mini"
     openai_enabled: bool = True
     openai_max_retries: int = 3
     ai_auto_publish: bool = False

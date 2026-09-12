@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import Markdown from "../components/Markdown";
+import RlzHeader from "../rlz/RlzHeader";
 import "../rlz/rlz.css";
 
 type Block = {
@@ -91,6 +92,7 @@ export default function LearningPathDetail() {
     return (
       <div className="rlz" style={{ background: "var(--rlz-bg)", minHeight: "100vh" }}>
         <div className="rlz-page-bg" /><div className="rlz-bg-grid" />
+        <RlzHeader crumbs={[{ label: "Home", to: "/" }, { label: "Learning", to: "/learning" }]} />
         <div className="rlz-container rlz-ld-hero">
           <div style={{ display: "grid", gap: 12, maxWidth: 500 }}>
             <div style={{ height: 18, width: 120, background: "var(--rlz-bg-2)", borderRadius: 8 }} />
@@ -106,6 +108,7 @@ export default function LearningPathDetail() {
     return (
       <div className="rlz" style={{ background: "var(--rlz-bg)", minHeight: "100vh" }}>
         <div className="rlz-page-bg" /><div className="rlz-bg-grid" />
+        <RlzHeader crumbs={[{ label: "Home", to: "/" }, { label: "Learning", to: "/learning" }]} />
         <div className="rlz-container rlz-ld-empty" style={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
           <div>
             <i className="material-symbols-outlined">error_outline</i>
@@ -126,6 +129,8 @@ export default function LearningPathDetail() {
   return (
     <div className="rlz" style={{ background: "var(--rlz-bg)", minHeight: "100vh" }}>
       <div className="rlz-page-bg" /><div className="rlz-bg-grid" />
+
+      <RlzHeader crumbs={[{ label: "Home", to: "/" }, { label: "Learning", to: "/learning" }, { label: path.topic }]} />
 
       {/* Hero */}
       <section className="rlz-ld-hero">

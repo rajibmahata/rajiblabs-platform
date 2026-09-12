@@ -2,6 +2,70 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-12 — Learning system: navigation fix, beginner validator, admin validation view
+
+Three fixes and a new validator for the Learning system.
+
+### Added — `frontend/src/rlz/RlzHeader.tsx` (new)
+
+- Lightweight header for standalone pages (Learning, etc.) with RajibLabs logo
+  and Home link. Reuses `.rlz-nav` styling from `RlzNav` for visual consistency.
+- Shows optional breadcrumb trail (Home > Learning > Path).
+
+### Fixed — `frontend/src/pages/Learning.tsx`, `LearningPathDetail.tsx`
+
+- Added `RlzHeader` with breadcrumb navigation (Home > Learning > Path).
+- Learning pages now have a visible Home logo/link to return to the main site.
+- Browser back/forward and direct URLs work correctly.
+
+### Added — `rajiblabs-ai-backend/app/services/learning_agent.py`
+
+- `validate_block_quality()`: beginner-focused quality validation (12 checks):
+  objective clarity (must state DOING, not just KNOWING), concrete real-world
+  examples, jargon avoidance, actionable steps, runnable code with explanations,
+  exercise difficulty matching, specific try-it-yourself, common mistakes with WHY,
+  non-filler quick review, concrete abilities, connected why-matters, logical
+  flow from previous day.
+- `validate_path_coherence()`: path-level validation (6 checks): repeated topics,
+  difficulty jumps (Day 1 advanced concepts), practical progression (exercises
+  in later days), duration realism, gentle first day, reasonable prerequisites.
+- Block status lifecycle extended: `BLOCK_STATUS_LIFECYCLE` and
+  `BLOCK_IMMATURE_STATUSES` constants for the full draft→generating→validating→
+  needs_improvement→ready→published→archived lifecycle.
+- `run_daily()` now runs quality validation after structural validation.
+  Blocks with quality improvements get published with `quality_improvements`
+  notes for the next regeneration cycle. Path-level validation runs after
+  all blocks are processed, storing `path_validation_issues`.
+
+### Added — `rajiblabs-ai-backend/app/routers/admin_learning.py`
+
+- `GET /api/admin/learning/paths/{slug}/validate`: runs block-level +
+  path-level validation on a learning path, stores results, returns detailed
+  report (passed/failed/improvement counts per block).
+
+### Changed — `frontend/src/pages/admin/LearningManage.tsx`
+
+- "Validate Path" button triggers full validation and shows summary toast.
+- Block list shows quality improvement counts alongside validation issues.
+- Lesson detail modal shows `quality_improvements` in a purple info box.
+- Header shows "HAS NOTES" pill when improvements exist but no errors.
+
+## [Unreleased] — 2026-09-11 — AI fallback: EmptyContent triggers fallback model, gpt-4o-mini default
+
+`gpt-5-nano` returned empty content 3 times in a row. The existing fallback
+to `openai_fallback_model` only triggered on HTTP 404 — `EmptyContent` burned
+all retries on the same model. Fixed with two changes.
+
+### Changed — `rajiblabs-ai-backend/app/config.py`
+
+- `openai_fallback_model` default changed from `gpt-5.6-luna` to `gpt-4o-mini`.
+
+### Changed — `rajiblabs-ai-backend/app/services/lead_ai.py`
+
+- `_EmptyContent` exception now triggers fallback model logic (same as 404).
+  On empty content, the chain is rewritten to try `openai_fallback_model` on
+  the next attempt instead of burning retries on the same unresponsive model.
+
 ## [Unreleased] — 2026-09-11 — Agent & AI Operations Dashboard
 
 New centralized dashboard for agent execution visibility, LLM usage/cost

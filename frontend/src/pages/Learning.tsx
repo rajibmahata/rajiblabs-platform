@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import RlzHeader from "../rlz/RlzHeader";
 import "../rlz/rlz.css";
 
 type LearningPath = {
@@ -53,6 +54,8 @@ export default function Learning() {
     <div className="rlz" style={{ background: "var(--rlz-bg)", minHeight: "100vh" }}>
       <div className="rlz-page-bg" />
       <div className="rlz-bg-grid" />
+
+      <RlzHeader crumbs={[{ label: "Home", to: "/" }, { label: "Learning" }]} />
 
       {/* Hero */}
       <section className="rlz-ld-hero">

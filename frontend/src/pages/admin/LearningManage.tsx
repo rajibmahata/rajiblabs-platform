@@ -40,7 +40,7 @@ export default function LearningManage(){
   const [topics,setTopics]=useState<string[]>([]);
   const [tab,setTab]=useState<"paths"|"active"|"topics"|"blocks">("paths");
   const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("create") || isLoading("run-agent");
+  const busy = isLoading("create") || isLoading("run-agent") || isLoading("validate");
   const [form,setForm]=useState<any>({topic:"", duration:7, goal:"", level:"beginner"});
   const [selected,setSelected]=useState<string>("");
   const [detailBlock,setDetailBlock]=useState<any>(null);
@@ -93,10 +93,22 @@ export default function LearningManage(){
     try{ await api.patch(`/api/admin/learning/paths/${slug}`, {status}); toast("Updated", status); loadPaths(); }catch(e:any){ toast("Failed", String(e.message||e).slice(0,160)); }
   };
 
+  const validatePath=async(slug:string)=>{
+    run("validate", async () => {
+      const r=await api.get<any>(`/api/admin/learning/paths/${slug}/validate`);
+      toast("Validation complete", `${r.passed_blocks}/${r.total_blocks} blocks passed. ${r.failed_blocks} issues, ${r.blocks_with_improvements} with improvements.`);
+      loadBlocks(slug);
+      loadPaths();
+    }, { successTitle: "Validation", successMsg: "Path validated", errorTitle: "Validation failed" });
+  };
+
   return (
     <div>
       <PageHead title="Learning" desc="Define Topic + Duration — agent builds roadmap, daily blocks, RAG and validation. 06:30 IST autonomous."
-        actions={<button onClick={runAgent} disabled={isLoading("run-agent")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("run-agent")}><i className={`fas fa-robot ${isLoading("run-agent") ? "fa-spin" : ""}`} /> {isLoading("run-agent") ? "Running..." : "Run Learning Agent"}</button>} />
+        actions={<div style={{display:"flex", gap:8}}>
+          {selected && <button onClick={()=>validatePath(selected)} disabled={isLoading("validate")} className="rla-btn rla-btn-ghost rla-btn-sm" aria-busy={isLoading("validate")}><i className={`fas fa-check-double ${isLoading("validate") ? "fa-spin" : ""}`} /> {isLoading("validate") ? "Validating..." : "Validate Path"}</button>}
+          <button onClick={runAgent} disabled={isLoading("run-agent")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("run-agent")}><i className={`fas fa-robot ${isLoading("run-agent") ? "fa-spin" : ""}`} /> {isLoading("run-agent") ? "Running..." : "Run Learning Agent"}</button>
+        </div>} />
       <div className="rla-chip-row" style={{marginBottom:12}}>
         {(["paths","active","topics","blocks"] as const).map(t=><button key={t} onClick={()=>setTab(t)} className={`rla-chip${tab===t?" active":""}`}>{t}</button>)}
       </div>
@@ -160,6 +172,7 @@ export default function LearningManage(){
                         </div>
                       </div>
                       {b.validation_issues?.length ? <div className="text-xs" style={{color:"var(--rla-red)", marginTop:6, background:"var(--rla-red-soft)", padding:"6px 10px", borderRadius:8}}>⚠ {b.validation_issues.join("; ")}</div> : null}
+                      {b.quality_improvements?.length ? <div className="text-xs" style={{color:"#5b21b6", marginTop:4, background:"rgba(124,58,237,0.06)", padding:"6px 10px", borderRadius:8}}>💡 {b.quality_improvements.length} improvement{b.quality_improvements.length>1?"s":''} suggested</div> : null}
                       {(b.real_world_example || b.simple_explanation) && (
                         <div className="text-xs" style={{color:"var(--rla-text-dim)", marginTop:6, borderLeft:"2px solid var(--rla-border)", paddingLeft:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden"}}>
                           {b.real_world_example || b.simple_explanation}
@@ -231,7 +244,7 @@ export default function LearningManage(){
                 <div style={{display:"flex", gap:8, alignItems:"center", flexWrap:"wrap"}}>
                   <span className="rla-code" style={{fontSize:"0.7rem", background:"var(--rla-violet-soft)", color:"var(--rla-violet)", padding:"4px 8px", borderRadius:6}}>DAY {detailBlock.day_number}</span>
                   <StatusPill status={detailBlock.status} />
-                  {detailBlock.validation_issues?.length ? <span className="rla-pill err">NEEDS REVIEW</span> : detailBlock.status==="published" ? <span className="rla-pill ok">VALIDATED</span> : null}
+                  {detailBlock.validation_issues?.length ? <span className="rla-pill err">NEEDS REVIEW</span> : detailBlock.quality_improvements?.length ? <span className="rla-pill warn">HAS NOTES</span> : detailBlock.status==="published" ? <span className="rla-pill ok">VALIDATED</span> : null}
                 </div>
                 <h3 style={{margin:"8px 0 4px", fontSize:"1.15rem", lineHeight:1.3}}>{detailBlock.title || detailBlock.topic}</h3>
                 <div className="text-xs" style={{color:"var(--rla-text-faint)"}}>
@@ -245,7 +258,15 @@ export default function LearningManage(){
             <div style={{padding:"0 20px 20px"}}>
               {detailBlock.validation_issues?.length ? (
                 <div style={{marginTop:12, padding:"10px 14px", background:"var(--rla-amber-soft)", border:"1px solid #f0d9a8", borderRadius:10, fontSize:"0.82rem", color:"#7a5a12"}}>
-                  <b><i className="fas fa-exclamation-triangle" /> Validation:</b> {detailBlock.validation_issues.join("; ")}
+                  <b><i className="fas fa-exclamation-triangle" /> Validation Issues:</b> {detailBlock.validation_issues.join("; ")}
+                </div>
+              ) : null}
+              {detailBlock.quality_improvements?.length ? (
+                <div style={{marginTop:8, padding:"10px 14px", background:"rgba(124,58,237,0.06)", border:"1px solid rgba(124,58,237,0.2)", borderRadius:10, fontSize:"0.82rem", color:"#5b21b6"}}>
+                  <b><i className="fas fa-lightbulb" /> Quality Improvements:</b>
+                  <ul style={{margin:"6px 0 0", paddingLeft:18}}>
+                    {detailBlock.quality_improvements.map((imp:string,i:number)=><li key={i} style={{marginBottom:3}}>{imp}</li>)}
+                  </ul>
                 </div>
               ) : null}
 

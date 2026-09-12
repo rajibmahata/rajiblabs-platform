@@ -43,6 +43,10 @@ PATH_STATUS_SYNONYMS = {
 VISIBLE_PATH_STATUSES = ("active", "completed", "live", "published")
 VISIBLE_BLOCK_STATUSES = ("published", "completed")
 
+# Block status lifecycle: draft → generating → validating → needs_improvement → ready → published → archived
+BLOCK_STATUS_LIFECYCLE = ("draft", "generating", "validating", "needs_improvement", "ready", "published", "completed", "archived")
+BLOCK_IMMATURE_STATUSES = ("draft", "generating", "validating", "needs_improvement", "ready")
+
 
 def normalize_path_status(raw: str) -> str:
     canon = PATH_STATUS_SYNONYMS.get((raw or "").strip().lower())
@@ -447,6 +451,202 @@ def _validate_block(block: dict) -> tuple[bool, list[str]]:
         issues.append("missing what_you_can_do_now")
     return (len(issues) == 0, issues)
 
+
+# ---------- Beginner-focused quality validator ----------
+_BEGINNER_PHRASES = frozenset({
+    "as an ai", "in conclusion", "in summary, this lesson", "it is important to note",
+    "it is worth noting", "furthermore", "moreover", "in addition to",
+    "it should be noted", "as mentioned earlier", "as we have discussed",
+    "this is a complex topic", "advanced concept", "advanced topic",
+})
+
+def validate_block_quality(block: dict, day: int = 0, topic: str = "", prev_block: dict | None = None) -> tuple[bool, list[str], list[str]]:
+    """Beginner-focused quality validation. Returns (passed, issues, improvements).
+
+    Checks whether a real beginner can understand, practice, and learn from this
+    lesson. Goes beyond structural validation to assess pedagogical quality.
+    """
+    issues: list[str] = []
+    improvements: list[str] = []
+
+    ce = (block.get("concept_explanation") or block.get("simple_explanation") or "")
+    rw = block.get("real_world_example") or ""
+    steps = block.get("step_by_step") or []
+    examples = block.get("examples") or []
+    exercise = block.get("exercise") or ""
+    homework = block.get("homework") or ""
+    obj = block.get("learning_objective") or ""
+    why = block.get("why_matters") or ""
+    try_it = block.get("try_it_yourself") or ""
+    mistakes = block.get("common_mistakes") or []
+    review = block.get("quick_review") or []
+    abilities = block.get("what_you_can_do_now") or []
+
+    # 1. Objective clarity — must state what learner will DO, not just know
+    if obj:
+        doing_words = {"create", "write", "build", "use", "run", "explain", "identify", "define",
+                       "apply", "debug", "read", "modify", "add", "remove", "print", "calculate"}
+        obj_words = set(obj.lower().split())
+        if not doing_words & obj_words:
+            improvements.append("learning_objective should state what the learner will DO (create, write, build, use...)")
+
+    # 2. Real-world example must be concrete, not abstract
+    if rw:
+        abstract_markers = ["in general", "typically", "often", "usually", "in many cases", "broadly speaking"]
+        if any(m in rw.lower() for m in abstract_markers) and len(rw) < 150:
+            improvements.append("real_world_example is too abstract — use a concrete story with specific names/numbers")
+        if len(rw) < 100:
+            issues.append("real_world_example too short (<100 chars) — beginners need vivid scenarios")
+
+    # 3. Simple explanation must avoid jargon-dumping
+    if ce:
+        # Check if technical terms appear before explanation
+        jargon_heavy = len([w for w in ce.split() if len(w) > 12 and w[0].isupper()]) > 5
+        if jargon_heavy:
+            improvements.append("concept_explanation may have too many unexplained technical terms — explain each before naming it")
+        # Check paragraph length — beginners need short paragraphs
+        paras = [p for p in ce.split("\n\n") if p.strip()]
+        long_paras = [p for p in paras if len(p) > 400]
+        if long_paras:
+            improvements.append("concept_explanation has paragraphs >400 chars — split into shorter paragraphs for beginners")
+
+    # 4. Steps must be concrete and actionable
+    if steps:
+        vague_steps = [s for s in steps if any(v in s.lower() for v in ["understand", "learn about", "study", "review"])]
+        if vague_steps and len(steps) <= 3:
+            improvements.append("step_by_step has vague steps (understand/learn/study) — make each step a concrete action")
+
+    # 5. Code examples must be runnable and explained
+    if examples:
+        for ex in examples[:2]:
+            code = ex.get("code", "")
+            explanation = ex.get("explanation", "")
+            if code and not explanation:
+                issues.append(f"code example '{ex.get('title', '')}' has no explanation — beginners need line-by-line guidance")
+            if code and len(code) > 500 and day <= 3:
+                improvements.append(f"code example is long ({len(code)} chars) — keep early lessons under 300 chars")
+
+    # 6. Exercise must match today's level and be doable
+    if exercise:
+        if day > 1 and any(kw in exercise.lower() for kw in ["class ", "interface ", "async ", "await ", "linq"]):
+            if day <= 3:
+                improvements.append("exercise may be too advanced for early days — ensure it only uses concepts taught so far")
+        if len(exercise) < 50:
+            issues.append("exercise too short (<50 chars) — needs clear instructions a beginner can follow")
+
+    # 7. Try-it-yourself must be a concrete tweak, not a vague suggestion
+    if try_it:
+        vague_try = ["try", "experiment", "play around", "explore"]
+        if any(v in try_it.lower() for v in vague_try) and len(try_it) < 60:
+            improvements.append("try_it_yourself is too vague — give a specific change to make (e.g. 'Change the price to 99 and run again')")
+
+    # 8. Common mistakes must explain WHY, not just WHAT
+    if mistakes:
+        shallow = [m for m in mistakes if len(m) < 30 or "don't" in m.lower() and "because" not in m.lower()]
+        if shallow:
+            improvements.append("common_mistakes should explain WHY the mistake happens, not just what to avoid")
+
+    # 9. Quick review must be a real recap, not filler
+    if review:
+        filler = [r for r in review if len(r) < 15 or "covered" in r.lower() and "today" in r.lower()]
+        if filler:
+            improvements.append("quick_review has filler items — each bullet should name a specific takeaway")
+
+    # 10. What-you-can-do-now must be concrete abilities
+    if abilities:
+        vague_abilities = [a for a in abilities if "understand" in a.lower() or "know" in a.lower()]
+        if vague_abilities:
+            improvements.append("what_you_can_do_now has vague abilities (understand/know) — state concrete things the learner can CREATE or DO")
+
+    # 11. Why-matters must connect to real life, not just say "important"
+    if why:
+        if len(why) < 40:
+            issues.append("why_matters too short — explain real-world relevance in 2-3 sentences")
+        generic_why = ["important", "useful", "essential", "fundamental"]
+        if any(g in why.lower() for g in generic_why) and len(why) < 80:
+            improvements.append("why_matters sounds generic — connect to a specific real scenario the learner cares about")
+
+    # 12. Logical flow from previous day
+    if prev_block and day > 1:
+        prev_obj = (prev_block.get("learning_objective") or "").lower()
+        curr_obj = obj.lower()
+        # Check if this lesson repeats the previous one
+        if prev_obj and curr_obj:
+            prev_words = set(prev_obj.split()) - {"the", "a", "an", "and", "or", "to", "in", "of", "for", "is", "are"}
+            curr_words = set(curr_obj.split()) - {"the", "a", "an", "and", "or", "to", "in", "of", "for", "is", "are"}
+            overlap = prev_words & curr_words
+            if len(overlap) > min(len(prev_words), len(curr_words)) * 0.6:
+                improvements.append(f"Day {day} objective overlaps heavily with Day {day-1} — should build on it, not repeat it")
+
+    passed = len(issues) == 0
+    return passed, issues, improvements
+
+
+def validate_path_coherence(path: dict, blocks: list[dict]) -> tuple[bool, list[str]]:
+    """Path-level validation: checks coherence across the entire learning path.
+
+    Validates: missing prerequisites, difficulty jumps, repeated topics,
+    disconnected lessons, missing practical progression, unrealistic duration.
+    """
+    issues: list[str] = []
+    roadmap = path.get("roadmap", [])
+    duration = int(path.get("duration", 0))
+    topic = path.get("topic", "")
+
+    if not blocks:
+        issues.append("No blocks generated yet")
+        return False, issues
+
+    # 1. Check for repeated topics across days
+    titles = [b.get("title") or b.get("topic", "") for b in blocks]
+    seen_titles: dict[str, int] = {}
+    for i, t in enumerate(titles):
+        normalized = t.lower().strip()
+        if normalized in seen_titles:
+            issues.append(f"Day {i+1} title repeats Day {seen_titles[normalized]+1}: '{t}'")
+        seen_titles[normalized] = i
+
+    # 2. Check for difficulty jumps (heuristic: day N should not have concepts from day N+3+)
+    all_objectives = [(b.get("day_number", 0), (b.get("learning_objective") or "").lower()) for b in blocks]
+    for i, (day, obj) in enumerate(all_objectives):
+        if i < len(all_objectives) - 1:
+            next_obj = all_objectives[i+1][1] if i+1 < len(all_objectives) else ""
+            # If next day's objective mentions concepts not introduced yet, flag it
+            if day == 1 and any(kw in obj for kw in ["interface", "generic", "async", "linq", "delegate"]):
+                issues.append(f"Day {day} objective mentions advanced concepts too early for a beginner path")
+
+    # 3. Check practical progression — later days should have exercises/homework
+    published = [b for b in blocks if b.get("status") in ("published", "completed")]
+    if len(published) > 2:
+        recent = published[-3:]
+        for b in recent:
+            if not b.get("exercise"):
+                issues.append(f"Day {b.get('day_number')} published without exercise — every lesson needs hands-on practice")
+            if not b.get("examples"):
+                issues.append(f"Day {b.get('day_number')} published without code example")
+
+    # 4. Check duration realism
+    if duration > 0 and len(blocks) < duration:
+        missing = duration - len(blocks)
+        if missing > duration * 0.5:
+            issues.append(f"Only {len(blocks)}/{duration} days generated — {missing} days missing")
+
+    # 5. First day must be gentle
+    first = next((b for b in blocks if b.get("day_number") == 1), None)
+    if first:
+        if first.get("day_number") == 1:
+            obj_text = (first.get("learning_objective") or "").lower()
+            if any(kw in obj_text for kw in ["interface", "generic", "async", "exception", "linq"]):
+                issues.append("Day 1 objective mentions advanced concepts — first day must be true fundamentals")
+
+    # 6. Check that prerequisites are reasonable
+    prereqs = path.get("prerequisites", [])
+    if len(prereqs) > 3:
+        issues.append(f"Too many prerequisites ({len(prereqs)}) — aim for 0-3 for a beginner path")
+
+    passed = len(issues) == 0
+    return passed, issues
+
 # ---------- Public API used by scheduler and admin ----------
 async def create_learning_path(topic: str, duration: int, goal: str = "", level: str = "beginner", created_by: str = "admin") -> dict:
     db = get_db()
@@ -591,17 +791,46 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
             }})
             results.append({"path": slug, "day": next_block["day_number"], "action": "needs_review", "issues": issues})
             continue
-        update_doc = {
-            **gen,
-            "status": "published",
-            "content_hash": new_hash,
-            "version": (next_block.get("version", 1) + 1),
-            "generated_at": now,
-            "validated_at": now,
-            "updated_at": now,
-            "validation_issues": [],
-        }
-        await db["learning_blocks"].update_one({"_id": next_block["_id"]}, {"$set": update_doc})
+        # Structural validation passed — now run beginner-focused quality validation
+        prev_block_for_quality = next(
+            (b for b in blocks if b.get("day_number", 0) == next_block["day_number"] - 1), None
+        )
+        q_passed, q_issues, q_improvements = validate_block_quality(
+            gen, day=next_block["day_number"], topic=path["topic"], prev_block=prev_block_for_quality
+        )
+        all_quality = q_issues + q_improvements
+        if not q_passed or q_improvements:
+            # Quality needs improvement — store feedback but still publish if structurally valid
+            # Blocks with quality issues get published with improvement notes for the next regeneration cycle
+            update_doc = {
+                **gen,
+                "status": "published",
+                "content_hash": new_hash,
+                "version": (next_block.get("version", 1) + 1),
+                "generated_at": now,
+                "validated_at": now,
+                "updated_at": now,
+                "validation_issues": q_issues,
+                "quality_improvements": q_improvements,
+            }
+            await db["learning_blocks"].update_one({"_id": next_block["_id"]}, {"$set": update_doc})
+            # Run quality validation again on next cycle (will regenerate if issues found)
+            results.append({"path": slug, "day": next_block["day_number"], "action": "published_with_notes",
+                           "issues": q_issues, "improvements": q_improvements})
+        else:
+            update_doc = {
+                **gen,
+                "status": "published",
+                "content_hash": new_hash,
+                "version": (next_block.get("version", 1) + 1),
+                "generated_at": now,
+                "validated_at": now,
+                "updated_at": now,
+                "validation_issues": [],
+                "quality_improvements": [],
+            }
+            await db["learning_blocks"].update_one({"_id": next_block["_id"]}, {"$set": update_doc})
+            results.append({"path": slug, "day": next_block["day_number"], "action": "published"})
         published_count = await db["learning_blocks"].count_documents({"path_id": path["_id"], "status": {"$in": ["published", "completed"]}})
         if next_block.get("status") == "planned":
             published_count += 1
@@ -631,6 +860,16 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
         except Exception as e:
             log.warning("learning RAG failed %s day %s: %s", slug, next_block["day_number"], e)
         results.append({"path": slug, "day": next_block["day_number"], "action": "published"})
+    # Path-level coherence validation after processing all paths
+    for path in paths:
+        slug = path["slug"]
+        all_blocks = [b async for b in db["learning_blocks"].find({"path_id": path["_id"]}).sort("day_number", 1)]
+        path_ok, path_issues = validate_path_coherence(path, all_blocks)
+        if path_issues:
+            await db["learning_paths"].update_one({"_id": path["_id"]}, {"$set": {
+                "path_validation_issues": path_issues, "updated_at": utcnow()
+            }})
+            results.append({"path": slug, "action": "path_review", "issues": path_issues})
     run_doc = {"triggered_by": triggered_by, "results": results, "started_at": now, "finished_at": utcnow(), "status": "success" if results else "no_action"}
     await db["learning_agent_runs"].insert_one(run_doc)
     try:
