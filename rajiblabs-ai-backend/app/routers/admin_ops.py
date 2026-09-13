@@ -1,4 +1,5 @@
 """Admin Agent & AI Operations Dashboard — execution visibility, usage, costs."""
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, Body
@@ -6,6 +7,8 @@ from fastapi.responses import JSONResponse
 from bson import ObjectId
 from app.database import get_db, utcnow
 from app.routers.admin_auth import require_admin
+
+log = logging.getLogger("rajiblabs")
 
 router = APIRouter(prefix="/api/admin/ops", dependencies=[Depends(require_admin)])
 
@@ -422,6 +425,7 @@ async def ops_agent_toggle(slug: str, db=Depends(get_db)):
     if not agent:
         return JSONResponse({"error": "agent not found"}, status_code=404)
     new_state = not agent.get("enabled", True)
+    log.info("admin_agent_toggle slug=%s old=%s new=%s", slug, agent.get("enabled", True), new_state)
     await db["ai_agents"].update_one(
         {"slug": slug}, {"$set": {"enabled": new_state, "updated_at": utcnow()}})
     from app.services.notify import audit
@@ -449,6 +453,7 @@ async def ops_agent_run(slug: str, db=Depends(get_db)):
                 return JSONResponse({"error": "agent already running", "run_id": str(running["_id"])}, status_code=409)
         except Exception:
             pass
+    log.info("admin_agent_run slug=%s dispatching", slug)
     # Dispatch to the appropriate agent runner
     # All agent functions accept only (triggered_by: str) — no db parameter.
     import asyncio
@@ -464,14 +469,17 @@ async def ops_agent_run(slug: str, db=Depends(get_db)):
             from app.services.marketing_agent import run_daily as run_marketing
             task = asyncio.create_task(run_marketing(triggered_by="admin"))
         else:
+            log.warning("admin_agent_run slug=%s no dispatch handler", slug)
             return JSONResponse({"error": f"run not implemented for {slug}"}, status_code=400)
     except Exception as e:
+        log.error("admin_agent_run slug=%s dispatch_error=%s", slug, e)
         return JSONResponse({"error": f"dispatch failed: {str(e)[:200]}"}, status_code=500)
     # Prevent GC of the background task
     if task is not None:
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
 
+    log.info("admin_agent_run slug=%s dispatched ok", slug)
     from app.services.notify import audit
     try:
         await audit("admin", "AGENT_RUN_TRIGGERED", slug, {})

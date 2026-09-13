@@ -1,11 +1,30 @@
 """APScheduler daily agent (02:00 Asia/Kolkata default) + manual trigger."""
 import logging
+import traceback
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from app.config import get_settings
+from app.services.notify import log_error
 
 log = logging.getLogger("rajiblabs")
 _sched: AsyncIOScheduler | None = None
+
+
+def _wrap_job(job_name: str, fn):
+    """Wrap a scheduler job function with start/end logging and error handling."""
+    async def _logged_job(*args, **kwargs):
+        log.info("scheduler_job_start job=%s", job_name)
+        try:
+            result = await fn(*args, **kwargs) if callable(fn) else fn
+            log.info("scheduler_job_end job=%s result=%s", job_name, str(result)[:200] if result else "ok")
+            return result
+        except Exception as e:
+            tb = traceback.format_exc()
+            log.error("scheduler_job_error job=%s error=%s", job_name, e)
+            log_error("scheduler", f"Scheduler job '{job_name}' failed: {e}",
+                      tb[:2000], level="error", logger="scheduler")
+            raise
+    return _logged_job
 
 
 def start_scheduler() -> AsyncIOScheduler:
@@ -17,7 +36,8 @@ def start_scheduler() -> AsyncIOScheduler:
     # Daily Agent — configurable hour/minute (default 02:00)
     try:
         from app.agents.daily_agent import run_daily_agent
-        _sched.add_job(run_daily_agent, CronTrigger(hour=s.daily_agent_hour, minute=s.daily_agent_minute),
+        _sched.add_job(_wrap_job("daily-agent", run_daily_agent),
+                       CronTrigger(hour=s.daily_agent_hour, minute=s.daily_agent_minute),
                        id="daily-agent", replace_existing=True, max_instances=1)
         log.info("Scheduler added daily-agent daily %02d:%02d %s", s.daily_agent_hour, s.daily_agent_minute, s.app_timezone)
     except Exception as e:
@@ -25,7 +45,8 @@ def start_scheduler() -> AsyncIOScheduler:
     # Profile Intelligence Agent — daily 06:00 Asia/Kolkata
     try:
         from app.services.profile_agent import run_profile_agent
-        _sched.add_job(lambda: run_profile_agent(triggered_by="scheduler"), CronTrigger(hour=6, minute=0),
+        _sched.add_job(_wrap_job("profile-agent", lambda: run_profile_agent(triggered_by="scheduler")),
+                       CronTrigger(hour=6, minute=0),
                        id="profile-agent", replace_existing=True, max_instances=1)
         log.info("Scheduler added profile-agent daily 06:00 %s", s.app_timezone)
     except Exception as e:
@@ -34,18 +55,18 @@ def start_scheduler() -> AsyncIOScheduler:
     # the agent itself enforces audience, cadence, duplicate and approval gates)
     try:
         from app.services.marketing_agent import run_daily as _mkt_daily
-        _sched.add_job(_mkt_daily, CronTrigger(hour=9, minute=0),
-                       id="marketing-agent", replace_existing=True, max_instances=1,
-                       kwargs={"triggered_by": "scheduler"})
+        _sched.add_job(_wrap_job("marketing-agent", lambda: _mkt_daily(triggered_by="scheduler")),
+                       CronTrigger(hour=9, minute=0),
+                       id="marketing-agent", replace_existing=True, max_instances=1)
         log.info("Scheduler added marketing-agent daily 09:00 %s", s.app_timezone)
     except Exception as e:
         log.warning("Marketing agent scheduler not added: %s", e)
     # Learning Agent — daily 06:30 Asia/Kolkata (30 min after profile-agent to avoid resource contention)
     try:
         from app.services.learning_agent import run_daily as _learn_daily
-        _sched.add_job(_learn_daily, CronTrigger(hour=6, minute=30),
-                       id="learning-agent", replace_existing=True, max_instances=1,
-                       kwargs={"triggered_by": "scheduler"})
+        _sched.add_job(_wrap_job("learning-agent", lambda: _learn_daily(triggered_by="scheduler")),
+                       CronTrigger(hour=6, minute=30),
+                       id="learning-agent", replace_existing=True, max_instances=1)
         log.info("Scheduler added learning-agent daily 06:30 %s", s.app_timezone)
     except Exception as e:
         log.warning("Learning agent scheduler not added: %s", e)

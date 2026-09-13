@@ -1,10 +1,14 @@
 """Admin Learning — paths, blocks, dashboard (JWT required). Reuses existing learning infra."""
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from app.auth.dependencies import require_admin
 from app.database import get_db, utcnow
 from app.models import oid_str
+from app.services.notify import audit
+
+log = logging.getLogger("rajiblabs")
 
 router = APIRouter(prefix="/api/admin/learning")
 
@@ -20,8 +24,13 @@ async def create_path(body: PathIn, email: str = Depends(require_admin)):
         raise HTTPException(400, "Topic required")
     if not (1 <= body.duration <= 60):
         raise HTTPException(400, "Duration must be 1-60 days")
+    log.info("admin_create_path topic='%s' duration=%d level=%s by=%s",
+             body.topic.strip()[:80], body.duration, body.level or "beginner", email)
     from app.services.learning_agent import create_learning_path
     doc = await create_learning_path(body.topic.strip(), body.duration, body.goal or "", body.level or "beginner", created_by=email)
+    path_id = str(doc.get("_id", ""))
+    log.info("admin_create_path complete topic='%s' path_id=%s", body.topic.strip()[:80], path_id)
+    await audit(email, "LEARNING_PATH_CREATED", path_id, {"topic": body.topic.strip(), "duration": body.duration})
     return oid_str(doc)
 
 @router.get("/paths")
@@ -48,15 +57,14 @@ async def patch_path(slug: str, body: dict, email: str = Depends(require_admin))
     if "status" in patch:
         from app.services.learning_agent import normalize_path_status
         try:
-            # Accept live/published/draft synonyms; store the canonical form
-            # (live/published → active, draft → planned) so the public site
-            # picks the path up without any further step.
             patch["status"] = normalize_path_status(patch["status"])
         except ValueError:
             raise HTTPException(400, "Invalid status")
+    log.info("admin_patch_path slug=%s fields=%s by=%s", slug, list(patch.keys()), email)
     patch["updated_at"]=utcnow()
     res=await db["learning_paths"].update_one({"slug":slug},{"$set":patch})
     if not res.matched_count: raise HTTPException(404,"Not found")
+    await audit(email, "LEARNING_PATH_UPDATED", slug, patch)
     return oid_str(await db["learning_paths"].find_one({"slug":slug}))
 
 @router.get("/paths/{slug}/blocks")
@@ -79,11 +87,12 @@ async def get_block(slug: str, day: int, email: str = Depends(require_admin)):
 @router.post("/paths/{slug}/run")
 async def run_path(slug: str, email: str = Depends(require_admin)):
     from app.services.learning_agent import run_daily as run_learning
-    # Trigger single path run: temporarily set only this path to active
+    log.info("admin_run_path slug=%s by=%s", slug, email)
     db=get_db()
-    # Ensure path is active
     await db["learning_paths"].update_one({"slug":slug},{"$set":{"status":"active","updated_at":utcnow()}})
     res=await run_learning(triggered_by=f"admin:{email}")
+    log.info("admin_run_path complete slug=%s result=%s", slug, str(res)[:200])
+    await audit(email, "LEARNING_PATH_RUN", slug, {"result_status": res.get("status", "?")})
     return res
 
 @router.get("/dashboard")
@@ -110,7 +119,10 @@ async def agent_runs(email: str = Depends(require_admin)):
 @router.post("/run")
 async def run_all(email: str = Depends(require_admin)):
     from app.services.learning_agent import run_daily as run_learning
+    log.info("admin_run_all by=%s", email)
     res=await run_learning(triggered_by=f"admin:{email}")
+    log.info("admin_run_all complete result=%s", str(res)[:200])
+    await audit(email, "LEARNING_RUN_ALL", "", {"result_status": res.get("status", "?")})
     return res
 
 @router.get("/paths/{slug}/validate")
@@ -172,6 +184,9 @@ async def validate_universal_content(body: dict, email: str = Depends(require_ad
     slug = body.get("slug")
     day = body.get("day")
 
+    log.info("admin_validate content_type=%s slug=%s day=%s force=%s by=%s",
+             content_type, slug, day, force, email)
+
     if content_type == "learning_path":
         if not slug:
             raise HTTPException(400, "slug required for learning_path validation")
@@ -183,15 +198,15 @@ async def validate_universal_content(body: dict, email: str = Depends(require_ad
         if not blocks:
             raise HTTPException(400, f"Path '{slug}' has no blocks to validate")
         result = await validate_and_save_path(db, path, blocks)
-        # Also validate each block
         block_results = []
         for b in blocks:
             br = await validate_and_save_block(db, b, path, blocks)
             block_results.append({"day": b.get("day_number"), "score": br.get("overall_score"), "status": br.get("status")})
         result["block_results"] = block_results
+        log.info("admin_validate complete slug=%s score=%.1f status=%s blocks=%d",
+                 slug, result.get("overall_score", 0), result.get("status", ""), len(blocks))
         return result
     else:
-        # Single block validation
         if not slug:
             raise HTTPException(400, "slug required for block validation")
         path_doc = await db["learning_paths"].find_one({"slug": slug})
@@ -204,19 +219,19 @@ async def validate_universal_content(body: dict, email: str = Depends(require_ad
             block = await db["learning_blocks"].find_one(
                 {"path_id": path_doc["_id"], "day_number": day})
         if not block and blocks:
-            # Validate first block if none specified
             block = blocks[0]
         if not block:
             raise HTTPException(404, "Block not found")
-        # Skip check
         if not force:
             from app.services.content_validator import normalize_lesson_block
             nc = normalize_lesson_block(block, path_doc)
             if await should_skip_revalidation(db, str(block.get("_id", "")), nc.content_hash):
+                log.info("admin_validate skipped slug=%s day=%s (unchanged)", slug, day or block.get("day_number"))
                 return {"skipped": True, "reason": "Content unchanged", "content_hash": nc.content_hash}
         result = await validate_and_save_block(db, block, path_doc, blocks)
-        # Add improvement plans
         result["improvement_plan"] = plan_improvements(result)
+        log.info("admin_validate complete slug=%s day=%s score=%.1f status=%s",
+                 slug, day or block.get("day_number"), result.get("overall_score", 0), result.get("status", ""))
         return result
 
 
@@ -236,8 +251,16 @@ async def get_validation_history(slug: str, limit: int = 20, email: str = Depend
 async def validate_all_content(body: dict | None = None, email: str = Depends(require_admin)):
     """Validate all learning paths using the universal engine."""
     from app.services.content_validator import validate_all_paths
+    log.info("admin_validate_all by=%s", email)
     db = get_db()
     result = await validate_all_paths(db)
+    log.info("admin_validate_all complete total=%d passing=%d failing=%d avg=%.1f",
+             result.get("total_validated", 0), result.get("passing", 0),
+             result.get("failing", 0), result.get("average_score", 0))
+    await audit(email, "LEARNING_VALIDATE_ALL", "",
+                {"total": result.get("total_validated", 0),
+                 "passing": result.get("passing", 0),
+                 "failing": result.get("failing", 0)})
     return result
 
 
@@ -301,6 +324,7 @@ async def rollback_content(slug: str, body: dict | None = None, email: str = Dep
     from app.services.content_validator import rollback_content
     db = get_db()
     day = (body or {}).get("day")
+    log.info("admin_rollback slug=%s day=%s by=%s", slug, day, email)
     if day is not None:
         path = await db["learning_paths"].find_one({"slug": slug})
         if not path:
@@ -315,4 +339,6 @@ async def rollback_content(slug: str, body: dict | None = None, email: str = Dep
         if not path:
             raise HTTPException(404, f"Path '{slug}' not found")
         result = await rollback_content(db, "learning_path", str(path.get("_id", "")))
+    log.info("admin_rollback complete slug=%s day=%s found=%s",
+             slug, day, result.get("found", False))
     return {"slug": slug, "day": day, **result}

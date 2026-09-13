@@ -651,6 +651,7 @@ def validate_path_coherence(path: dict, blocks: list[dict]) -> tuple[bool, list[
 async def create_learning_path(topic: str, duration: int, goal: str = "", level: str = "beginner", created_by: str = "admin") -> dict:
     db = get_db()
     slug = _slug(topic)
+    log.info("create_learning_path start topic='%s' duration=%d level=%s by=%s", topic.strip()[:80], duration, level, created_by)
     existing_active = await db["learning_paths"].find_one({"slug": slug, "status": "active"})
     if existing_active:
         pass
@@ -698,15 +699,18 @@ async def create_learning_path(topic: str, duration: int, goal: str = "", level:
             "updated_at": now,
         }
         await db["learning_blocks"].insert_one(block_doc)
+    log.info("create_learning_path complete slug=%s path_id=%s blocks=%d", slug, str(res.inserted_id), len(roadmap_data.get("roadmap", [])))
     await audit(created_by, "LEARNING_PATH_CREATE", slug, {"duration": duration})
     return doc
 
 async def run_daily(triggered_by: str = "scheduler") -> dict:
     """Daily 06:30 IST job: inspect active paths, generate/validate next block."""
+    log.info("learning_run_daily start triggered_by=%s", triggered_by)
     db = get_db()
     from app.services import agent_config
     cfg = await agent_config.get_agent(db, "rajiblabs-learning") if "get_agent" in dir(agent_config) else None
     if cfg and not cfg.get("enabled", True):
+        log.info("learning_run_daily skip agent disabled")
         return {"status": "no_action", "reason": "agent disabled"}
     now = utcnow()
     cur = db["learning_paths"].find({"status": {"$in": ["active", "live", "published"]}})
@@ -877,6 +881,8 @@ async def run_daily(triggered_by: str = "scheduler") -> dict:
             results.append({"path": slug, "action": "path_review", "issues": path_issues})
     run_doc = {"triggered_by": triggered_by, "results": results, "started_at": now, "finished_at": utcnow(), "status": "success" if results else "no_action"}
     await db["learning_agent_runs"].insert_one(run_doc)
+    log.info("learning_run_daily complete paths=%d results=%d status=%s",
+             len(paths), len(results), "success" if results else "no_action")
     try:
         await audit(triggered_by, "LEARNING_AGENT_RUN", "daily", {"results": results})
     except: pass

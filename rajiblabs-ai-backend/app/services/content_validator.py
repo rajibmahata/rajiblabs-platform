@@ -784,6 +784,8 @@ def validate_block(block: dict, path: dict | None = None,
                    weights: dict | None = None) -> dict:
     """Validate a single learning block. Returns ValidationResult as dict."""
     nc = normalize_lesson_block(block, path)
+    log.info("validating_block start id=%s title='%s' hash=%s",
+             nc.content_id, nc.title[:60], nc.content_hash)
 
     # Collect sibling normalized contents for consistency checks
     sib_ncs = []
@@ -827,6 +829,14 @@ def validate_block(block: dict, path: dict | None = None,
     if dims.get("explanation_quality", 0) >= 85:
         strengths.append("Clear, thorough explanations")
 
+    log.info("validating_block result id=%s score=%.1f status=%s issues=%d p0=%d strengths=%d",
+             nc.content_id, overall, status, len(all_issues), p0_count, len(strengths))
+
+    if all_issues:
+        for i in all_issues:
+            log.info("validating_block issue id=%s sev=%s rule=%s section=%s problem='%s'",
+                     nc.content_id, i.severity, i.rule_id, i.section, i.problem[:100])
+
     result = ValidationResult(
         content_id=nc.content_id,
         content_type=nc.content_type.value,
@@ -849,6 +859,9 @@ def validate_path(path: dict, blocks: list[dict],
                   weights: dict | None = None) -> dict:
     """Validate an entire learning path. Returns combined result."""
     path_nc = normalize_path(path, blocks)
+    log.info("validating_path start slug=%s blocks=%d hash=%s",
+             path_nc.metadata.get("slug", "?"), len(blocks), path_nc.content_hash)
+
     block_ncs = [normalize_lesson_block(b, path) for b in blocks]
 
     # Validate each block
@@ -890,6 +903,11 @@ def validate_path(path: dict, blocks: list[dict],
             "status": br["status"],
             "issues": len(br["issues"]),
         })
+
+    log.info("validating_path result slug=%s score=%.1f status=%s blocks=%d passing=%d issues=%d p0=%d",
+             path_nc.metadata.get("slug", "?"), overall, status,
+             len(blocks), sum(1 for bs in block_scores if bs["status"] == "PASS"),
+             len(all_block_issues), p0_count)
 
     return {
         "content_id": path_nc.content_id,
@@ -962,6 +980,9 @@ async def save_validation_result(db, content_type: str, content_id: str,
         "created_at": utcnow(),
     }
     res = await db["content_validations"].insert_one(doc)
+    log.info("save_validation_result type=%s id=%s score=%.1f status=%s doc_id=%s",
+             content_type, content_id, result.get("overall_score", 0),
+             result.get("status", ""), str(res.inserted_id))
     return str(res.inserted_id)
 
 
@@ -969,18 +990,22 @@ async def save_improvement(db, content_type: str, content_id: str,
                            before_score: float, after_score: float,
                            changes: list[dict], content_hash: str) -> str:
     """Record an improvement attempt with before/after scores."""
+    improvement = round(after_score - before_score, 1)
     doc = {
         "content_type": content_type,
         "content_id": content_id,
         "before_score": before_score,
         "after_score": after_score,
-        "improvement": round(after_score - before_score, 1),
+        "improvement": improvement,
         "changes": changes,
         "content_hash": content_hash,
         "successful": after_score >= before_score,
         "created_at": utcnow(),
     }
     res = await db["content_improvements"].insert_one(doc)
+    log.info("save_improvement type=%s id=%s before=%.1f after=%.1f delta=%+.1f successful=%s",
+             content_type, content_id, before_score, after_score, improvement,
+             after_score >= before_score)
     return str(res.inserted_id)
 
 
@@ -1003,7 +1028,9 @@ async def should_skip_revalidation(db, content_id: str, content_hash: str) -> bo
         sort=[("created_at", -1)]
     )
     if last and last.get("content_hash") == content_hash:
+        log.info("skip_revalidation id=%s hash=%s (unchanged)", content_id, content_hash)
         return True
+    log.debug("revalidation_needed id=%s hash=%s", content_id, content_hash)
     return False
 
 
@@ -1014,12 +1041,17 @@ async def rollback_content(db, content_type: str, content_id: str) -> dict | Non
         sort=[("created_at", -1)]
     )
     if last_good:
+        log.info("rollback_found type=%s id=%s score=%.1f hash=%s",
+                 content_type, content_id,
+                 last_good.get("overall_score", 0),
+                 last_good.get("content_hash", ""))
         return {
             "content_id": content_id,
             "last_good_score": last_good.get("overall_score", 0),
             "last_good_hash": last_good.get("content_hash", ""),
             "found": True,
         }
+    log.warning("rollback_not_found type=%s id=%s", content_type, content_id)
     return {"content_id": content_id, "found": False}
 
 
@@ -1043,7 +1075,13 @@ def check_publish_gate(validation_result: dict, gate: dict | None = None) -> tup
     if p0 > g.get("max_p0_issues", 0):
         reasons.append(f"{p0} P0 issues (max allowed: {g['max_p0_issues']})")
 
-    return (len(reasons) == 0, reasons)
+    allowed = len(reasons) == 0
+    if not allowed:
+        log.warning("publish_gate_blocked score=%.1f tech=%.1f p0=%d reasons=%s",
+                    score, tech, p0, "; ".join(reasons))
+    else:
+        log.info("publish_gate_passed score=%.1f tech=%.1f p0=%d", score, tech, p0)
+    return (allowed, reasons)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1052,20 +1090,32 @@ def check_publish_gate(validation_result: dict, gate: dict | None = None) -> tup
 
 async def validate_all_paths(db, weights: dict | None = None) -> dict:
     """Validate all learning paths. Returns summary."""
+    log.info("validate_all_paths start")
     results = []
     async for path in db["learning_paths"].find({}):
+        slug = path.get("slug", "?")
         blocks = []
-        async for block in db["learning_blocks"].find({"slug": path.get("slug", "")}):
+        async for block in db["learning_blocks"].find({"slug": slug}):
             blocks.append(block)
         if blocks:
-            vr = validate_path(path, blocks, weights)
-            await save_validation_result(db, "learning_path",
-                                         str(path.get("_id", "")), vr)
-            results.append(vr)
+            try:
+                vr = validate_path(path, blocks, weights)
+                await save_validation_result(db, "learning_path",
+                                             str(path.get("_id", "")), vr)
+                results.append(vr)
+                log.info("validate_all_paths path=%s score=%.1f status=%s",
+                         slug, vr.get("overall_score", 0), vr.get("status", ""))
+            except Exception as e:
+                log.error("validate_all_paths path=%s error=%s", slug, e)
+                log_error("content_validator", f"Path validation failed for {slug}: {e}",
+                          f"path_id={path.get('_id')}", level="error")
 
     total = len(results)
     passing = sum(1 for r in results if r.get("status") == "PASS")
     avg_score = sum(r.get("overall_score", 0) for r in results) / total if total else 0
+
+    log.info("validate_all_paths complete total=%d passing=%d failing=%d avg=%.1f",
+             total, passing, total - passing, avg_score)
 
     return {
         "total_validated": total,
@@ -1084,11 +1134,20 @@ async def validate_and_save_block(db, block: dict, path: dict | None = None,
                                   siblings: list[dict] | None = None,
                                   weights: dict | None = None) -> dict:
     """Validate a block, save result, update block with validation metadata."""
-    result = validate_block(block, path, siblings, weights)
+    block_id = str(block.get("_id", "?"))
+    title = block.get("title") or block.get("topic", "?")
+    log.info("validate_and_save_block start id=%s title='%s'", block_id, title[:60])
+
+    try:
+        result = validate_block(block, path, siblings, weights)
+    except Exception as e:
+        log.error("validate_and_save_block validation_failed id=%s error=%s", block_id, e)
+        log_error("content_validator", f"Block validation failed for {block_id}: {e}",
+                  f"title={title}", level="error")
+        raise
 
     # Save validation history
-    await save_validation_result(db, "lesson",
-                                 str(block.get("_id", "")), result)
+    await save_validation_result(db, "lesson", block_id, result)
 
     # Update block with validation metadata
     now = utcnow()
@@ -1105,8 +1164,11 @@ async def validate_and_save_block(db, block: dict, path: dict | None = None,
         }}
     )
 
-    await audit("learning_validator", "BLOCK_VALIDATED",
-                str(block.get("_id", "")),
+    log.info("validate_and_save_block complete id=%s score=%.1f status=%s issues=%d",
+             block_id, result.get("overall_score", 0), result.get("status", ""),
+             len(result.get("issues", [])))
+
+    await audit("learning_validator", "BLOCK_VALIDATED", block_id,
                 {"score": result.get("overall_score", 0),
                  "status": result.get("status", ""),
                  "issues": len(result.get("issues", []))})
@@ -1117,10 +1179,19 @@ async def validate_and_save_block(db, block: dict, path: dict | None = None,
 async def validate_and_save_path(db, path: dict, blocks: list[dict],
                                  weights: dict | None = None) -> dict:
     """Validate a full path, save result, update path with validation metadata."""
-    result = validate_path(path, blocks, weights)
+    path_id = str(path.get("_id", "?"))
+    slug = path.get("slug", "?")
+    log.info("validate_and_save_path start slug=%s blocks=%d", slug, len(blocks))
 
-    await save_validation_result(db, "learning_path",
-                                 str(path.get("_id", "")), result)
+    try:
+        result = validate_path(path, blocks, weights)
+    except Exception as e:
+        log.error("validate_and_save_path validation_failed slug=%s error=%s", slug, e)
+        log_error("content_validator", f"Path validation failed for {slug}: {e}",
+                  f"path_id={path_id}", level="error")
+        raise
+
+    await save_validation_result(db, "learning_path", path_id, result)
 
     now = utcnow()
     await db["learning_paths"].update_one(
@@ -1138,8 +1209,11 @@ async def validate_and_save_path(db, path: dict, blocks: list[dict],
         }}
     )
 
-    await audit("learning_validator", "PATH_VALIDATED",
-                str(path.get("_id", "")),
+    log.info("validate_and_save_path complete slug=%s score=%.1f status=%s issues=%d blocks_passing=%d",
+             slug, result.get("overall_score", 0), result.get("status", ""),
+             result.get("total_issues", 0), result.get("blocks_passing", 0))
+
+    await audit("learning_validator", "PATH_VALIDATED", path_id,
                 {"score": result.get("overall_score", 0),
                  "status": result.get("status", ""),
                  "total_issues": result.get("total_issues", 0),
