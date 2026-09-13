@@ -329,75 +329,97 @@ async def process_chat_message(db, session_token: str | None, message: str,
     _fast_reply: str | None = None
     _fast_sources: list[dict] = []
     _fast_intent: str | None = None
-    # Heuristic: lead-intent messages (hire/build/idea) must go through LLM for nurturing
-    _lead_words = ("hire", "proposal", "quote", "price", "cost", "build", "need", "contact", "call", "demo",
-                   "i have", "my idea", "project idea", "looking for")
-    _is_lead_intent = any(w in (message or "").lower() for w in _lead_words) or bool((lead.get("email") or "").strip() and len(message) < 200)
-    # Try fast path only for non-lead, knowledge-seeking questions
-    if not _is_lead_intent and len((message or "").strip()) >= 4:
-        try:
-            from app.services import ai_economy as _eco
-            # LEVEL 1 cache: identical question within TTL → zero retrieval, zero LLM
-            _cached = await _eco.response_cache_get(db, message, f"lead|{language}")
-            if _cached:
-                _fast_reply = _cached.get("answer")
-                _fast_sources = _cached.get("sources", [])
-                _fast_intent = _cached.get("intent")
-                _use_fast = True
-                await audit("rag", "LEAD_CACHE_HIT", token, {"latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
-            else:
-                # LEVEL 0 structured answer (MongoDB only, no embedding, no LLM)
-                _direct = await _eco.structured_answer(message, db)
-                if _direct:
-                    _fast_reply = _direct["answer"]
-                    _fast_sources = [{"title": s.get("title",""), "source_type": s.get("source_type",""), "url": s.get("url"), "score": s.get("score", 0.95)} for s in _direct.get("sources",[])]
-                    _fast_intent = _direct.get("intent", "GENERAL")
+    _response_mode: str = "LLM_SYNTHESIS"  # updated as we go
+
+    # ── GREETING FAST PATH (instant, zero-cost) ──
+    _msg_lower = (message or "").strip().lower()
+    _is_greeting = bool(_re.match(
+        r"^(hi|hello|hey|namaste|yo|good\s?(morning|afternoon|evening|day)|"
+        r"how are you|what's up|sup|hola|hiya)\s*[!.?]*$",
+        _msg_lower)) and len(_msg_lower) <= 30
+
+    if _is_greeting:
+        _fast_reply = ("Hello! I'm the RajibLabs AI Agent. What would you like "
+                       "to know or work on?")
+        _fast_intent = "GREETING"
+        _response_mode = "CACHE"
+        _use_fast = True
+        await audit("website_chat", "FAST_GREETING", token,
+                    {"latency_ms": 0},
+                    event_type="FAST_GREETING", session_id=token)
+    else:
+        # Heuristic: lead-intent messages (hire/build/idea) must go through LLM for nurturing
+        _lead_words = ("hire", "proposal", "quote", "price", "cost", "build", "need", "contact", "call", "demo",
+                       "i have", "my idea", "project idea", "looking for")
+        _is_lead_intent = any(w in _msg_lower for w in _lead_words) or bool((lead.get("email") or "").strip() and len(message) < 200)
+        # Try fast path for non-lead, knowledge-seeking questions (relaxed gate)
+        if not _is_lead_intent and len((message or "").strip()) >= 2:
+            try:
+                from app.services import ai_economy as _eco
+                # LEVEL 1 cache: identical question within TTL → zero retrieval, zero LLM
+                _cached = await _eco.response_cache_get(db, message, f"lead|{language}")
+                if _cached:
+                    _fast_reply = _cached.get("answer")
+                    _fast_sources = _cached.get("sources", [])
+                    _fast_intent = _cached.get("intent")
                     _use_fast = True
-                    await audit("rag", "LEAD_DIRECT", token, {"intent": _fast_intent, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
-                    # cache it
-                    try:
-                        await _eco.response_cache_set(db, message, {"answer": _fast_reply, "sources": _fast_sources, "intent": _fast_intent, "grounded": True}, f"lead|{language}")
-                    except Exception:
-                        pass
+                    _response_mode = "CACHE"
+                    await audit("rag", "LEAD_CACHE_HIT", token, {"latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
                 else:
-                    # LEVEL 1 extractive RAG: if top hit is high confidence, answer directly from chunks
-                    from app.services import rag_query as _rq
-                    _intent, _ = await _rq.classify_intent(message)
-                    _chunks = await _rq.retrieve(message, intent=_intent)
-                    if _chunks:
-                        _top = max([c.get("score",0) for c in _chunks] or [0])
-                        _direct_min = 0.80
+                    # LEVEL 0 structured answer (MongoDB only, no embedding, no LLM)
+                    _direct = await _eco.structured_answer(message, db)
+                    if _direct:
+                        _fast_reply = _direct["answer"]
+                        _fast_sources = [{"title": s.get("title",""), "source_type": s.get("source_type",""), "url": s.get("url"), "score": s.get("score", 0.95)} for s in _direct.get("sources",[])]
+                        _fast_intent = _direct.get("intent", "GENERAL")
+                        _use_fast = True
+                        _response_mode = "STRUCTURED_LOOKUP"
+                        await audit("rag", "LEAD_DIRECT", token, {"intent": _fast_intent, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
+                        # cache it
                         try:
-                            from app.config import get_settings as _sgs
-                            _direct_min = float(_sgs().rag_direct_answer_min_score or 0.80)
+                            await _eco.response_cache_set(db, message, {"answer": _fast_reply, "sources": _fast_sources, "intent": _fast_intent, "grounded": True}, f"lead|{language}")
                         except Exception:
                             pass
-                        _is_factual = bool(_re.match(r"^(who|what|where|when|which|how many|list|show|tell me about)\b", (message or "").strip(), _re.IGNORECASE))
-                        _eff_min = max(_direct_min - 0.15, 0.55) if _is_factual else _direct_min
-                        if _top >= _eff_min:
-                            # build extractive answer from high-score chunks (like rag_query)
-                            _parts, _used = [], 0
-                            for c in _chunks:
-                                if c.get("score",0) < _eff_min:
-                                    continue
-                                txt = (c.get("content") or "").strip()[:600]
-                                if txt:
-                                    _parts.append(txt)
-                                    _used += len(txt)
-                                if len(_parts) >= 3 or _used >= 1200:
-                                    break
-                            if _parts:
-                                _fast_reply = "\n\n".join(_parts)
-                                _fast_sources = [{"title": c.get("title",""), "source_type": c.get("source_type",""), "url": c.get("url"), "score": c.get("score",0)} for c in _chunks]
-                                _fast_intent = _intent
-                                _use_fast = True
-                                await audit("rag", "LEAD_EXTRACTIVE", token, {"intent": _fast_intent, "top_score": _top, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
-                                try:
-                                    await _eco.response_cache_set(db, message, {"answer": _fast_reply, "sources": _fast_sources, "intent": _fast_intent, "grounded": True}, f"lead|{language}")
-                                except Exception:
-                                    pass
-        except Exception as _fe:
-            log.warning("fast path skipped: %s", _fe)
+                    else:
+                        # LEVEL 1 extractive RAG: if top hit is high confidence, answer directly from chunks
+                        from app.services import rag_query as _rq
+                        _intent, _ = await _rq.classify_intent(message)
+                        _chunks = await _rq.retrieve(message, intent=_intent)
+                        if _chunks:
+                            _top = max([c.get("score",0) for c in _chunks] or [0])
+                            _direct_min = 0.80
+                            try:
+                                from app.config import get_settings as _sgs
+                                _direct_min = float(_sgs().rag_direct_answer_min_score or 0.80)
+                            except Exception:
+                                pass
+                            _is_factual = bool(_re.match(r"^(who|what|where|when|which|how many|list|show|tell me about)\b", (message or "").strip(), _re.IGNORECASE))
+                            _eff_min = max(_direct_min - 0.15, 0.55) if _is_factual else _direct_min
+                            if _top >= _eff_min:
+                                # build extractive answer from high-score chunks (like rag_query)
+                                _parts, _used = [], 0
+                                for c in _chunks:
+                                    if c.get("score",0) < _eff_min:
+                                        continue
+                                    txt = (c.get("content") or "").strip()[:600]
+                                    if txt:
+                                        _parts.append(txt)
+                                        _used += len(txt)
+                                    if len(_parts) >= 3 or _used >= 1200:
+                                        break
+                                if _parts:
+                                    _fast_reply = "\n\n".join(_parts)
+                                    _fast_sources = [{"title": c.get("title",""), "source_type": c.get("source_type",""), "url": c.get("url"), "score": c.get("score",0)} for c in _chunks]
+                                    _fast_intent = _intent
+                                    _use_fast = True
+                                    _response_mode = "RAG_ONLY"
+                                    await audit("rag", "LEAD_EXTRACTIVE", token, {"intent": _fast_intent, "top_score": _top, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}, event_type="RAG_QUERY", session_id=token)
+                                    try:
+                                        await _eco.response_cache_set(db, message, {"answer": _fast_reply, "sources": _fast_sources, "intent": _fast_intent, "grounded": True}, f"lead|{language}")
+                                    except Exception:
+                                        pass
+            except Exception as _fe:
+                log.warning("fast path skipped: %s", _fe)
     # Decide AI turn vs fast path
     ai_meta: dict = {}
     rag_meta: dict = {"intent": _fast_intent, "sources": _fast_sources}
@@ -406,19 +428,28 @@ async def process_chat_message(db, session_token: str | None, message: str,
         ai_lead, ai_idea = {}, {}
         # Heuristic extraction for fast path: pull contact bits via regex (no LLM)
         try:
-            import re as _re2
-            _email_re = _re2.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
-            _phone_re = _re2.compile(r"\+?\d[\d\s\-()]{6,18}\d")
+            _email_re = _re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
+            _phone_re = _re.compile(r"\+?\d[\d\s\-()]{6,18}\d")
+            _name_re = _re.compile(r"(?:my name is|i am|i'm|this is|call me)\s+([A-Za-z][A-Za-z .'-]{1,40})", _re.IGNORECASE)
             m = _email_re.search(message or "")
             if m:
                 ai_lead["email"] = m.group(0)
             m = _phone_re.search(message or "")
-            if m and len(_re2.sub(r"\D","",m.group(0))) >= 7:
+            if m and len(_re.sub(r"\D","",m.group(0))) >= 7:
                 ai_lead["phone"] = m.group(0).strip()
+            m = _name_re.search(message or "")
+            if m:
+                ai_lead["name"] = _re.sub(r"\s+", " ", m.group(1)).strip(" .")[:80]
         except Exception:
             pass
-        ai_meta = {"ai_provider": None, "ai_model": None, "fast_path": True, "latency_ms": int((_time.monotonic()-_fast_start)*1000)}
-        await audit("website_chat", "FAST_REPLY", token, {"intent": _fast_intent, "sources": len(_fast_sources), "latency_ms": ai_meta["latency_ms"]}, event_type="AI_RESPONSE", session_id=token)
+        ai_meta = {"ai_provider": None, "ai_model": None, "fast_path": True,
+                   "response_mode": _response_mode,
+                   "latency_ms": int((_time.monotonic()-_fast_start)*1000)}
+        await audit("website_chat", "FAST_REPLY", token,
+                    {"intent": _fast_intent, "mode": _response_mode,
+                     "sources": len(_fast_sources),
+                     "latency_ms": ai_meta["latency_ms"]},
+                    event_type="AI_RESPONSE", session_id=token)
     else:
         try:
             history_cur = db["customer_messages"].find(
@@ -455,6 +486,8 @@ async def process_chat_message(db, session_token: str | None, message: str,
             result, ai_meta = await AIService().chat_with_lead(
                 history, message, knowledge, known, language=language or "en",
                 db=db)
+            _response_mode = "LLM_SYNTHESIS" if rag_meta.get("sources") else "LLM_FALLBACK"
+            ai_meta["response_mode"] = _response_mode
             await audit("website_chat", "AI_RESPONSE", token,
                         {"provider": ai_meta.get("ai_provider", ""),
                          "next_action": result.next_action},
@@ -598,6 +631,7 @@ async def process_chat_message(db, session_token: str | None, message: str,
                                         "last_activity_at": utcnow()}})
 
     # 18. response (legacy keys reply/session_token kept for the widget)
+    _duration_ms = int((_time.monotonic() - _fast_start) * 1000)
     return {
         "session_id": token, "session_token": token,
         "message": reply, "reply": reply,
@@ -608,4 +642,9 @@ async def process_chat_message(db, session_token: str | None, message: str,
         "intent": rag_meta.get("intent"),
         "sources": rag_meta.get("sources", []),
         "language": language or "en",
+        # Performance telemetry
+        "response_mode": _response_mode,
+        "duration_ms": _duration_ms,
+        "llm_used": bool(ai_meta.get("ai_provider")),
+        "rag_used": bool(rag_meta.get("sources")),
     }

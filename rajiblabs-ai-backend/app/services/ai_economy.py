@@ -106,6 +106,12 @@ _STRUCT_PATTERNS: list[tuple[str, list[str]]] = [
                     r"\bstack\b", r"\bbuilt with\b", r"\bmade with\b"]),
     ("portfolio_live", [r"\bportfolio.*live\b", r"\blive.*portfolio\b",
                         r"\bportfolio.*site\b", r"\bsites?\b.*\blive\b"]),
+    ("about_rajiblabs", [r"rajiblabs", r"about (the )?(company|studio|firm|site)",
+                         r"what (is|does) rajiblabs", r"tell me about rajiblabs",
+                         r"do you know about rajiblabs"]),
+    ("about_rajib", [r"\brajib\b.*(who|about|experience|background|career|resume)",
+                     r"who (is|are) (rajib|he)", r"about (him|rajib)\b",
+                     r"\bresume\b", r"\bcv\b", r"experience", r"job history"]),
 ]
 
 
@@ -253,6 +259,57 @@ async def structured_answer(question: str, db) -> dict | None:
             return {"answer": _bullets("Live portfolio sites", lines),
                     "sources": src, "confidence": 0.95, "level": 0,
                     "intent": "PROJECT_INFORMATION"}
+        if kind == "about_rajiblabs":
+            prof = await db["profiles"].find_one() or {}
+            name = prof.get("full_name") or "Rajib Mahata"
+            title = prof.get("title") or "Senior .NET & Azure Solutions Architect"
+            bio = (prof.get("bio") or "")[:400]
+            # Fetch products and projects for overview
+            prod_items = await tools.get_products(db)
+            proj_items = await tools.get_projects(db)
+            parts = [f"RajibLabs is an AI-first software and innovation lab led by {name}."]
+            if bio:
+                parts.append(bio)
+            parts.append(f"It focuses on turning business ideas into scalable software using modern engineering, cloud, AI and agentic automation.")
+            if prod_items:
+                prod_names = [p.get("name", "") for p in prod_items[:6] if p.get("name")]
+                if prod_names:
+                    parts.append("Products: " + ", ".join(prod_names) + ".")
+            if proj_items:
+                proj_names = [p.get("name", "") for p in proj_items[:6] if p.get("name")]
+                if proj_names:
+                    parts.append("Projects: " + ", ".join(proj_names) + ".")
+            parts.append("What would you like to explore?")
+            src = [{"title": "RajibLabs", "url": "https://rajiblabs.com",
+                    "source_type": "profile"}]
+            return {"answer": "\n\n".join(parts),
+                    "sources": src, "confidence": 0.95, "level": 0,
+                    "intent": "ABOUT_RAJIBLABS"}
+        if kind == "about_rajib":
+            prof = await db["profiles"].find_one() or {}
+            name = prof.get("full_name") or "Rajib Mahata"
+            title = prof.get("title") or ""
+            bio = (prof.get("bio") or "")[:500]
+            skills = prof.get("skills") or []
+            career = prof.get("career") or []
+            parts = []
+            if title:
+                parts.append(f"{name} is {title.rstrip('.')}.")
+            if bio:
+                parts.append(bio)
+            if skills:
+                parts.append("Skills: " + ", ".join(skills[:10]) + ".")
+            if career:
+                exp = [f"{c.get('role','')} at {c.get('company','')}" for c in career[:4] if c.get("company")]
+                if exp:
+                    parts.append("Experience: " + "; ".join(exp) + ".")
+            if not parts:
+                return None
+            src = [{"title": name, "url": "https://rajiblabs.com/#about",
+                    "source_type": "profile"}]
+            return {"answer": "\n\n".join(parts),
+                    "sources": src, "confidence": 0.95, "level": 0,
+                    "intent": "ABOUT_RAJIB"}
     except Exception as e:
         log.warning("structured answer failed: %s", e)
         return None

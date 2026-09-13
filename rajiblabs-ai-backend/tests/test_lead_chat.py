@@ -822,3 +822,134 @@ async def test_29_chat_url_has_v1_prefix(monkeypatch, fake_ai_key):
         pass  # empty payload may fail validation — only the URL matters here
     assert seen_urls, "expected at least one HTTP call"
     assert all(u.rstrip("/").endswith("/v1/chat/completions") for u in seen_urls), seen_urls
+
+
+# ── Fast-path tests (§35 greeting / structured / contact extraction) ──
+
+
+@pytest.mark.asyncio
+async def test_30_greeting_hi_no_llm(fake_ai):
+    """'hi' must return instantly from the greeting fast path — zero LLM calls."""
+    async with _client() as c:
+        body = await _turn(c, "", "hi")
+        _track(body)
+        assert body["reply"], "greeting should have a reply"
+        assert fake_ai.calls == 0, "greeting must NOT call the LLM"
+        assert body.get("response_mode") == "CACHE" or body.get("intent") == "GREETING"
+
+
+@pytest.mark.asyncio
+async def test_31_greeting_hello_no_llm(fake_ai):
+    """'hello' must return instantly from the greeting fast path."""
+    async with _client() as c:
+        body = await _turn(c, "", "hello")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls == 0, "greeting must NOT call the LLM"
+
+
+@pytest.mark.asyncio
+async def test_32_greeting_good_morning_no_llm(fake_ai):
+    """'good morning' must return instantly from the greeting fast path."""
+    async with _client() as c:
+        body = await _turn(c, "", "good morning")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls == 0, "greeting must NOT call the LLM"
+
+
+@pytest.mark.asyncio
+async def test_33_structured_products_no_llm(fake_ai):
+    """Product questions should hit structured_lookup, not LLM."""
+    async with _client() as c:
+        body = await _turn(c, "", "show me your products")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls == 0, "products query must NOT call the LLM"
+        mode = body.get("response_mode", "")
+        assert mode in ("STRUCTURED_LOOKUP", "CACHE"), f"expected structured, got {mode}"
+
+
+@pytest.mark.asyncio
+async def test_34_structured_projects_no_llm(fake_ai):
+    """Project questions should hit structured_lookup, not LLM."""
+    async with _client() as c:
+        body = await _turn(c, "", "what projects do you have?")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls == 0, "projects query must NOT call the LLM"
+
+
+@pytest.mark.asyncio
+async def test_35_structured_contact_no_llm(fake_ai):
+    """Contact questions should hit structured_lookup, not LLM."""
+    async with _client() as c:
+        body = await _turn(c, "", "how can I contact Rajib?")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls == 0, "contact query must NOT call the LLM"
+
+
+@pytest.mark.asyncio
+async def test_36_structured_about_rajiblabs_no_llm(fake_ai):
+    """'tell me about RajibLabs' should hit structured_lookup, not LLM."""
+    async with _client() as c:
+        body = await _turn(c, "", "tell me about RajibLabs")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls == 0, "about rajiblabs must NOT call the LLM"
+        mode = body.get("response_mode", "")
+        assert mode in ("STRUCTURED_LOOKUP", "CACHE"), f"expected structured, got {mode}"
+
+
+@pytest.mark.asyncio
+async def test_37_structured_about_rajib_no_llm(fake_ai):
+    """'who is Rajib' should hit structured_lookup, not LLM."""
+    async with _client() as c:
+        body = await _turn(c, "", "who is Rajib?")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls == 0, "about rajib must NOT call the LLM"
+
+
+@pytest.mark.asyncio
+async def test_38_contact_extraction_name(fake_ai):
+    """'My name is Rajib' on the fast path should extract the name via regex."""
+    async with _client() as c:
+        body = await _turn(c, "", "hi, my name is Rajib")
+        _track(body)
+        assert body["reply"]
+        # Name extraction happens on fast path — the reply should be present
+        assert fake_ai.calls == 0, "simple greeting with name must NOT call the LLM"
+
+
+@pytest.mark.asyncio
+async def test_39_response_mode_telemetry(fake_ai):
+    """Every response should include response_mode, duration_ms, llm_used."""
+    async with _client() as c:
+        body = await _turn(c, "", "hi")
+        _track(body)
+        assert "response_mode" in body, "response_mode missing from response"
+        assert "duration_ms" in body, "duration_ms missing from response"
+        assert "llm_used" in body, "llm_used missing from response"
+        assert body["llm_used"] is False, "greeting should not use LLM"
+
+
+@pytest.mark.asyncio
+async def test_40_idea_still_goes_to_llm(fake_ai):
+    """Substantive business messages should still reach the LLM for nurturing."""
+    async with _client() as c:
+        body = await _turn(c, "", "I have a project idea for a booking platform")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls >= 1, "business idea must reach the LLM for nurturing"
+
+
+@pytest.mark.asyncio
+async def test_41_hire_intent_still_goes_to_llm(fake_ai):
+    """'I need a quote' should reach the LLM (lead intent)."""
+    async with _client() as c:
+        body = await _turn(c, "", "I need a quote for a website")
+        _track(body)
+        assert body["reply"]
+        assert fake_ai.calls >= 1, "hire intent must reach the LLM"
