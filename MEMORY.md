@@ -219,6 +219,8 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
 - Admin detail is the source of truth: `GET /api/admin/learning/paths/{slug}/blocks` returns full blocks (all new fields), admin `LearningManage` makes every Day card clickable → `rla-modal` drawer showing complete lesson (objective, real-world, code, try, mistakes, exercise, homework, recap, what-you-can-do, validation, version, hash, generated/validated times). No DB/JSON inspection needed.
 - Public `LearningPathDetail` renders the same mentor order with `Markdown` for concept, `rlz-ld-*` sections, progress and roadmap. Public API only serves `published`/`completed` blocks on `active`/`completed` paths.
 - Never break: path creation (`Topic+Duration→roadmap→Day 1..N`), day scheduling, `06:30 IST` automation, `learning_paths`/`learning_blocks`/`learning_progress`/`learning_agent_runs` indexes, RAG `learning:*` docs, `/api/learning/*` + `/api/admin/learning/*` auth.
+- **Content quality rules**: Code examples MUST be topic-relevant (not generic C# when teaching ASP.NET Core). Days must NOT have duplicate code, exercises, or challenges. Concept explanations must NOT start with "Today you will learn" or similar AI filler. Every block requires all 16 mentor fields. Path prerequisites must be 0–3 for beginner level.
+- **ASP.NET Core course** (production, 7 days): Day 1 (project setup + folder structure), Day 2 (Task model + TasksController + CRUD), Day 3 (EF Core + SQLite + migrations), Day 4 (Razor views + tag helpers), Day 5 (cookie auth + [Authorize]), Day 6 (data annotations + validation + error handling), Day 7 (publish + deployment). All blocks validated and passing.
 
 ## AI orchestrator failure behavior (do not break)
 

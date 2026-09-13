@@ -2,6 +2,60 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-13 — ASP.NET Core Learning Content: full rewrite + validation
+
+### Problem
+
+The ASP.NET Core learning path (7 days) had severe quality issues:
+- Days 1–3 contained **identical code** (a basic C# Product class) that taught nothing about ASP.NET Core
+- Days 1–3 exercises were **identical** (create a Customer class)
+- Days 1–3 challenges were **identical** ("add a discount if price > 500")
+- All concept explanations started with the generic AI phrase "Today you will learn..."
+- Days 5–7 did not exist (not generated)
+- The course scored **23/100 — UNUSABLE**
+
+### Fixed — Days 1–3 (REWRITE)
+
+- **Day 1**: Now teaches `dotnet new mvc`, project structure (Controllers, Views, Models, wwwroot, Program.cs), `dotnet run`, modifying HomeController
+- **Day 2**: Now teaches TaskItem model, TasksController with CRUD actions, in-memory List storage, model binding
+- **Day 3**: Now teaches EF Core packages, TaskContext (DbContext), SQLite configuration, migrations (`dotnet ef migrations add` + `dotnet ef database update`), updated controller with dependency injection
+
+### Fixed — Day 4 (IMPROVE)
+
+- Extended `real_world_example` with a concrete team sprint scenario
+- Content was already strong (Razor views, tag helpers, model binding) — preserved as-is
+
+### Fixed — Days 5–7 (NEW)
+
+- **Day 5**: Cookie authentication, `AddCookie`, `[Authorize]`/`[AllowAnonymous]`, login page, protected actions
+- **Day 6**: Data annotations (`[Required]`, `[StringLength]`), `asp-validation-for`, `_ValidationScriptsPartial`, `UseExceptionHandler`, `ILogger<T>` logging
+- **Day 7**: `dotnet publish`, environment config (`appsettings.Production.json`), deployment, architecture review, end-to-end testing
+
+### Fixed — Path metadata
+
+- Prerequisites trimmed from 5 to 3 (C#, HTML, .NET SDK)
+- `current_day` set to 7, `progress` set to 100%
+
+### Validation results (after)
+
+- Path coherence: **PASS**
+- All 7 blocks: **PASS** (0 issues, 0 improvements)
+- No duplicate code across days
+- No generic AI filler phrases
+- All required mentor fields present
+
+### Added — `rajiblabs-ai-backend/tests/test_aspnet_learning.py` (9 tests)
+
+- `test_aspnet_path_exists` — path exists with 7 days, active status
+- `test_aspnet_all_7_blocks_published` — all 7 days published
+- `test_aspnet_block_validator_passes` — every block passes quality validator
+- `test_aspnet_path_coherence_passes` — path-level coherence passes
+- `test_aspnet_no_duplicate_code` — no duplicate code across days
+- `test_aspnet_code_relevance` — days 1–3 reference ASP.NET Core concepts
+- `test_aspnet_prerequisites_trimmed` — 0–3 prerequisites for beginner level
+- `test_aspnet_each_day_has_required_fields` — all 16 mentor fields present
+- `test_aspnet_no_generic_ai_phrases` — no "Today you will learn" etc.
+
 ## [Unreleased] — 2026-09-13 — Agent Runtime Fix: dispatch, scheduling, registration
 
 ### Fixed — `rajiblabs-ai-backend/app/routers/admin_ops.py`
