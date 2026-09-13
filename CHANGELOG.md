@@ -2,6 +2,85 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-13 — Universal Agentic Content Validation Engine
+
+### Added — `rajiblabs-ai-backend/app/services/content_validator.py`
+
+Universal, content-type-agnostic validation engine for ALL learning content in RajibLabs.
+Validates any content type (lessons, modules, courses, learning paths, tutorials, exercises,
+quizzes, assessments, projects, documentation, articles) with a single pipeline.
+
+**Architecture:**
+- `NormalizedContent` dataclass — universal internal representation for any content type
+- `ContentType` enum — 12 content types (LESSON, MODULE, COURSE, LEARNING_PATH, TUTORIAL, EXERCISE, QUIZ, ASSESSMENT, PROJECT, DOCUMENTATION, ARTICLE, MIXED)
+- `Rule` registry — 30 configurable validation rules with severity (P0–P3), category, and applies_to
+- Deterministic validators (zero LLM cost): structural, beginner-friendliness, technical accuracy, consistency, curriculum progression
+- Content-completeness penalties: missing examples, exercises, sections drag down relevant dimensions
+- P0 structural failures penalize all dimensions (content is fundamentally broken)
+- Content-hash dedup: unchanged content skips revalidation
+- Publishing gate: min_overall=70, min_technical=70, max_p0=0
+- Version manager: save validation history, track before/after improvement scores
+- Rollback guidance: find last known-good version
+
+**Validation categories:**
+- `structural` — objective, explanation, examples, code explanation
+- `beginner` — AI filler detection, objective clarity, real-world examples, jargon, paragraph length, step actionability
+- `technical` — Python syntax validation, code completeness
+- `curriculum` — topic repetition, difficulty progression, completeness, prerequisites, first-day gentleness
+- `practical` — exercise relevance, homework value, learning outcomes
+- `quality` — explanation depth, paragraph length, review recap, why-matters
+- `consistency` — duplicate code, duplicate exercises across content
+
+**Scoring engine:**
+- 9 weighted dimensions: beginner_friendliness (0.15), technical_accuracy (0.15), learning_objective (0.10), curriculum_progression (0.15), practical_learning (0.15), explanation_quality (0.10), real_world_relevance (0.10), examples_code (0.05), exercises_assessment (0.05)
+- Overall = weighted average, configurable thresholds
+
+### Added — MongoDB indexes
+
+- `content_validations` — (content_id, created_at), (content_type), (content_hash), (status)
+- `content_improvements` — (content_id, created_at), (successful), (content_type)
+
+### Added — Pydantic schemas (`app/schemas/__init__.py`)
+
+- `ValidateContentIn` — content_type, content_id, slug, day, force
+- `ValidatePathIn` — slug, force
+- `ValidateAllIn` — force
+- `ValidateContentResponse` — full validation result schema
+
+### Added — API endpoints (`app/routers/admin_learning.py`)
+
+- `POST /api/admin/learning/validate` — validate any content (block or full path)
+- `GET /api/admin/learning/validate/{slug}` — validation history for a path
+- `POST /api/admin/learning/validate-all` — validate all learning paths
+- `GET /api/admin/learning/rules` — list all validation rules
+- `GET /api/admin/learning/score/{slug}` — current scores for all blocks in a path
+- `POST /api/admin/learning/rollback/{slug}` — rollback guidance for content
+
+### Added — `rajiblabs-ai-backend/tests/test_content_validator.py` (56 tests)
+
+- **ContentNormalizer** (6): basic, with path, empty, path normalization, hash deterministic/different
+- **RuleEngine** (5): rules exist, required fields, applicable rules for lesson/path/quiz
+- **StructuralValidation** (4): good block, missing objective/explanation/code explanation
+- **BeginnerValidation** (6): AI filler, no filler, abstract real-world, long paragraph, jargon
+- **TechnicalValidation** (2): syntax error detected, valid code no issues
+- **ConsistencyValidation** (3): duplicate code, no duplicates, no issues without siblings
+- **CurriculumValidation** (3): repeated titles, first-day advanced, too many prerequisites
+- **Scoring** (3): no issues high score, many issues low score, custom weights
+- **BlockValidation** (7): good passes, bad fails, actions passing/failing, hash, strengths, dimensions
+- **PathValidation** (3): good path passes, bad blocks fail, block scores present
+- **ImprovementPlanner** (3): empty issues, sorted by priority, P0 becomes rewrite
+- **PublishingGate** (3): passing, failing, custom gate
+- **Persistence** (5): save/retrieve, skip revalidation, save improvement, rollback found/not found
+- **ValidateAndSave** (2): block, path
+- **RealWorldContent** (2): ASP.NET Core Day 1, weak content fails
+
+### Validation results (after)
+
+- 56 tests pass, 0 regressions
+- Bad content (no objective, no examples, AI filler) scores ~63/100, FAIL status
+- Good content (clear objective, examples, real-world) scores 100/100, PASS
+- ASP.NET Core Day 1 scores >=70, PASS
+
 ## [Unreleased] — 2026-09-13 — ASP.NET Core Learning Content: full rewrite + validation
 
 ### Problem

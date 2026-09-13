@@ -155,3 +155,164 @@ async def validate_path(slug: str, email: str = Depends(require_admin)):
         "failed_blocks": sum(1 for b in block_results if not b["passed"]),
         "blocks_with_improvements": sum(1 for b in block_results if b["improvements"]),
     }
+
+
+# ── Universal Content Validation Engine endpoints ──
+
+@router.post("/validate")
+async def validate_universal_content(body: dict, email: str = Depends(require_admin)):
+    """Validate any learning content using the universal engine."""
+    from app.services.content_validator import (
+        validate_and_save_block, validate_and_save_path,
+        should_skip_revalidation, plan_improvements,
+    )
+    db = get_db()
+    content_type = body.get("content_type", "lesson")
+    force = body.get("force", False)
+    slug = body.get("slug")
+    day = body.get("day")
+
+    if content_type == "learning_path":
+        if not slug:
+            raise HTTPException(400, "slug required for learning_path validation")
+        path = await db["learning_paths"].find_one({"slug": slug})
+        if not path:
+            raise HTTPException(404, f"Path '{slug}' not found")
+        blocks = [b async for b in db["learning_blocks"].find(
+            {"path_id": path["_id"]}).sort("day_number", 1)]
+        if not blocks:
+            raise HTTPException(400, f"Path '{slug}' has no blocks to validate")
+        result = await validate_and_save_path(db, path, blocks)
+        # Also validate each block
+        block_results = []
+        for b in blocks:
+            br = await validate_and_save_block(db, b, path, blocks)
+            block_results.append({"day": b.get("day_number"), "score": br.get("overall_score"), "status": br.get("status")})
+        result["block_results"] = block_results
+        return result
+    else:
+        # Single block validation
+        if not slug:
+            raise HTTPException(400, "slug required for block validation")
+        path_doc = await db["learning_paths"].find_one({"slug": slug})
+        blocks = []
+        if path_doc:
+            blocks = [b async for b in db["learning_blocks"].find(
+                {"path_id": path_doc["_id"]}).sort("day_number", 1)]
+        block = None
+        if day is not None and path_doc:
+            block = await db["learning_blocks"].find_one(
+                {"path_id": path_doc["_id"], "day_number": day})
+        if not block and blocks:
+            # Validate first block if none specified
+            block = blocks[0]
+        if not block:
+            raise HTTPException(404, "Block not found")
+        # Skip check
+        if not force:
+            from app.services.content_validator import normalize_lesson_block
+            nc = normalize_lesson_block(block, path_doc)
+            if await should_skip_revalidation(db, str(block.get("_id", "")), nc.content_hash):
+                return {"skipped": True, "reason": "Content unchanged", "content_hash": nc.content_hash}
+        result = await validate_and_save_block(db, block, path_doc, blocks)
+        # Add improvement plans
+        result["improvement_plan"] = plan_improvements(result)
+        return result
+
+
+@router.get("/validate/{slug}")
+async def get_validation_history(slug: str, limit: int = 20, email: str = Depends(require_admin)):
+    """Get validation history for a path."""
+    from app.services.content_validator import get_validation_history
+    db = get_db()
+    path = await db["learning_paths"].find_one({"slug": slug})
+    if not path:
+        raise HTTPException(404, f"Path '{slug}' not found")
+    history = await get_validation_history(db, str(path.get("_id", "")), limit)
+    return {"slug": slug, "history": history, "total": len(history)}
+
+
+@router.post("/validate-all")
+async def validate_all_content(body: dict | None = None, email: str = Depends(require_admin)):
+    """Validate all learning paths using the universal engine."""
+    from app.services.content_validator import validate_all_paths
+    db = get_db()
+    result = await validate_all_paths(db)
+    return result
+
+
+@router.get("/rules")
+async def get_validation_rules(email: str = Depends(require_admin)):
+    """List all available validation rules."""
+    from app.services.content_validator import RULES
+    return {
+        "total": len(RULES),
+        "rules": [
+            {
+                "rule_id": r.rule_id,
+                "name": r.name,
+                "category": r.category,
+                "severity": r.severity,
+                "applies_to": r.applies_to,
+                "description": r.description,
+                "enabled": r.enabled,
+            }
+            for r in RULES
+        ],
+    }
+
+
+@router.get("/score/{slug}")
+async def get_content_scores(slug: str, email: str = Depends(require_admin)):
+    """Get current scores for all blocks in a path."""
+    db = get_db()
+    path = await db["learning_paths"].find_one({"slug": slug})
+    if not path:
+        raise HTTPException(404, f"Path '{slug}' not found")
+    blocks = [b async for b in db["learning_blocks"].find(
+        {"path_id": path["_id"]}).sort("day_number", 1)]
+    scores = []
+    for b in blocks:
+        scores.append({
+            "day": b.get("day_number"),
+            "title": b.get("title") or b.get("topic"),
+            "validation_score": b.get("validation_score", 0),
+            "validation_status": b.get("validation_status", ""),
+            "validation_issues_count": b.get("validation_issues_count", 0),
+            "validation_mode": b.get("validation_mode", ""),
+            "last_validated_at": str(b.get("last_validated_at", "")),
+        })
+    path_score = path.get("validation_score", 0)
+    path_status = path.get("validation_status", "")
+    return {
+        "slug": slug,
+        "path_score": path_score,
+        "path_status": path_status,
+        "blocks": scores,
+        "total_blocks": len(blocks),
+        "passing": sum(1 for s in scores if s["validation_status"] == "PASS"),
+        "failing": sum(1 for s in scores if s["validation_status"] == "FAIL"),
+    }
+
+
+@router.post("/rollback/{slug}")
+async def rollback_content(slug: str, body: dict | None = None, email: str = Depends(require_admin)):
+    """Find the last known-good version for content rollback guidance."""
+    from app.services.content_validator import rollback_content
+    db = get_db()
+    day = (body or {}).get("day")
+    if day is not None:
+        path = await db["learning_paths"].find_one({"slug": slug})
+        if not path:
+            raise HTTPException(404, f"Path '{slug}' not found")
+        block = await db["learning_blocks"].find_one(
+            {"path_id": path["_id"], "day_number": day})
+        if not block:
+            raise HTTPException(404, f"Block day {day} not found")
+        result = await rollback_content(db, "lesson", str(block.get("_id", "")))
+    else:
+        path = await db["learning_paths"].find_one({"slug": slug})
+        if not path:
+            raise HTTPException(404, f"Path '{slug}' not found")
+        result = await rollback_content(db, "learning_path", str(path.get("_id", "")))
+    return {"slug": slug, "day": day, **result}

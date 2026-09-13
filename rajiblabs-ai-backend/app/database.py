@@ -341,6 +341,14 @@ async def ensure_indexes(db=None) -> None:
                          [("source_hash", 1)], [("updated_at", -1)]],
         "translation_cache": [[("source_hash", 1), ("target_language", 1)],
                               [("updated_at", -1)]],
+        # Universal content validation engine
+        "content_validations": [[("content_id", 1), ("created_at", -1)],
+                                [("content_type", 1)],
+                                [("content_hash", 1)],
+                                [("status", 1)]],
+        "content_improvements": [[("content_id", 1), ("created_at", -1)],
+                                 [("successful", 1)],
+                                 [("content_type", 1)]],
     }.items():
         for key in keys:
             try:

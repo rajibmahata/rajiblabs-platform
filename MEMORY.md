@@ -31,10 +31,13 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `resume_text.py` (PDF/DOCX extraction), `resume_projects.py` (resume→projects
   consolidation, Profile Agent owned), `ai_economy.py` (LEVEL 0 structured +
   caches), `skill_intelligence.py`/`domain_intelligence.py` (evidence-backed),
-  `learning_agent.py` (mentor daily blocks, RAG-grounded, hash-versioned).
+  `learning_agent.py` (mentor daily blocks, RAG-grounded, hash-versioned),
+  `content_validator.py` (universal content validation engine — deterministic-first,
+  30 rules, 9 scoring dimensions, content-type-agnostic, version tracking).
 - `rajiblabs-ai-backend/tests/` — `test_api.py`, `test_lead_chat.py`, `test_rag.py`,
   `test_workbench.py`, `test_concierge.py`, `test_github_knowledge.py`, `test_kb_policy.py`,
-  `test_i18n.py` (~199 collected). HTTP mocks via `respx` (in requirements; install if missing).
+  `test_i18n.py`, `test_content_validator.py` (56 tests), `test_aspnet_learning.py` (9 tests).
+  HTTP mocks via `respx` (in requirements; install if missing).
 
 ## Adding a new admin page (copy this recipe)
 
@@ -506,3 +509,18 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `BLOCK_STATUS_LIFECYCLE` = (draft, generating, validating, needs_improvement,
   ready, published, completed, archived). `BLOCK_IMMATURE_STATUSES` = (draft,
   generating, validating, needs_improvement, ready).
+
+## Universal Content Validation Engine
+
+- **Location**: `app/services/content_validator.py` — standalone engine, no LLM dependency.
+- **Architecture**: Normalize → Detect Type → Build Context → Validate Rules → Score → Plan Improvements → Version → Publish Gate.
+- **Content types**: LESSON, MODULE, COURSE, LEARNING_PATH, TUTORIAL, EXERCISE, QUIZ, ASSESSMENT, PROJECT, DOCUMENTATION, ARTICLE, MIXED.
+- **Rules**: 30 configurable rules with severity (P0–P3), category (structural/beginner/technical/curriculum/practical/quality/consistency), applies_to list.
+- **Scoring**: 9 weighted dimensions — beginner_friendliness (0.15), technical_accuracy (0.15), learning_objective (0.10), curriculum_progression (0.15), practical_learning (0.15), explanation_quality (0.10), real_world_relevance (0.10), examples_code (0.05), exercises_assessment (0.05).
+- **Publishing gate**: min_overall=70, min_technical=70, max_p0=0. Content below gate cannot be published.
+- **Content-hash dedup**: `should_skip_revalidation(db, content_id, content_hash)` — unchanged content skips revalidation.
+- **Version tracking**: `save_validation_result()` persists to `content_validations` collection. `save_improvement()` tracks before/after scores in `content_improvements`.
+- **Rollback**: `rollback_content(db, content_type, content_id)` finds last known-good version.
+- **API**: `POST /api/admin/learning/validate`, `GET /api/admin/learning/validate/{slug}`, `POST /api/admin/learning/validate-all`, `GET /api/admin/learning/rules`, `GET /api/admin/learning/score/{slug}`, `POST /api/admin/learning/rollback/{slug}`.
+- **Tests**: `test_content_validator.py` — 56 tests covering normalizer, rule engine, structural/beginner/technical/consistency/curriculum validation, scoring, block/path validation, improvement planner, publishing gate, persistence, and real-world content (ASP.NET Core).
+- **MongoDB collections**: `content_validations` (indexed on content_id+created_at, content_type, content_hash, status), `content_improvements` (indexed on content_id+created_at, successful, content_type).

@@ -597,3 +597,38 @@ class EmailCampaignIn(BaseModel):
 
 class CampaignDecision(BaseModel):
     action: str = Field(max_length=20)  # approve|send|pause|cancel
+
+
+# ── Universal Content Validation Engine ──
+
+class ValidateContentIn(BaseModel):
+    content_type: str = Field(default="lesson", max_length=40)
+    content_id: Optional[str] = Field(default=None, max_length=64)
+    slug: Optional[str] = Field(default=None, max_length=200)
+    day: Optional[int] = Field(default=None, ge=0)
+    force: bool = False  # skip dedup check
+
+
+class ValidatePathIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=200)
+    force: bool = False
+
+
+class ValidateAllIn(BaseModel):
+    force: bool = False
+
+
+class ValidateContentResponse(BaseModel):
+    content_id: str
+    content_type: str
+    content_version: int
+    overall_score: float
+    status: str
+    dimensions: dict[str, Any] = {}
+    strengths: list[str] = []
+    issues: list[dict] = []
+    improvement_required: bool
+    actions: list[dict] = []
+    validation_mode: str
+    content_hash: str
+    created_at: str
