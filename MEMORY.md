@@ -265,6 +265,27 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   workbench generate/chat) and is echoed back in responses.
 - Test fakes need `_id` on fake Mongo docs (`{**d, "_id": ...}` in service code).
 
+## Agent runtime rules (do not break)
+
+- All 4 agent runners (`profile_agent.run_profile_agent`, `learning_agent.run_daily`,
+  `marketing_agent.run_daily`, `daily_agent.run_daily_agent`) share the same signature:
+  `(triggered_by: str = "scheduler") -> dict`. None accept a `db` parameter.
+  Never pass `db=` to these functions — they call `get_db()` internally.
+- **Admin dispatch** (`admin_ops.py` `ops_agent_run`): imports the correct function
+  by slug (`rajiblabs-profile` → `run_profile_agent`, `rajiblabs-learning` →
+  `run_daily`, `rajiblabs-marketing` → `run_daily`). Uses `asyncio.create_task()`
+  with `_background_tasks` set to prevent GC. Returns 409 if agent already running.
+- **Marketing agent must be seeded**: `agent_config.MARKETING_SLUG = "rajiblabs-marketing"`
+  with `ensure_marketing_seed()`. `list_agents()` and `get_agent()` include it.
+  Without the seed, admin dispatch returns 404.
+- **Scheduler** wraps each agent import in `try/except` — one missing module does not
+  crash the others. `start_scheduler()` is idempotent (returns existing instance).
+- **Lifespan errors must be logged**, never silently swallowed. `main.py` lifespan
+  uses `log.warning(...)` on scheduler startup failure.
+- **Agent run recording**: profile → `profile_agent_runs`, learning → `learning_agent_runs`,
+  marketing → `marketing_agent_runs`, daily → `agent_runs`. All have `status`,
+  `started_at`, `triggered_by` fields.
+
 ## Gotchas (learned the hard way)
 
 - Motor/pymongo `Database`/`Collection` objects raise on truthiness: NEVER write

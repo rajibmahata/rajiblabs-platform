@@ -2,6 +2,45 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-13 — Agent Runtime Fix: dispatch, scheduling, registration
+
+### Fixed — `rajiblabs-ai-backend/app/routers/admin_ops.py`
+
+- **P0: All 3 admin "Run Now" dispatches were broken.**
+  - Profile dispatch passed `db=db` to `run_profile_agent(triggered_by)` — `TypeError` every time.
+  - Learning dispatch imported `run_learning_agent` (doesn't exist) — `ImportError`.
+  - Marketing dispatch imported `MarketingAgent` class (doesn't exist) — `ImportError`.
+  - All corrected to import the actual `run_daily`/`run_profile_agent` functions with `triggered_by` kwarg only.
+- **asyncio task GC**: `_background_tasks` set + `task.add_done_callback(discard)` prevents
+  fire-and-forget `create_task` results from being garbage-collected before completion.
+
+### Fixed — `rajiblabs-ai-backend/app/services/agent_config.py`
+
+- Marketing agent (`rajiblabs-marketing`) was never registered — `MARKETING_SLUG`,
+  `DEFAULT_MARKETING_AGENT` dict, and `ensure_marketing_seed()` added. `get_agent()`
+  and `list_agents()` updated to include marketing. Admin dispatch now finds the agent.
+
+### Fixed — `rajiblabs-ai-backend/app/workers/scheduler.py`
+
+- Daily-agent import (`from app.agents.daily_agent import run_daily_agent`) was
+  unprotected — an import failure would crash the entire scheduler. Now wrapped in
+  `try/except` matching the other 3 agent imports.
+
+### Fixed — `rajiblabs-ai-backend/app/main.py`
+
+- Lifespan scheduler error handler changed from `except: pass` to
+  `except Exception as e: log.warning(...)` — scheduler failures now visible in logs.
+
+### Added — `rajiblabs-ai-backend/tests/test_agent_runtime.py` (7 tests)
+
+- `test_all_agent_functions_accept_triggered_by` — all 4 runners have correct signature
+- `test_scheduler_import_failure_does_not_crash` — scheduler source has try/except
+- `test_all_agent_slugs_discoverable` — all 4+1 agents seeded and discoverable
+- `test_disabled_agent_not_executable` — disabled profile agent skips execution
+- `test_scheduler_registers_all_jobs` — scheduler has all 4 job IDs registered
+- `test_dispatch_all_agents` — profile/learning/marketing dispatch returns 200/409 (not 500)
+- `test_agent_runs_recorded` — run history exists with required fields
+
 ## [Unreleased] — 2026-09-12 — Agent & AI Operations Dashboard v2: full visibility, controls, analytics
 
 Complete centralized dashboard for agent execution visibility, OpenAI usage/cost
