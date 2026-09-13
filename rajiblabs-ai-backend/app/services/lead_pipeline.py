@@ -348,8 +348,9 @@ async def process_chat_message(db, session_token: str | None, message: str,
                     {"latency_ms": 0},
                     event_type="FAST_GREETING", session_id=token)
     else:
-        # Heuristic: lead-intent messages (hire/build/idea) must go through LLM for nurturing
-        _lead_words = ("hire", "proposal", "quote", "price", "cost", "build", "need", "contact", "call", "demo",
+        # Heuristic: lead-intent messages (hire/build/idea) must go through LLM for nurturing.
+        # "contact"/"call" are info-seeking (handled by structured answer), not lead-intent.
+        _lead_words = ("hire", "proposal", "quote", "price", "cost", "build", "need", "demo",
                        "i have", "my idea", "project idea", "looking for")
         _is_lead_intent = any(w in _msg_lower for w in _lead_words) or bool((lead.get("email") or "").strip() and len(message) < 200)
         # Try fast path for non-lead, knowledge-seeking questions (relaxed gate)
