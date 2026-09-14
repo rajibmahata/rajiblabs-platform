@@ -5,7 +5,7 @@
       <stop offset="50%" style="stop-color:#1e293b"/>
       <stop offset="100%" style="stop-color:#0f172a"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="cyan" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" style="stop-color:#22d3ee"/>
       <stop offset="100%" style="stop-color:#06b6d4"/>
     </linearGradient>
@@ -13,72 +13,72 @@
       <stop offset="0%" style="stop-color:#10b981"/>
       <stop offset="100%" style="stop-color:#059669"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
   <rect width="800" height="450" fill="url(#bg)"/>
-  <!-- Grid pattern -->
-  <g opacity="0.06" stroke="#22d3ee" stroke-width="0.5">
-    <line x1="0" y1="0" x2="800" y2="450"/><line x1="800" y1="0" x2="0" y2="450"/>
-    <line x1="400" y1="0" x2="400" y2="450"/><line x1="0" y1="225" x2="800" y2="225"/>
-    <circle cx="400" cy="225" r="150" fill="none"/><circle cx="400" cy="225" r="250" fill="none"/>
-  </g>
+  <!-- Subtle grid -->
+  <g opacity="0.04" stroke="#22d3ee" stroke-width="0.5"><line x1="0" y1="90" x2="800" y2="90"/><line x1="0" y1="180" x2="800" y2="180"/><line x1="0" y1="270" x2="800" y2="270"/><line x1="0" y1="360" x2="800" y2="360"/><line x1="200" y1="0" x2="200" y2="450"/><line x1="400" y1="0" x2="400" y2="450"/><line x1="600" y1="0" x2="600" y2="450"/></g>
   <!-- Dashboard mockup -->
-  <g transform="translate(420, 80)" filter="url(#glow)">
-    <rect x="0" y="0" width="320" height="200" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-    <rect x="0" y="0" width="320" height="32" rx="12" fill="#0f172a"/>
-    <circle cx="20" cy="16" r="5" fill="#ef4444"/><circle cx="36" cy="16" r="5" fill="#eab308"/><circle cx="52" cy="16" r="5" fill="#22c55e"/>
-    <text x="160" y="20" text-anchor="middle" fill="#94a3b8" font-family="system-ui" font-size="11">PestFlow Dashboard</text>
-    <!-- Stats cards -->
-    <rect x="16" y="44" width="90" height="50" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
-    <text x="61" y="64" text-anchor="middle" fill="#22d3ee" font-family="system-ui" font-size="18" font-weight="bold">247</text>
-    <text x="61" y="82" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="9">Active Jobs</text>
-    <rect x="115" y="44" width="90" height="50" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
-    <text x="160" y="64" text-anchor="middle" fill="#10b981" font-family="system-ui" font-size="18" font-weight="bold">98%</text>
-    <text x="160" y="82" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="9">Completion</text>
-    <rect x="214" y="44" width="90" height="50" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
-    <text x="259" y="64" text-anchor="middle" fill="#f59e0b" font-family="system-ui" font-size="18" font-weight="bold">12</text>
-    <text x="259" y="82" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="9">Technicians</text>
-    <!-- Chart bars -->
-    <g transform="translate(16, 108)">
-      <rect x="0" y="30" width="18" height="50" rx="3" fill="#22d3ee" opacity="0.8"/>
-      <rect x="26" y="15" width="18" height="65" rx="3" fill="#22d3ee" opacity="0.9"/>
-      <rect x="52" y="25" width="18" height="55" rx="3" fill="#22d3ee"/>
-      <rect x="78" y="10" width="18" height="70" rx="3" fill="#10b981"/>
-      <rect x="104" y="20" width="18" height="60" rx="3" fill="#22d3ee" opacity="0.7"/>
-      <rect x="130" y="5" width="18" height="75" rx="3" fill="#10b981" opacity="0.9"/>
-      <rect x="156" y="18" width="18" height="62" rx="3" fill="#22d3ee" opacity="0.85"/>
-      <rect x="182" y="8" width="18" height="72" rx="3" fill="#10b981"/>
-      <rect x="208" y="22" width="18" height="58" rx="3" fill="#22d3ee" opacity="0.75"/>
-      <rect x="234" y="12" width="18" height="68" rx="3" fill="#10b981" opacity="0.85"/>
-      <rect x="260" y="3" width="18" height="77" rx="3" fill="#22d3ee"/>
-      <rect x="286" y="16" width="18" height="64" rx="3" fill="#10b981" opacity="0.9"/>
+  <g transform="translate(410, 40)" filter="url(#glow)">
+    <rect x="0" y="0" width="360" height="240" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <!-- Title bar -->
+    <rect x="0" y="0" width="360" height="34" rx="14" fill="#0f172a"/>
+    <circle cx="18" cy="17" r="5" fill="#ef4444"/><circle cx="34" cy="17" r="5" fill="#eab308"/><circle cx="50" cy="17" r="5" fill="#22c55e"/>
+    <text x="180" y="21" text-anchor="middle" fill="#94a3b8" font-family="system-ui" font-size="10">PestFlow — Operations Dashboard</text>
+    <!-- KPI row -->
+    <g transform="translate(14, 44)">
+      <rect width="100" height="44" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+      <text x="50" y="20" text-anchor="middle" fill="#22d3ee" font-family="system-ui" font-size="20" font-weight="bold">247</text>
+      <text x="50" y="36" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="8">Active Jobs</text>
+      <rect x="108" width="100" height="44" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+      <text x="158" y="20" text-anchor="middle" fill="#10b981" font-family="system-ui" font-size="20" font-weight="bold">98.2%</text>
+      <text x="158" y="36" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="8">Completion Rate</text>
+      <rect x="222" width="100" height="44" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+      <text x="272" y="20" text-anchor="middle" fill="#f59e0b" font-family="system-ui" font-size="20" font-weight="bold">₹4.2L</text>
+      <text x="272" y="36" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="8">Monthly Revenue</text>
+    </g>
+    <!-- Chart area -->
+    <g transform="translate(14, 100)">
+      <rect width="330" height="120" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+      <text x="12" y="18" fill="#64748b" font-family="system-ui" font-size="8">Job Completion Trend</text>
+      <!-- Area chart -->
+      <path d="M12,95 L38,82 L64,88 L90,72 L116,68 L142,58 L168,62 L194,45 L220,40 L246,35 L272,30 L298,22 L310,18" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+      <path d="M12,95 L38,82 L64,88 L90,72 L116,68 L142,58 L168,62 L194,45 L220,40 L246,35 L272,30 L298,22 L310,18 L310,105 L12,105 Z" fill="#22d3ee" opacity="0.08"/>
+      <!-- Bars overlay -->
+      <rect x="50" y="60" width="10" height="40" rx="2" fill="#10b981" opacity="0.5"/>
+      <rect x="100" y="45" width="10" height="55" rx="2" fill="#10b981" opacity="0.6"/>
+      <rect x="150" y="38" width="10" height="62" rx="2" fill="#10b981" opacity="0.7"/>
+      <rect x="200" y="30" width="10" height="70" rx="2" fill="#10b981" opacity="0.8"/>
+      <rect x="250" y="25" width="10" height="75" rx="2" fill="#10b981" opacity="0.9"/>
+      <rect x="300" y="18" width="10" height="82" rx="2" fill="#10b981"/>
+    </g>
+    <!-- Status indicators -->
+    <g transform="translate(14, 228)">
+      <circle cx="6" cy="6" r="4" fill="#22c55e"/><text x="16" y="10" fill="#94a3b8" font-family="system-ui" font-size="8">12 Technicians Online</text>
+      <circle cx="120" cy="6" r="4" fill="#f59e0b"/><text x="130" y="10" fill="#94a3b8" font-family="system-ui" font-size="8">3 Pending GST</text>
+      <circle cx="220" cy="6" r="4" fill="#ef4444"/><text x="230" y="10" fill="#94a3b8" font-family="system-ui" font-size="8">1 Urgent</text>
     </g>
   </g>
   <!-- Title -->
-  <text x="60" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="800" fill="white" letter-spacing="-1">PestFlow</text>
-  <text x="60" y="210" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#94a3b8">Pest-Control Business Platform</text>
+  <text x="50" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="54" font-weight="800" fill="white" letter-spacing="-1.5">PestFlow</text>
+  <text x="50" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#94a3b8">Multi-tenant Pest-Control Business Platform</text>
+  <!-- Feature list -->
+  <g transform="translate(50, 210)" font-family="system-ui" font-size="11">
+    <text y="0" fill="#22d3ee">▸</text><text x="16" y="0" fill="#cbd5e1">Multi-tenant Operations &amp; GST Quotations</text>
+    <text y="18" fill="#22d3ee">▸</text><text x="16" y="18" fill="#cbd5e1">Online/Cash Payment Plans</text>
+    <text y="36" fill="#22d3ee">▸</text><text x="16" y="36" fill="#cbd5e1">Technician Workflows with Verification Codes</text>
+    <text y="54" fill="#22d3ee">▸</text><text x="16" y="54" fill="#cbd5e1">Real-time Updates via SignalR &amp; Firebase</text>
+  </g>
   <!-- Tech badges -->
-  <g transform="translate(60, 235)">
-    <rect x="0" y="0" width="60" height="28" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-    <text x="30" y="18" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="11">.NET</text>
-    <rect x="68" y="0" width="85" height="28" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-    <text x="110" y="18" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="11">SQL Server</text>
-    <rect x="161" y="0" width="82" height="28" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-    <text x="202" y="18" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="11">SignalR</text>
+  <g transform="translate(50, 290)">
+    <rect width="56" height="26" rx="13" fill="#1e293b" stroke="#334155" stroke-width="1"/><text x="28" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">.NET</text>
+    <rect x="64" width="92" height="26" rx="13" fill="#1e293b" stroke="#334155" stroke-width="1"/><text x="110" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">SQL Server</text>
+    <rect x="164" width="72" height="26" rx="13" fill="#1e293b" stroke="#334155" stroke-width="1"/><text x="200" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">SignalR</text>
+    <rect x="244" width="92" height="26" rx="13" fill="#1e293b" stroke="#334155" stroke-width="1"/><text x="290" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Firebase</text>
   </g>
-  <!-- Feature pills -->
-  <g transform="translate(60, 285)" opacity="0.7">
-    <text x="0" y="0" fill="#22d3ee" font-family="system-ui" font-size="13">Multi-tenant</text>
-    <text x="110" y="0" fill="#22d3ee" font-family="system-ui" font-size="13">GST Quotations</text>
-    <text x="245" y="0" fill="#22d3ee" font-family="system-ui" font-size="13">Real-time Updates</text>
-    <text x="405" y="0" fill="#22d3ee" font-family="system-ui" font-size="13">Payment Plans</text>
-  </g>
-  <!-- Floating particles -->
-  <circle cx="380" cy="60" r="2" fill="#22d3ee" opacity="0.4"/>
-  <circle cx="720" cy="350" r="3" fill="#10b981" opacity="0.3"/>
-  <circle cx="50" cy="380" r="2" fill="#22d3ee" opacity="0.3"/>
-  <circle cx="750" cy="100" r="1.5" fill="#06b6d4" opacity="0.5"/>
+  <!-- Flagship badge -->
+  <rect x="50" y="330" width="100" height="22" rx="11" fill="#06b6d4" opacity="0.15" stroke="#06b6d4" stroke-width="0.5"/>
+  <text x="100" y="345" text-anchor="middle" fill="#22d3ee" font-family="system-ui" font-size="10" font-weight="600">★ FLAGSHIP</text>
+  <!-- Floating dots -->
+  <circle cx="390" cy="50" r="2" fill="#22d3ee" opacity="0.3"/><circle cx="780" cy="400" r="2.5" fill="#10b981" opacity="0.25"/><circle cx="30" cy="400" r="1.5" fill="#06b6d4" opacity="0.3"/>
 </svg>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <g opacity="0.04" stroke="#e94560" stroke-width="0.5"><line x1="0" y1="90" x2="800" y2="90"/><line x1="0" y1="180" x2="800" y2="180"/><line x1="0" y1="270" x2="800" y2="270"/><line x1="0" y1="360" x2="800" y2="360"/><line x1="200" y1="0" x2="200" y2="450"/><line x1="400" y1="0" x2="400" y2="450"/><line x1="600" y1="0" x2="600" y2="450"/></g>
+  <!-- Legal workflow diagram -->
+  <g transform="translate(420, 40)" filter="url(#glow)">
+    <!-- Case file -->
+    <rect x="0" y="20" width="170" height="250" rx="10" fill="#16213e" stroke="#e94560" stroke-width="1.5"/>
+    <rect x="0" y="0" width="170" height="32" rx="10" fill="#0f3460"/>
+    <text x="85" y="21" text-anchor="middle" fill="#e94560" font-family="system-ui" font-size="11" font-weight="bold">📋 CASE #2024-47</text>
+    <!-- Client info -->
+    <rect x="14" y="42" width="142" height="36" rx="6" fill="#0f3460"/>
+    <text x="24" y="56" fill="#e94560" font-family="system-ui" font-size="8" font-weight="600">Client: Smith &amp; Partners</text>
+    <text x="24" y="68" fill="#a1a1aa" font-family="system-ui" font-size="7">Commercial Litigation • Filed 12 Jan</text>
+    <!-- Status timeline -->
+    <g transform="translate(14, 90)">
+      <line x1="6" y1="0" x2="6" y2="120" stroke="#334155" stroke-width="2"/>
+      <circle cx="6" cy="0" r="5" fill="#22c55e"/><text x="18" y="4" fill="#a1a1aa" font-family="system-ui" font-size="7">Filed ✓</text>
+      <circle cx="6" cy="30" r="5" fill="#22c55e"/><text x="18" y="34" fill="#a1a1aa" font-family="system-ui" font-size="7">Review ✓</text>
+      <circle cx="6" cy="60" r="5" fill="#f59e0b"/><text x="18" y="64" fill="#e94560" font-family="system-ui" font-size="7" font-weight="600">Court Date ⏳</text>
+      <circle cx="6" cy="90" r="5" fill="#334155" stroke="#475569" stroke-width="1"/><text x="18" y="94" fill="#64748b" font-family="system-ui" font-size="7">Resolution</text>
+      <circle cx="6" cy="120" r="5" fill="#334155" stroke="#475569" stroke-width="1"/><text x="18" y="124" fill="#64748b" font-family="system-ui" font-size="7">Closed</text>
+    </g>
+    <!-- Document section -->
+    <rect x="14" y="220" width="66" height="40" rx="6" fill="#0f3460"/>
+    <text x="47" y="238" text-anchor="middle" fill="#e94560" font-family="system-ui" font-size="14">📄</text>
+    <text x="47" y="252" text-anchor="middle" fill="#a1a1aa" font-family="system-ui" font-size="7">14 Docs</text>
+    <rect x="88" y="220" width="66" height="40" rx="6" fill="#0f3460"/>
+    <text x="121" y="238" text-anchor="middle" fill="#f59e0b" font-family="system-ui" font-size="14">⏰</text>
+    <text x="121" y="252" text-anchor="middle" fill="#a1a1aa" font-family="system-ui" font-size="7">3 Urgent</text>
+    <!-- Blazor badge -->
+    <rect x="14" y="270" width="142" height="20" rx="10" fill="#0f3460" stroke="#e94560" stroke-width="0.5" stroke-dasharray="3,3"/>
+    <text x="85" y="284" text-anchor="middle" fill="#e94560" font-family="system-ui" font-size="8">⚡ Blazor Interactive UI</text>
+    <!-- Workflow arrows -->
+    <g opacity="0.4" stroke="#e94560" stroke-width="0.8" fill="none">
+      <path d="M190,60 L220,60 L220,100 L190,100"/>
+      <circle cx="230" cy="60" r="12" fill="none" stroke-dasharray="3,3"/><text x="230" y="64" text-anchor="middle" fill="#e94560" font-family="system-ui" font-size="8">1</text>
+      <circle cx="230" cy="140" r="12" fill="none" stroke-dasharray="3,3"/><text x="230" y="144" text-anchor="middle" fill="#e94560" font-family="system-ui" font-size="8">2</text>
+      <circle cx="230" cy="220" r="12" fill="none" stroke-dasharray="3,3"/><text x="230" y="224" text-anchor="middle" fill="#e94560" font-family="system-ui" font-size="8">3</text>
+      <text x="248" y="64" fill="#e94560" font-family="system-ui" font-size="7">Track</text>
+      <text x="248" y="144" fill="#e94560" font-family="system-ui" font-size="7">Manage</text>
+      <text x="248" y="224" fill="#e94560" font-family="system-ui" font-size="7">Resolve</text>
+    </g>
+  </g>
+  <!-- Title -->
+  <text x="50" y="135" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" fill="white" letter-spacing="-1">Solicitor Case</text>
+  <text x="50" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" fill="white" letter-spacing="-1">Management</text>
+  <text x="50" y="205" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#a1a1aa">Legal Enterprise Workflow Platform</text>
+  <!-- Features -->
+  <g transform="translate(50, 225)" font-family="system-ui" font-size="11">
+    <text y="0" fill="#e94560">▸</text><text x="16" y="0" fill="#e2e8f0">Case Tracking &amp; Document Management</text>
+    <text y="18" fill="#e94560">▸</text><text x="16" y="18" fill="#e2e8f0">Client Communication Workflows</text>
+    <text y="36" fill="#e94560">▸</text><text x="16" y="36" fill="#e2e8f0">Visual Case Flow Builder</text>
+  </g>
+  <!-- Tech badges -->
+  <g transform="translate(50, 295)">
+    <rect width="56" height="26" rx="13" fill="#16213e" stroke="#e94560" stroke-width="1"/><text x="28" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">.NET 8</text>
+    <rect x="64" width="66" height="26" rx="13" fill="#16213e" stroke="#e94560" stroke-width="1"/><text x="97" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Blazor</text>
+    <rect x="138" width="82" height="26" rx="13" fill="#16213e" stroke="#e94560" stroke-width="1"/><text x="179" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">SQL Server</text>
+    <rect x="228" width="60" height="26" rx="13" fill="#16213e" stroke="#e94560" stroke-width="1"/><text x="258" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Azure</text>
+  </g>
+  <!-- Planning badge -->
+  <rect x="50" y="335" width="90" height="22" rx="11" fill="#f59e0b" opacity="0.15" stroke="#f59e0b" stroke-width="0.5"/>
+  <text x="95" y="350" text-anchor="middle" fill="#fbbf24" font-family="system-ui" font-size="10" font-weight="600">🔍 PLANNING</text>
+  <circle cx="400" cy="50" r="2" fill="#e94560" opacity="0.3"/><circle cx="780" cy="400" r="2.5" fill="#e94560" opacity="0.2"/><circle cx="30" cy="400" r="1.5" fill="#e94560" opacity="0.3"/>
+</svg>

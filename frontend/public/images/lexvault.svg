@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="50%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <g opacity="0.04" stroke="#818cf8" stroke-width="0.5"><line x1="0" y1="90" x2="800" y2="90"/><line x1="0" y1="180" x2="800" y2="180"/><line x1="0" y1="270" x2="800" y2="270"/><line x1="0" y1="360" x2="800" y2="360"/><line x1="200" y1="0" x2="200" y2="450"/><line x1="400" y1="0" x2="400" y2="450"/><line x1="600" y1="0" x2="600" y2="450"/></g>
+  <!-- Hybrid search visualization -->
+  <g transform="translate(400, 30)" filter="url(#glow)">
+    <!-- Legal documents -->
+    <g transform="translate(0, 20)">
+      <rect width="120" height="80" rx="8" fill="#1e293b" stroke="#818cf8" stroke-width="1"/>
+      <text x="60" y="22" text-anchor="middle" fill="#818cf8" font-family="system-ui" font-size="10" font-weight="bold">📄 Legal Docs</text>
+      <rect x="12" y="32" width="96" height="5" rx="2" fill="#334155"/>
+      <rect x="12" y="42" width="80" height="5" rx="2" fill="#334155"/>
+      <rect x="12" y="52" width="90" height="5" rx="2" fill="#334155"/>
+      <rect x="12" y="62" width="60" height="5" rx="2" fill="#334155"/>
+      <text x="60" y="76" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="7">Contracts, Briefs, Statutes</text>
+    </g>
+    <!-- Hybrid retrieval -->
+    <g transform="translate(140, 20)">
+      <rect width="110" height="80" rx="8" fill="#1e293b" stroke="#818cf8" stroke-width="1.5"/>
+      <text x="55" y="20" text-anchor="middle" fill="#818cf8" font-family="system-ui" font-size="9" font-weight="bold">🔍 Hybrid Search</text>
+      <rect x="12" y="28" width="86" height="20" rx="4" fill="#0f172a"/>
+      <text x="55" y="40" text-anchor="middle" fill="#a5b4fc" font-family="system-ui" font-size="7">Dense + Sparse</text>
+      <rect x="12" y="54" width="86" height="20" rx="4" fill="#0f172a"/>
+      <text x="55" y="66" text-anchor="middle" fill="#c7d2fe" font-family="system-ui" font-size="7">Semantic Ranking</text>
+      <text x="55" y="78" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="6">Qdrant Backend</text>
+    </g>
+    <line x1="120" y1="60" x2="140" y2="60" stroke="#818cf8" stroke-width="0.8" opacity="0.4"/>
+    <!-- Clause engine -->
+    <g transform="translate(270, 20)">
+      <rect width="110" height="80" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="55" y="20" text-anchor="middle" fill="#a78bfa" font-family="system-ui" font-size="9" font-weight="bold">⚙️ Clause Engine</text>
+      <text x="55" y="36" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="8">Deterministic</text>
+      <text x="55" y="48" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="8">Rule Matching</text>
+      <rect x="12" y="56" width="86" height="18" rx="4" fill="#0f172a"/>
+      <text x="55" y="68" text-anchor="middle" fill="#c084fc" font-family="system-ui" font-size="7">Zero Hallucination</text>
+    </g>
+    <line x1="250" y1="60" x2="270" y2="60" stroke="#818cf8" stroke-width="0.8" opacity="0.4"/>
+    <!-- Results -->
+    <g transform="translate(0, 130)">
+      <rect width="390" height="120" rx="10" fill="#1e293b" stroke="#818cf8" stroke-width="1"/>
+      <text x="16" y="22" fill="#818cf8" font-family="system-ui" font-size="10" font-weight="bold">📋 Analysis Result</text>
+      <rect x="16" y="30" width="358" height="80" rx="6" fill="#0f172a"/>
+      <text x="26" y="48" fill="#e2e8f0" font-family="system-ui" font-size="8">Clause 7.2: Non-Compete Duration — <tspan fill="#f59e0b" font-weight="bold">18 months</tspan></text>
+      <text x="26" y="62" fill="#a1a1aa" font-family="system-ui" font-size="7">Matched: Standard-NC-2024 template • Confidence: 99.2%</text>
+      <text x="26" y="76" fill="#a1a1aa" font-family="system-ui" font-size="7">Source: contract_2024_q3.pdf, Page 14, Line 203-218</text>
+      <text x="26" y="90" fill="#64748b" font-family="system-ui" font-size="7">Related: 3 similar clauses found across 12 documents</text>
+      <rect x="26" y="96" width="60" height="14" rx="7" fill="#818cf8" opacity="0.15"/><text x="56" y="106" text-anchor="middle" fill="#a5b4fc" font-family="system-ui" font-size="7">View Full</text>
+      <rect x="94" y="96" width="80" height="14" rx="7" fill="#a78bfa" opacity="0.15"/><text x="134" y="106" text-anchor="middle" fill="#c084fc" font-family="system-ui" font-size="7">Download</text>
+    </g>
+    <!-- On-premise badge -->
+    <g transform="translate(0, 270)">
+      <rect width="130" height="28" rx="14" fill="#1e293b" stroke="#818cf8" stroke-width="0.5"/>
+      <text x="65" y="18" text-anchor="middle" fill="#a5b4fc" font-family="system-ui" font-size="9">🏠 Fully On-Premise</text>
+      <rect x="140" width="130" height="28" rx="14" fill="#1e293b" stroke="#a78bfa" stroke-width="0.5"/>
+      <text x="205" y="18" text-anchor="middle" fill="#c084fc" font-family="system-ui" font-size="9">🔒 Zero Cloud Dependency</text>
+    </g>
+  </g>
+  <!-- Title -->
+  <text x="50" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="800" fill="white" letter-spacing="-1">LexVault</text>
+  <text x="50" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#a1a1aa">Legal Document Intelligence — Hybrid Dense + Sparse Retrieval</text>
+  <!-- Features -->
+  <g transform="translate(50, 200)" font-family="system-ui" font-size="11">
+    <text y="0" fill="#818cf8">▸</text><text x="16" y="0" fill="#e2e8f0">Hybrid Dense + Sparse Retrieval over Qdrant</text>
+    <text y="18" fill="#818cf8">▸</text><text x="16" y="18" fill="#e2e8f0">Deterministic Clause Engine — Zero Hallucination</text>
+    <text y="36" fill="#818cf8">▸</text><text x="16" y="36" fill="#e2e8f0">Fully On-Premise — Zero Cloud Dependency</text>
+    <text y="54" fill="#818cf8">▸</text><text x="16" y="54" fill="#e2e8f0">Semantic Ranking + Exact Match</text>
+  </g>
+  <!-- Tech badges -->
+  <g transform="translate(50, 290)">
+    <rect width="56" height="26" rx="13" fill="#1e293b" stroke="#818cf8" stroke-width="1"/><text x="28" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">.NET</text>
+    <rect x="64" width="72" height="26" rx="13" fill="#1e293b" stroke="#818cf8" stroke-width="1"/><text x="100" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Qdrant</text>
+    <rect x="144" width="110" height="26" rx="13" fill="#1e293b" stroke="#818cf8" stroke-width="1"/><text x="199" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Hybrid Search</text>
+    <rect x="262" width="82" height="26" rx="13" fill="#1e293b" stroke="#818cf8" stroke-width="1"/><text x="303" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">On-Premise</text>
+  </g>
+  <circle cx="380" cy="50" r="2" fill="#818cf8" opacity="0.3"/><circle cx="780" cy="400" r="2.5" fill="#a78bfa" opacity="0.2"/><circle cx="30" cy="400" r="1.5" fill="#818cf8" opacity="0.3"/>
+</svg>

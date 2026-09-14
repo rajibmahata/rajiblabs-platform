@@ -5,73 +5,72 @@
       <stop offset="50%" style="stop-color:#1e293b"/>
       <stop offset="100%" style="stop-color:#0f172a"/>
     </linearGradient>
-    <linearGradient id="lime" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#a3e635"/>
-      <stop offset="100%" style="stop-color:#84cc16"/>
-    </linearGradient>
-    <linearGradient id="teal" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#2dd4bf"/>
-      <stop offset="100%" style="stop-color:#14b8a6"/>
-    </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="4" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
   <rect width="800" height="450" fill="url(#bg)"/>
+  <g opacity="0.04" stroke="#22d3ee" stroke-width="0.5"><line x1="0" y1="90" x2="800" y2="90"/><line x1="0" y1="180" x2="800" y2="180"/><line x1="0" y1="270" x2="800" y2="270"/><line x1="0" y1="360" x2="800" y2="360"/><line x1="200" y1="0" x2="200" y2="450"/><line x1="400" y1="0" x2="400" y2="450"/><line x1="600" y1="0" x2="600" y2="450"/></g>
   <!-- Mobile app mockup -->
-  <g transform="translate(460, 50)" filter="url(#glow)">
-    <!-- Phone frame -->
-    <rect x="0" y="0" width="200" height="360" rx="24" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-    <rect x="8" y="8" width="184" height="344" rx="18" fill="#1e293b"/>
-    <!-- Status bar -->
-    <rect x="70" y="12" width="60" height="4" rx="2" fill="#334155"/>
+  <g transform="translate(460, 30)" filter="url(#glow)">
+    <rect x="0" y="0" width="210" height="380" rx="26" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+    <rect x="8" y="8" width="194" height="364" rx="20" fill="#1e293b"/>
+    <!-- Notch -->
+    <rect x="65" y="12" width="80" height="6" rx="3" fill="#334155"/>
     <!-- App header -->
-    <rect x="20" y="30" width="160" height="40" rx="8" fill="#14532d"/>
-    <text x="100" y="55" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="14" font-weight="bold">APCS</text>
+    <rect x="16" y="28" width="178" height="44" rx="10" fill="#14532d"/>
+    <text x="105" y="46" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="14" font-weight="bold">🐛 APCS</text>
+    <text x="105" y="62" text-anchor="middle" fill="#86efac" font-family="system-ui" font-size="8">Pest Control Management</text>
+    <!-- Stats bar -->
+    <g transform="translate(16, 82)">
+      <rect width="52" height="36" rx="6" fill="#0f172a"/>
+      <text x="26" y="16" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="12" font-weight="bold">23</text>
+      <text x="26" y="28" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="6">Jobs</text>
+      <rect x="58" width="52" height="36" rx="6" fill="#0f172a"/>
+      <text x="84" y="16" text-anchor="middle" fill="#fbbf24" font-family="system-ui" font-size="12" font-weight="bold">8</text>
+      <text x="84" y="28" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="6">Pending</text>
+      <rect x="116" width="52" height="36" rx="6" fill="#0f172a"/>
+      <text x="142" y="16" text-anchor="middle" fill="#22d3ee" font-family="system-ui" font-size="12" font-weight="bold">5</text>
+      <text x="142" y="28" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="6">Teams</text>
+    </g>
     <!-- Job cards -->
-    <rect x="20" y="80" width="160" height="60" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
-    <circle cx="40" cy="100" r="10" fill="#14532d"/>
-    <text x="40" y="104" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="8">✓</text>
-    <text x="60" y="98" fill="#e2e8f0" font-family="system-ui" font-size="10">123 Main St</text>
-    <text x="60" y="114" fill="#64748b" font-family="system-ui" font-size="8">Completed • 2h ago</text>
-    <rect x="130" y="92" width="40" height="18" rx="4" fill="#14532d"/>
-    <text x="150" y="104" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="8">View</text>
-    <rect x="20" y="150" width="160" height="60" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
-    <circle cx="40" cy="170" r="10" fill="#854d0e"/>
-    <text x="40" y="174" text-anchor="middle" fill="#fbbf24" font-family="system-ui" font-size="8">⏱</text>
-    <text x="60" y="168" fill="#e2e8f0" font-family="system-ui" font-size="10">456 Oak Ave</text>
-    <text x="60" y="184" fill="#64748b" font-family="system-ui" font-size="8">In Progress • Tech: Raj</text>
-    <rect x="130" y="162" width="40" height="18" rx="4" fill="#854d0e"/>
-    <text x="150" y="174" text-anchor="middle" fill="#fbbf24" font-family="system-ui" font-size="8">Map</text>
-    <rect x="20" y="220" width="160" height="60" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
-    <circle cx="40" cy="240" r="10" fill="#1e3a5f"/>
-    <text x="40" y="244" text-anchor="middle" fill="#38bdf8" font-family="system-ui" font-size="8">📅</text>
-    <text x="60" y="238" fill="#e2e8f0" font-family="system-ui" font-size="10">789 Pine Rd</text>
-    <text x="60" y="254" fill="#64748b" font-family="system-ui" font-size="8">Scheduled • Tomorrow 9am</text>
+    <rect x="16" y="128" width="178" height="56" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+    <circle cx="34" cy="146" r="10" fill="#14532d"/><text x="34" y="150" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="8">✓</text>
+    <text x="52" y="142" fill="#e2e8f0" font-family="system-ui" font-size="9" font-weight="500">123 Main Street</text>
+    <text x="52" y="156" fill="#64748b" font-family="system-ui" font-size="7">Completed — Verification: #A7F2</text>
+    <text x="52" y="170" fill="#22d3ee" font-family="system-ui" font-size="7">2h ago • Tech: Rajib</text>
+
+    <rect x="16" y="192" width="178" height="56" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+    <circle cx="34" cy="210" r="10" fill="#854d0e"/><text x="34" y="214" text-anchor="middle" fill="#fbbf24" font-family="system-ui" font-size="8">⏱</text>
+    <text x="52" y="206" fill="#e2e8f0" font-family="system-ui" font-size="9" font-weight="500">456 Oak Avenue</text>
+    <text x="52" y="220" fill="#64748b" font-family="system-ui" font-size="7">In Progress — GPS Verified</text>
+    <text x="52" y="234" fill="#fbbf24" font-family="system-ui" font-size="7">Live tracking • Tech: Anil</text>
+
+    <rect x="16" y="256" width="178" height="56" rx="8" fill="#0f172a" stroke="#334155" stroke-width="0.5"/>
+    <circle cx="34" cy="274" r="10" fill="#1e3a5f"/><text x="34" y="278" text-anchor="middle" fill="#38bdf8" font-family="system-ui" font-size="8">📅</text>
+    <text x="52" y="270" fill="#e2e8f0" font-family="system-ui" font-size="9" font-weight="500">789 Pine Road</text>
+    <text x="52" y="284" fill="#64748b" font-family="system-ui" font-size="7">Scheduled — Tomorrow 9:00 AM</text>
+    <text x="52" y="298" fill="#38bdf8" font-family="system-ui" font-size="7">Auto-assigned • Tech: Priya</text>
+
     <!-- Bottom nav -->
-    <rect x="20" y="300" width="160" height="40" rx="8" fill="#0f172a"/>
-    <text x="50" y="325" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="8">Jobs</text>
-    <text x="100" y="325" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="8">Map</text>
-    <text x="150" y="325" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="8">Team</text>
+    <rect x="16" y="326" width="178" height="40" rx="8" fill="#0f172a"/>
+    <text x="50" y="350" text-anchor="middle" fill="#a3e635" font-family="system-ui" font-size="8" font-weight="bold">📋 Jobs</text>
+    <text x="105" y="350" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="8">🗺 Map</text>
+    <text x="155" y="350" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="8">👥 Team</text>
   </g>
   <!-- Title -->
-  <text x="60" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="800" fill="white" letter-spacing="-1">APCS Pest Control</text>
-  <text x="60" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#94a3b8">Real Business Software</text>
-  <!-- Tech badge -->
-  <g transform="translate(60, 225)">
-    <rect x="0" y="0" width="50" height="28" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1"/>
-    <text x="25" y="18" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="11">Web</text>
-  </g>
+  <text x="50" y="145" font-family="system-ui, -apple-system, sans-serif" font-size="42" font-weight="800" fill="white" letter-spacing="-1">APCS Pest Control</text>
+  <text x="50" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#94a3b8">Real Business Software — Live in Production</text>
   <!-- Features -->
-  <g transform="translate(60, 275)" opacity="0.7">
-    <text x="0" y="0" fill="#22d3ee" font-family="system-ui" font-size="13">Live in Production</text>
-    <text x="170" y="0" fill="#22d3ee" font-family="system-ui" font-size="13">Real Pest Control Business</text>
-    <text x="380" y="0" fill="#22d3ee" font-family="system-ui" font-size="13">Customer-Facing</text>
+  <g transform="translate(50, 205)" font-family="system-ui" font-size="11">
+    <text y="0" fill="#22d3ee">▸</text><text x="16" y="0" fill="#cbd5e1">Live at apcspestcontrol.com</text>
+    <text y="18" fill="#22d3ee">▸</text><text x="16" y="18" fill="#cbd5e1">Job Scheduling &amp; Technician GPS Verification</text>
+    <text y="36" fill="#22d3ee">▸</text><text x="16" y="36" fill="#cbd5e1">Real Customer — Real Pest Control Business</text>
+    <text y="54" fill="#22d3ee">▸</text><text x="16" y="54" fill="#cbd5e1">Mobile-First Field Service App</text>
   </g>
-  <!-- Floating particles -->
-  <circle cx="380" cy="60" r="2" fill="#22d3ee" opacity="0.4"/>
-  <circle cx="720" cy="350" r="3" fill="#06b6d4" opacity="0.3"/>
-  <circle cx="50" cy="380" r="2" fill="#22d3ee" opacity="0.3"/>
-  <circle cx="750" cy="100" r="1.5" fill="#0ea5e9" opacity="0.5"/>
+  <!-- Tech badges -->
+  <g transform="translate(50, 290)">
+    <rect width="50" height="26" rx="13" fill="#1e293b" stroke="#334155" stroke-width="1"/><text x="25" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Web</text>
+    <rect x="58" width="80" height="26" rx="13" fill="#1e293b" stroke="#334155" stroke-width="1"/><text x="98" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Mobile</text>
+    <rect x="146" width="90" height="26" rx="13" fill="#1e293b" stroke="#334155" stroke-width="1"/><text x="191" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Production</text>
+  </g>
+  <circle cx="430" cy="50" r="2" fill="#22d3ee" opacity="0.3"/><circle cx="780" cy="400" r="2.5" fill="#06b6d4" opacity="0.2"/><circle cx="30" cy="400" r="1.5" fill="#0ea5e9" opacity="0.3"/>
 </svg>

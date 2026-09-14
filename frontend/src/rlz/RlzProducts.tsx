@@ -19,6 +19,10 @@ type Product = {
   featured?: boolean;
   status?: string;
   published?: boolean;
+  featured_image?: string | null;
+  featuredImage?: string | null;
+  gallery?: string[];
+  screenshots?: string[];
 };
 
 type UnifiedProduct = {
@@ -28,6 +32,7 @@ type UnifiedProduct = {
   category: string;
   tech: string[];
   features: string[];
+  image: string | null;
   liveUrl: string | null;
   githubUrl: string | null;
   displayOrder: number;
@@ -38,6 +43,7 @@ function mapProduct(p: Product): UnifiedProduct {
   const name = p.name || p.slug;
   const short = p.short_description || p.shortDescription || p.description || "";
   const tech = (p.technologies || p.techStack || []).slice(0, 4);
+  const image = p.featuredImage || p.featured_image || (p.gallery && p.gallery[0]) || (p.screenshots && p.screenshots[0]) || null;
   return {
     slug: p.slug,
     name,
@@ -45,6 +51,7 @@ function mapProduct(p: Product): UnifiedProduct {
     category: p.category || "Product",
     tech,
     features: (p.features || []).slice(0, 3),
+    image,
     liveUrl: p.live_url || p.liveUrl || null,
     githubUrl: p.github_url || p.gitHubUrl || null,
     displayOrder: p.display_order ?? p.displayOrder ?? 0,
@@ -170,9 +177,13 @@ export default function RlzProducts() {
                     <span className="rlz-project-num">
                       {num} / {p.category.toUpperCase()}
                     </span>
-                    <div className="rlz-media-fallback" role="img" aria-label={`${p.name} illustration`}>
-                      <i className="material-symbols-outlined">deployed_code</i>
-                    </div>
+                    {p.image ? (
+                      <img src={p.image} alt={`${p.name} screenshot`} loading="lazy" decoding="async" />
+                    ) : (
+                      <div className="rlz-media-fallback" role="img" aria-label={`${p.name} illustration`}>
+                        <i className="material-symbols-outlined">deployed_code</i>
+                      </div>
+                    )}
                   </div>
                   <div className="rlz-project-body">
                     <div className="rlz-chip-row" style={{ margin: "0 0 10px" }}>

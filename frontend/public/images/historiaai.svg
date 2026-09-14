@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <g opacity="0.04" stroke="#f59e0b" stroke-width="0.5"><line x1="0" y1="90" x2="800" y2="90"/><line x1="0" y1="180" x2="800" y2="180"/><line x1="0" y1="270" x2="800" y2="270"/><line x1="0" y1="360" x2="800" y2="360"/><line x1="200" y1="0" x2="200" y2="450"/><line x1="400" y1="0" x2="400" y2="450"/><line x1="600" y1="0" x2="600" y2="450"/></g>
+  <!-- Document intelligence pipeline -->
+  <g transform="translate(400, 30)" filter="url(#glow)">
+    <!-- Document input -->
+    <g transform="translate(0, 20)">
+      <rect width="100" height="60" rx="8" fill="#16213e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="50" y="22" text-anchor="middle" fill="#f59e0b" font-family="system-ui" font-size="16">📜</text>
+      <text x="50" y="40" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="8">Historical</text>
+      <text x="50" y="52" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="8">Documents</text>
+    </g>
+    <!-- Azure Document Intelligence -->
+    <g transform="translate(120, 20)">
+      <rect width="110" height="60" rx="8" fill="#16213e" stroke="#38bdf8" stroke-width="1"/>
+      <text x="55" y="22" text-anchor="middle" fill="#38bdf8" font-family="system-ui" font-size="9" font-weight="bold">Azure Doc Intel</text>
+      <text x="55" y="36" text-anchor="middle" fill="#a1a1aa" font-family="system-ui" font-size="7">OCR + Entity</text>
+      <text x="55" y="48" text-anchor="middle" fill="#a1a1aa" font-family="system-ui" font-size="7">Extraction</text>
+    </g>
+    <line x1="100" y1="50" x2="120" y2="50" stroke="#f59e0b" stroke-width="0.8" opacity="0.4"/>
+    <!-- GPT Extraction -->
+    <g transform="translate(250, 20)">
+      <rect width="100" height="60" rx="8" fill="#16213e" stroke="#a78bfa" stroke-width="1"/>
+      <text x="50" y="22" text-anchor="middle" fill="#a78bfa" font-family="system-ui" font-size="9" font-weight="bold">GPT Extract</text>
+      <text x="50" y="36" text-anchor="middle" fill="#a1a1aa" font-family="system-ui" font-size="7">Key Facts</text>
+      <text x="50" y="48" text-anchor="middle" fill="#a1a1aa" font-family="system-ui" font-size="7">+ Relationships</text>
+    </g>
+    <line x1="230" y1="50" x2="250" y2="50" stroke="#38bdf8" stroke-width="0.8" opacity="0.4"/>
+    <!-- Human validation -->
+    <g transform="translate(0, 110)">
+      <rect width="350" height="90" rx="10" fill="#16213e" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="16" y="22" fill="#22c55e" font-family="system-ui" font-size="10" font-weight="bold">👤 Human-in-the-Loop Validation</text>
+      <rect x="16" y="30" width="318" height="48" rx="6" fill="#1a1a2e"/>
+      <text x="26" y="46" fill="#e2e8f0" font-family="system-ui" font-size="8">Extracted: "Battle of Plassey — 1757, British East India Company"</text>
+      <text x="26" y="60" fill="#a1a1aa" font-family="system-ui" font-size="7">Confidence: 94% • Source: page_12.pdf</text>
+      <g transform="translate(26, 64)">
+        <rect width="40" height="10" rx="5" fill="#22c55e" opacity="0.2"/><text x="20" y="8" text-anchor="middle" fill="#22c55e" font-family="system-ui" font-size="6">✓ Confirm</text>
+        <rect x="46" width="40" height="10" rx="5" fill="#f59e0b" opacity="0.2"/><text x="66" y="8" text-anchor="middle" fill="#f59e0b" font-family="system-ui" font-size="6">✏ Edit</text>
+        <rect x="92" width="40" height="10" rx="5" fill="#ef4444" opacity="0.2"/><text x="112" y="8" text-anchor="middle" fill="#ef4444" font-family="system-ui" font-size="6">✗ Reject</text>
+      </g>
+    </g>
+    <!-- ChromaDB + PostgreSQL -->
+    <g transform="translate(0, 220)">
+      <rect width="160" height="40" rx="8" fill="#16213e" stroke="#f59e0b" stroke-width="0.8"/>
+      <text x="80" y="18" text-anchor="middle" fill="#f59e0b" font-family="system-ui" font-size="9">🗄 PostgreSQL + ChromaDB</text>
+      <text x="80" y="32" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="7">Structured + Vector Storage</text>
+      <rect x="170" width="170" height="40" rx="8" fill="#16213e" stroke="#38bdf8" stroke-width="0.8"/>
+      <text x="255" y="18" text-anchor="middle" fill="#38bdf8" font-family="system-ui" font-size="9">📊 Validation Dashboard</text>
+      <text x="255" y="32" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="7">Accuracy Metrics + Audit Trail</text>
+    </g>
+  </g>
+  <!-- Title -->
+  <text x="50" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="800" fill="white" letter-spacing="-1">HistoriaAI</text>
+  <text x="50" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="16" fill="#a1a1aa">Document Intelligence — Human-in-the-Loop Validation</text>
+  <!-- Features -->
+  <g transform="translate(50, 200)" font-family="system-ui" font-size="11">
+    <text y="0" fill="#f59e0b">▸</text><text x="16" y="0" fill="#e2e8f0">Azure Document Intelligence OCR</text>
+    <text y="18" fill="#f59e0b">▸</text><text x="16" y="18" fill="#e2e8f0">GPT-Powered Entity Extraction</text>
+    <text y="36" fill="#f59e0b">▸</text><text x="16" y="36" fill="#e2e8f0">Human Validation Workflow with Audit Trail</text>
+    <text y="54" fill="#f59e0b">▸</text><text x="16" y="54" fill="#e2e8f0">PostgreSQL + ChromaDB Hybrid Storage</text>
+  </g>
+  <!-- Tech badges -->
+  <g transform="translate(50, 290)">
+    <rect width="72" height="26" rx="13" fill="#16213e" stroke="#f59e0b" stroke-width="1"/><text x="36" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">FastAPI</text>
+    <rect x="80" width="82" height="26" rx="13" fill="#16213e" stroke="#38bdf8" stroke-width="1"/><text x="121" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">PostgreSQL</text>
+    <rect x="170" width="80" height="26" rx="13" fill="#16213e" stroke="#a78bfa" stroke-width="1"/><text x="210" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">ChromaDB</text>
+    <rect x="258" width="82" height="26" rx="13" fill="#16213e" stroke="#f59e0b" stroke-width="1"/><text x="299" y="17" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="10">Azure</text>
+  </g>
+  <circle cx="380" cy="50" r="2" fill="#f59e0b" opacity="0.3"/><circle cx="780" cy="400" r="2.5" fill="#38bdf8" opacity="0.2"/><circle cx="30" cy="400" r="1.5" fill="#a78bfa" opacity="0.3"/>
+</svg>
