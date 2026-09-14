@@ -646,7 +646,7 @@ def test_capture_prompt_phone_not_provided():
 # ── live: business application flow ──
 
 @pytest.mark.asyncio
-async def test_business_application_fast_path_live():
+async def test_business_application_fast_path_live(monkeypatch):
     """Business application intent triggers deterministic fast path (no LLM)."""
     from app.services import concierge as cg
     from app.services.lead_ai import AIService
@@ -655,9 +655,7 @@ async def test_business_application_fast_path_live():
     async def _boom(*a, **k):
         raise AssertionError("LLM must not be called on capture fast path")
 
-    monkeypatch_target = AIService
-    import pytest as _pt
-    _pt.MonkeyPatch().setattr(monkeypatch_target, "_complete", _boom)
+    monkeypatch.setattr(AIService, "_complete", _boom)
     token = None
     try:
         r1 = await cg.run_concierge_turn(
@@ -697,7 +695,7 @@ async def test_business_application_fast_path_live():
 
 
 @pytest.mark.asyncio
-async def test_business_application_skip_phone_live():
+async def test_business_application_skip_phone_live(monkeypatch):
     """Skip phone during capture flow."""
     from app.services import concierge as cg
     from app.services.lead_ai import AIService
@@ -706,8 +704,7 @@ async def test_business_application_skip_phone_live():
     async def _boom(*a, **k):
         raise AssertionError("LLM must not be called on capture fast path")
 
-    import pytest as _pt
-    _pt.MonkeyPatch().setattr(AIService, "_complete", _boom)
+    monkeypatch.setattr(AIService, "_complete", _boom)
     token = None
     try:
         r1 = await cg.run_concierge_turn(
@@ -730,7 +727,7 @@ async def test_business_application_skip_phone_live():
 
 
 @pytest.mark.asyncio
-async def test_business_application_batch_input_live():
+async def test_business_application_batch_input_live(monkeypatch):
     """Batch all contact fields in one message during capture."""
     from app.services import concierge as cg
     from app.services.lead_ai import AIService
@@ -739,8 +736,7 @@ async def test_business_application_batch_input_live():
     async def _boom(*a, **k):
         raise AssertionError("LLM must not be called on capture fast path")
 
-    import pytest as _pt
-    _pt.MonkeyPatch().setattr(AIService, "_complete", _boom)
+    monkeypatch.setattr(AIService, "_complete", _boom)
     token = None
     try:
         r1 = await cg.run_concierge_turn(
@@ -764,7 +760,7 @@ async def test_business_application_batch_input_live():
 
 
 @pytest.mark.asyncio
-async def test_regular_chat_not_affected_live():
+async def test_regular_chat_not_affected_live(monkeypatch):
     """Regular chat intents still work through normal path."""
     from app.services import concierge as cg
     from app.services.lead_ai import AIService
@@ -773,8 +769,7 @@ async def test_regular_chat_not_affected_live():
     async def _boom(*a, **k):
         raise AssertionError("LLM must not be called on greeting/contact fast paths")
 
-    import pytest as _pt
-    _pt.MonkeyPatch().setattr(AIService, "_complete", _boom)
+    monkeypatch.setattr(AIService, "_complete", _boom)
     token = None
     try:
         r = await cg.run_concierge_turn(db, "Hello!", None, "127.0.0.1")
