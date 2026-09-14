@@ -40,11 +40,13 @@ export default function LearningManage(){
   const [topics,setTopics]=useState<string[]>([]);
   const [tab,setTab]=useState<"paths"|"active"|"topics"|"blocks">("paths");
   const { run, isLoading } = useAsyncActions();
-  const busy = isLoading("create") || isLoading("run-agent") || isLoading("validate");
+  const busy = isLoading("create") || isLoading("run-agent") || isLoading("validate") || isLoading("edit-path");
   const [form,setForm]=useState<any>({topic:"", duration:7, goal:"", level:"beginner"});
   const [selected,setSelected]=useState<string>("");
   const [detailBlock,setDetailBlock]=useState<any>(null);
   const [showDetail,setShowDetail]=useState(false);
+  const [editPath,setEditPath]=useState<any>(null);
+  const [editForm,setEditForm]=useState<any>({topic:"", duration:7, goal:"", level:"beginner", prerequisites:""});
 
   const loadPaths=()=> api.get<any[]>("/api/admin/learning/paths").then(d=>setPaths(Array.isArray(d)?d:[])).catch(()=>{});
   const loadTopics=()=> api.get<any>("/api/learning/topics").then((d:any)=> setTopics(Array.isArray(d)?d: Array.isArray(d.topics)?d.topics:[])).catch(()=>{});
@@ -93,6 +95,35 @@ export default function LearningManage(){
     try{ await api.patch(`/api/admin/learning/paths/${slug}`, {status}); toast("Updated", status); loadPaths(); }catch(e:any){ toast("Failed", String(e.message||e).slice(0,160)); }
   };
 
+  const openEdit=(p:any)=>{
+    setEditPath(p);
+    setEditForm({
+      topic: p.topic || "",
+      duration: p.duration || 7,
+      goal: p.goal || "",
+      level: p.level || "beginner",
+      prerequisites: Array.isArray(p.prerequisites) ? p.prerequisites.join(", ") : "",
+    });
+  };
+
+  const saveEdit=()=>{
+    if(!editForm.topic.trim()){ toast("Validation","Topic required"); return;}
+    if(!(editForm.duration>=1 && editForm.duration<=60)){ toast("Validation","Duration 1-60"); return;}
+    run("edit-path", async () => {
+      const prereqs = editForm.prerequisites.split(",").map((s:string)=>s.trim()).filter(Boolean);
+      await api.patch(`/api/admin/learning/paths/${editPath.slug}`, {
+        topic: editForm.topic.trim(),
+        duration: Number(editForm.duration),
+        goal: editForm.goal.trim(),
+        level: editForm.level,
+        prerequisites: prereqs,
+      });
+      setEditPath(null);
+      loadPaths();
+      if(selected===editPath.slug) loadBlocks(editPath.slug);
+    }, { successTitle: "Updated", successMsg: "Learning path updated", errorTitle: "Update failed" });
+  };
+
   const validatePath=async(slug:string)=>{
     run("validate", async () => {
       const r=await api.get<any>(`/api/admin/learning/paths/${slug}/validate`);
@@ -127,16 +158,18 @@ export default function LearningManage(){
           <div style={{height:12}}/>
           <Panel title="Learning Paths" sub={`${paths.length} paths`}>
             <div className="rla-table-wrap"><table className="rla-table">
-              <thead><tr><th>Topic</th><th>Duration</th><th>Status</th><th>Progress</th><th>Updated</th><th></th></tr></thead>
+              <thead><tr><th>Topic</th><th>Goal</th><th>Duration</th><th>Status</th><th>Progress</th><th>Updated</th><th></th></tr></thead>
               <tbody>{paths.map((p:any)=>(
                 <tr key={p.slug}>
                   <td><b>{p.topic}</b><div className="text-xs" style={{color:"var(--rla-text-faint)"}}>{p.slug} · {p.level}</div></td>
+                  <td className="text-xs" style={{maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", color:"var(--rla-text-dim)"}} title={p.goal || "—"}>{p.goal || "—"}</td>
                   <td>{p.duration} days</td>
                   <td><StatusPill status={p.status} /></td>
                   <td>{p.progress ?? 0}%</td>
                   <td className="text-xs">{p.updated_at? new Date(p.updated_at).toLocaleDateString() : "—"}</td>
                   <td>
                     <button onClick={()=>setSelected(p.slug)} className={`rla-mini-btn ${selected===p.slug ? "active" : ""}`} title="View blocks"><i className="fas fa-eye" /></button>
+                    <button onClick={()=>openEdit(p)} className="rla-mini-btn" title="Edit path" style={{marginLeft:4}}><i className="fas fa-pen" /></button>
                     <select value={p.status} onChange={e=>updateStatus(p.slug, e.target.value)} className="rla-select" style={{fontSize:"0.75rem", padding:"2px 6px", marginLeft:6}}>
                       <option value="planned">planned</option><option value="active">active</option><option value="paused">paused</option><option value="completed">completed</option><option value="archived">archived</option>
                     </select>
@@ -233,6 +266,31 @@ export default function LearningManage(){
             {blocks.length===0 && <Empty>Select a path and load.</Empty>}
           </div>
         </Panel>
+      )}
+
+      {/* Edit Learning Path Modal */}
+      {editPath && (
+        <div className="rla-modal-overlay" onClick={()=>setEditPath(null)} style={{zIndex:9999}}>
+          <div className="rla-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-label="Edit learning path" style={{maxWidth:520, width:"92%", margin:"60px auto"}}>
+            <div className="rla-modal-head">
+              <h3 style={{margin:0, fontSize:"1rem"}}><i className="fas fa-pen" style={{marginRight:8, color:"var(--rla-violet)"}} />Edit Learning Path</h3>
+              <button onClick={()=>setEditPath(null)} className="rla-mini-btn"><i className="fas fa-times" /></button>
+            </div>
+            <div style={{padding:20}}>
+              <div className="rla-form-grid">
+                <Field label="Topic"><input value={editForm.topic} onChange={e=>setEditForm({...editForm, topic:e.target.value})} className="rla-input" /></Field>
+                <Field label="Duration (days)"><input type="number" min={1} max={60} value={editForm.duration} onChange={e=>setEditForm({...editForm, duration:e.target.value})} className="rla-input" /></Field>
+                <Field label="Goal"><input value={editForm.goal} onChange={e=>setEditForm({...editForm, goal:e.target.value})} className="rla-input" placeholder="e.g. Build a practical project" /></Field>
+                <Field label="Level"><select value={editForm.level} onChange={e=>setEditForm({...editForm, level:e.target.value})} className="rla-select"><option value="beginner">beginner</option><option value="intermediate">intermediate</option><option value="advanced">advanced</option></select></Field>
+                <Field label="Prerequisites (comma-separated)"><input value={editForm.prerequisites} onChange={e=>setEditForm({...editForm, prerequisites:e.target.value})} className="rla-input" placeholder="e.g. C#, HTML, .NET SDK" /></Field>
+              </div>
+              <div style={{marginTop:16, display:"flex", gap:8}}>
+                <button onClick={saveEdit} disabled={isLoading("edit-path")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("edit-path")}>{isLoading("edit-path") ? <InlineLoader text="Saving..." /> : "Save Changes"}</button>
+                <button onClick={()=>setEditPath(null)} className="rla-btn rla-btn-ghost rla-btn-sm">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Lesson Detail Drawer / Modal */}

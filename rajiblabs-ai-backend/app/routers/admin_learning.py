@@ -51,7 +51,7 @@ async def get_path(slug: str, email: str = Depends(require_admin)):
 @router.patch("/paths/{slug}")
 async def patch_path(slug: str, body: dict, email: str = Depends(require_admin)):
     db=get_db()
-    allowed={"status","goal","level","prerequisites"}
+    allowed={"status","goal","level","prerequisites","topic","duration"}
     patch={k:v for k,v in (body or {}).items() if k in allowed}
     if not patch: raise HTTPException(400, "Nothing to update")
     if "status" in patch:
@@ -60,6 +60,16 @@ async def patch_path(slug: str, body: dict, email: str = Depends(require_admin))
             patch["status"] = normalize_path_status(patch["status"])
         except ValueError:
             raise HTTPException(400, "Invalid status")
+    if "duration" in patch:
+        patch["duration"] = int(patch["duration"])
+        if not (1 <= patch["duration"] <= 60):
+            raise HTTPException(400, "Duration must be 1-60 days")
+    if "topic" in patch:
+        patch["topic"] = patch["topic"].strip()
+        if not patch["topic"]:
+            raise HTTPException(400, "Topic cannot be empty")
+    if "goal" in patch:
+        patch["goal"] = patch["goal"].strip() if patch["goal"] else ""
     log.info("admin_patch_path slug=%s fields=%s by=%s", slug, list(patch.keys()), email)
     patch["updated_at"]=utcnow()
     res=await db["learning_paths"].update_one({"slug":slug},{"$set":patch})
