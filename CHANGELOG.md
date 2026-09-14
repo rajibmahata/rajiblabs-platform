@@ -2,6 +2,98 @@
 
 All notable changes to the RajibLabs platform. Dates in UTC.
 
+## [Unreleased] — 2026-09-14 — Business Application Intent: deterministic contact capture flow
+
+### Problem
+
+When a visitor expressed business/application intent ("I want to create an app", "I need a website"),
+the concierge agent treated it like any other lead-intent message: one LLM call to detect the intent,
+extract contact info via AI, and ask a follow-up question. This burned unnecessary LLM tokens on
+deterministic contact-capture turns (name, email, phone are simple regex extracts) and created
+friction — the agent sometimes jumped to project discovery before capturing contact details.
+
+### Added — Deterministic fast path (`app/services/concierge.py`)
+
+**New intent: `business_application`** — 12 regex patterns matching phrases like:
+- "I want to create/build/develop an app"
+- "I need a website/platform/SaaS/tool"
+- "Help me make a software solution"
+- "I want to automate/improve/streamline"
+
+**Conversation stage state machine** — 7 stages:
+```
+DISCOVER_INTENT → BUSINESS_APPLICATION → CAPTURE_NAME → CAPTURE_EMAIL →
+CAPTURE_PHONE → CONTACT_CAPTURED → PROJECT_DISCOVERY
+```
+
+**Key functions (pure, deterministic, zero LLM cost):**
+- `_compute_conversation_stage(message, lead, idea, current_stage)` — resolves stage from current
+  stage + message content + existing lead data. Handles "skip" for phone, batch input detection,
+  and existing lead field skipping.
+- `_get_capture_prompt(stage, lead, idea, message)` — returns (reply, next_stage) for each
+  capture stage. Adaptative: if name/email/phone already captured, advances to next stage.
+- `_is_capture_stage(stage)` — identifies when to use the fast path (no RAG/embeddings/LLM).
+- `_next_capture_stage(stage)` — advances the stage.
+- `is_business_application_intent(intent, message)` — extends detection to hire_lead/idea_discovery
+  when application keywords are present.
+
+**Fast path in `run_concierge_turn()`:**
+- After session creation, reads `conversation_stage` from MongoDB
+- If stage is a capture stage → deterministic fast path (zero LLM cost)
+- Persists assistant reply + updated stage to `customer_conversations`
+- Extracts contact bits via regex and updates lead via `find_or_create_lead`
+- Falls through to normal tool/LLM flow when stage is `PROJECT_DISCOVERY`
+
+**Tool mapping:**
+- `business_application` intent → `search_knowledge` + `get_projects` + `get_relevant_sources`
+- Added to LLM prompt for business idea acknowledgement
+- Added to lead flow activation
+
+### Changed — `rajiblabs-ai-backend/app/services/lead_pipeline.py`
+
+- Session creation now initializes `conversation_stage: "DISCOVER_INTENT"`
+
+### Changed — `rajiblabs-ai-backend/app/database.py`
+
+- Added `conversation_stage` index on `customer_conversations` collection
+
+### Added — `rajiblabs-ai-backend/tests/test_concierge.py` (42 new tests, 113 total)
+
+**Intent detection (15 tests):**
+- Business application intent detection with 15 message variants
+- Tool mapping for business_application intent
+- `is_business_application_intent()` helper
+
+**Stage computation (12 tests):**
+- DISCOVER_INTENT → BUSINESS_APPLICATION transition
+- BUSINESS_APPLICATION → CAPTURE_NAME transition
+- NAME provided/not provided → CAPTURE_EMAIL/CAPTURE_NAME
+- EMAIL provided/not provided → CAPTURE_PHONE/CAPTURE_EMAIL
+- PHONE provided/skip/not provided → CONTACT_CAPTURED/CAPTURE_PHONE
+- Existing lead field skipping
+- All fields present → CONTACT_CAPTURED
+- PROJECT_DISCOVERY/CONTACT_CAPTURED stable states
+
+**Capture prompts (8 tests):**
+- Each stage generates correct prompt and advances correctly
+- "skip" handling for phone
+
+**Live integration (4 tests):**
+- Full business application flow (intent → name → email → phone)
+- Skip phone during capture
+- Batch input (all fields in one message)
+- Regular chat not affected
+
+### Behavior changes
+
+- "I need a website built for my bakery" → now `business_application` (was `hire_lead`)
+- "How would you design a SaaS platform?" → now `business_application` (was `technical`)
+- "I want to create an app" → triggers deterministic capture flow (no LLM cost)
+- "My name is Alice" → captured via regex (no LLM needed)
+- "alice@example.com" → captured via regex (no LLM needed)
+- "skip" for phone → advances to PROJECT_DISCOVERY (no LLM needed)
+- All 3 fields captured → next turn enters PROJECT_DISCOVERY (normal tool/LLM flow)
+
 ## [Unreleased] — 2026-09-13 — Universal Agentic Content Validation Engine
 
 ### Added — `rajiblabs-ai-backend/app/services/content_validator.py`

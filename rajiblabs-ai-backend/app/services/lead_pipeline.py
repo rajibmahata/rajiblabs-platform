@@ -81,6 +81,7 @@ async def get_or_create_session(db, token: str | None, client_ip: str) -> tuple[
     now = utcnow()
     doc = {"session_token": token, "session_id": token, "lead_id": None,
            "status": "active", "source": "website_chat",
+           "conversation_stage": "DISCOVER_INTENT",
            "started_at": now, "last_message_at": now, "last_activity_at": now,
            "completed_at": None,
            "ip_hash": hashlib.sha256(client_ip.encode()).hexdigest()[:16],

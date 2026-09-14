@@ -23,6 +23,171 @@ log = logging.getLogger("rajiblabs")
 
 AGENT_SLUG = "rajiblabs-concierge"
 
+# ── Conversation Stage State Machine ───────────────────────────────────────
+# Stages: DISCOVER_INTENT → BUSINESS_APPLICATION → CAPTURE_NAME → CAPTURE_EMAIL →
+# CAPTURE_PHONE → CONTACT_CAPTURED → PROJECT_DISCOVERY
+#
+# The stage is stored on `customer_conversations.conversation_stage`.
+# Each turn the backend (not LLM) reads the stage and decides whether to:
+#   1. Route to deterministic contact extraction (fast path)
+#   2. Fall through to the normal LLM/tool flow
+
+STAGE_DISCOVER_INTENT = "DISCOVER_INTENT"
+STAGE_BUSINESS_APPLICATION = "BUSINESS_APPLICATION"
+STAGE_CAPTURE_NAME = "CAPTURE_NAME"
+STAGE_CAPTURE_EMAIL = "CAPTURE_EMAIL"
+STAGE_CAPTURE_PHONE = "CAPTURE_PHONE"
+STAGE_CONTACT_CAPTURED = "CONTACT_CAPTURED"
+STAGE_PROJECT_DISCOVERY = "PROJECT_DISCOVERY"
+
+# Ordered list for next-stage computation
+_STAGE_ORDER = [
+    STAGE_DISCOVER_INTENT,
+    STAGE_BUSINESS_APPLICATION,
+    STAGE_CAPTURE_NAME,
+    STAGE_CAPTURE_EMAIL,
+    STAGE_CAPTURE_PHONE,
+    STAGE_CONTACT_CAPTURED,
+    STAGE_PROJECT_DISCOVERY,
+]
+
+# For reverse lookup
+_STAGE_INDEX = {s: i for i, s in enumerate(_STAGE_ORDER)}
+
+# Intent → initial stage when no prior stage exists on this session
+_INTENT_STAGE_MAP = {
+    "business_application": STAGE_BUSINESS_APPLICATION,
+    "hire_lead": STAGE_BUSINESS_APPLICATION,
+    "idea_discovery": STAGE_BUSINESS_APPLICATION,
+}
+
+
+def _next_capture_stage(current: str) -> str:
+    """Advance the stage to the next capture step."""
+    idx = _STAGE_INDEX.get(current, 0)
+    return _STAGE_ORDER[min(idx + 1, len(_STAGE_ORDER) - 1)]
+
+
+def _is_capture_stage(stage: str) -> bool:
+    """True when the stage is a deterministic contact-capture turn (no LLM needed)."""
+    return stage in (STAGE_BUSINESS_APPLICATION, STAGE_CAPTURE_NAME,
+                     STAGE_CAPTURE_EMAIL, STAGE_CAPTURE_PHONE)
+
+
+def _compute_conversation_stage(message: str, lead: dict, idea: dict,
+                                current_stage: str | None) -> str:
+    """Pure state-machine: returns the resolved stage based on current
+    stage + what the visitor just said + what we already know about the lead."""
+    stage = current_stage or STAGE_DISCOVER_INTENT
+    text = (message or "").lower().strip()
+
+    # Already completed all capture → stay in PROJECT_DISCOVERY
+    if stage in (STAGE_CONTACT_CAPTURED, STAGE_PROJECT_DISCOVERY):
+        return stage
+
+    # If the visitor provides their name (via "my name is" or similar)
+    has_name = bool(lead.get("name"))
+    has_email = bool(lead.get("email"))
+    has_phone = bool(lead.get("phone"))
+    bits = extract_contact_bits(message)
+    has_name_now = has_name or bool(bits.get("name"))
+    has_email_now = has_email or bool(bits.get("email"))
+    has_phone_now = has_phone or bool(bits.get("phone"))
+    is_skip = text in ("skip", "no", "nope", "nah", "pass", "n/a")
+
+    # If all fields are already available from the lead, jump to CONTACT_CAPTURED
+    if has_name_now and has_email_now and has_phone_now:
+        return STAGE_CONTACT_CAPTURED
+
+    # If we are in a capture stage, check if the visitor provided data
+    # for the current stage's field
+    if stage == STAGE_BUSINESS_APPLICATION:
+        # After business intent detected → ask for name first
+        # But if name already known, skip to email
+        if has_name_now:
+            if has_email_now:
+                return STAGE_CAPTURE_PHONE
+            return STAGE_CAPTURE_EMAIL
+        return STAGE_CAPTURE_NAME
+    elif stage == STAGE_CAPTURE_NAME:
+        if has_name_now:
+            return STAGE_CAPTURE_EMAIL
+    elif stage == STAGE_CAPTURE_EMAIL:
+        if has_email_now:
+            return STAGE_CAPTURE_PHONE
+    elif stage == STAGE_CAPTURE_PHONE:
+        if has_phone_now or is_skip:
+            return STAGE_CONTACT_CAPTURED
+
+    # If in DISCOVER_INTENT and intent was just detected, advance
+    if stage == STAGE_DISCOVER_INTENT:
+        intent, _ = detect_intent(message)
+        if intent in _INTENT_STAGE_MAP:
+            # If lead already has fields, skip to the first missing one
+            if has_name_now and has_email_now:
+                return STAGE_CAPTURE_PHONE
+            if has_name_now:
+                return STAGE_CAPTURE_EMAIL
+            return _INTENT_STAGE_MAP[intent]
+
+    return stage
+
+
+def _get_capture_prompt(stage: str, lead: dict, idea: dict,
+                        message: str) -> tuple[str, str]:
+    """Return (reply, next_stage) for deterministic contact-capture turns.
+    No LLM, no RAG — pure regex + string formatting."""
+    bits = extract_contact_bits(message)
+    has_name = bool(lead.get("name")) or bool(bits.get("name"))
+    has_email = bool(lead.get("email")) or bool(bits.get("email"))
+    has_phone = bool(lead.get("phone")) or bool(bits.get("phone"))
+
+    if stage == STAGE_BUSINESS_APPLICATION:
+        # Acknowledge the business intent, then ask for name
+        return (
+            "That sounds like an exciting project! I'd love to help you get started. "
+            "Let me take a few quick details so Rajib can follow up personally.\n\n"
+            "What's your name?",
+            STAGE_CAPTURE_NAME,
+        )
+    elif stage == STAGE_CAPTURE_NAME:
+        if has_name:
+            return (
+                "Great to meet you! "
+                "What email can Rajib reach you at?",
+                STAGE_CAPTURE_EMAIL,
+            )
+        return (
+            "What's your name?",
+            STAGE_CAPTURE_NAME,
+        )
+    elif stage == STAGE_CAPTURE_EMAIL:
+        if has_email:
+            return (
+                "Perfect. And a phone number where you can be reached? "
+                "(or say 'skip' if you prefer email only)",
+                STAGE_CAPTURE_PHONE,
+            )
+        return (
+            "What email can Rajib reach you at?",
+            STAGE_CAPTURE_EMAIL,
+        )
+    elif stage == STAGE_CAPTURE_PHONE:
+        if has_phone or "skip" in (message or "").lower():
+            # All fields captured — transition to project discovery
+            return (
+                "Thanks! Now let's talk about what you want to build. "
+                "Tell me about your project idea — what problem does it solve, "
+                "and how do you handle it today?",
+                STAGE_CONTACT_CAPTURED,
+            )
+        return (
+            "And a phone number where you can be reached? (or say 'skip')",
+            STAGE_CAPTURE_PHONE,
+        )
+    # Fallback — should not be reached
+    return ("", STAGE_PROJECT_DISCOVERY)
+
 # Conversation starters shown when chat opens (starters, not flows).
 SUGGESTED_STARTERS = (
     "Do you know about RajibLabs?",
@@ -62,6 +227,19 @@ TECH_VOCAB = (
 )
 
 INTENT_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("business_application", (
+        r"i want to (create|build|develop|make|design|launch|start)",
+        r"i need (a |an )?(app|application|software|website|platform|system|tool|solution|saas|product)\b",
+        r"i('d| would) like to (build|create|develop|make|launch)",
+        r"(help|helping) me (build|create|develop|make|launch)",
+        r"(looking|looking) to (build|create|develop|make|launch) (a |an )?(app|application|software|website|platform|system|tool|product)",
+        r"business (app|application|software|website|platform|system|tool|product|idea)",
+        r"(saas|mvp|minimum viable) (app|product|platform|idea|project)",
+        r"i('m| am) (building|creating|developing|making|planning|thinking) (a |an )?(app|application|software|website|platform|system|tool|product)",
+        r"my (app|application|software|website|platform|system|tool|product|idea) (is|will|would|should)",
+        r"want to (automate|digitalize|modernize|improve|streamline|optimize)",
+        r"(need|want) (a |an )?(new|better|custom|simple|basic|full|complete)",
+    )),
     ("contact", (r"contact", r"\bemail\b", r"\bphone\b", r"whatsapp", r"\breach\b",
                  r"call\s+rajib", r"talk\s+to\s+(rajib|you)", r"get in touch")),
     ("live_url", (r"\blive\b", r"\burl\b", r"\blink\b",
@@ -161,6 +339,9 @@ def select_tools(intent: str, entities: dict, allowed: list[str] | None) -> list
     ref = (entities or {}).get("project_ref", "")
     mapping: dict[str, list[tuple[str, dict]]] = {
         "greeting": [],
+        "business_application": [("search_knowledge", {"top_k": 6}),
+                                 ("get_projects", {"tech": tech} if tech else {}),
+                                 ("get_relevant_sources", {})],
         "contact": [("get_contact_information", {})],
         "hire_lead": [("search_knowledge", {"top_k": 6}),
                       ("get_projects", {"tech": tech} if tech else {}),
@@ -225,6 +406,21 @@ def wants_lead_flow(message: str, has_lead_or_idea: bool) -> bool:
     text = (message or "").lower()
     return has_lead_or_idea or any(w in text for w in _BUY_WORDS) \
         or bool(extract_contact_bits(message))
+
+
+def is_business_application_intent(intent: str, message: str) -> bool:
+    """True when the message expresses a business/application build intent."""
+    if intent == "business_application":
+        return True
+    # Also match hire_lead/idea_discovery when the message contains application keywords
+    if intent in ("hire_lead", "idea_discovery"):
+        text = (message or "").lower()
+        return any(k in text for k in (
+            "app", "application", "software", "website", "platform",
+            "system", "tool", "saas", "mvp", "product", "build",
+            "create", "develop", "make", "launch",
+        ))
+    return False
 
 
 from app.services.kb_policy import (
@@ -369,24 +565,112 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
                 "agent": AGENT_SLUG}
 
     intent, entities = detect_intent(message)
+
+    # ── Conversation Stage Fast Path ──────────────────────────────────────
+    # When the visitor is in a contact-capture stage, skip RAG/embeddings/LLM
+    # entirely and return a deterministic prompt. This keeps the chat fast and
+    # cost-free until we have their name, email and phone.
+    if not preview:
+        sess, token = await _lp.get_or_create_session(db, session_token, client_ip)
+        await db["customer_messages"].insert_one({
+            "conversation_id": str(sess["_id"]), "session_token": token,
+            "sender": "user", "role": "user", "message": message, "content": message,
+            "intent": intent, "agent_slug": AGENT_SLUG,
+            "ai_provider": None, "ai_model": None, "usage": {}, "created_at": utcnow()})
+
+        current_stage = sess.get("conversation_stage") or STAGE_DISCOVER_INTENT
+        # Load existing lead for stage computation
+        existing_lead = {}
+        if sess.get("lead_id"):
+            try:
+                from bson import ObjectId
+                existing_lead = await db["customer_leads"].find_one(
+                    {"_id": ObjectId(sess["lead_id"])}) or {}
+            except Exception:
+                pass
+        existing_idea = await _lp.get_active_idea(db, token) or {}
+
+        # Resolve the stage
+        resolved_stage = _compute_conversation_stage(
+            message, existing_lead, existing_idea, current_stage)
+
+        # If stage advanced or is still a capture stage, use deterministic fast path
+        if _is_capture_stage(resolved_stage):
+            reply, next_stage = _get_capture_prompt(
+                resolved_stage, existing_lead, existing_idea, message)
+
+            # Persist assistant reply (no LLM)
+            await db["customer_messages"].insert_one({
+                "conversation_id": str(sess["_id"]), "session_token": token,
+                "sender": "assistant", "role": "assistant",
+                "message": reply, "content": reply,
+                "intent": intent, "tools_called": [],
+                "sources_used": [], "agent_slug": AGENT_SLUG,
+                "duration_ms": 0,
+                "ai_provider": None, "ai_model": None, "usage": {},
+                "created_at": utcnow()})
+            await db["customer_conversations"].update_one(
+                {"_id": sess["_id"]},
+                {"$set": {"last_message_at": utcnow(),
+                          "conversation_stage": next_stage}})
+
+            # If we just captured a contact field, update the lead
+            bits = extract_contact_bits(message)
+            if bits.get("name") or bits.get("email") or bits.get("phone"):
+                fields = {
+                    "name": bits.get("name", ""),
+                    "email": bits.get("email", ""),
+                    "phone": bits.get("phone", ""),
+                }
+                if any(fields.values()):
+                    try:
+                        lead, _ = await _lp.find_or_create_lead(
+                            db, fields, token, message)
+                        # Attach lead to session if not yet
+                        if str(sess.get("lead_id") or "") != str(lead["_id"]):
+                            await db["customer_conversations"].update_one(
+                                {"_id": sess["_id"]},
+                                {"$set": {"lead_id": str(lead["_id"])}})
+                    except Exception:
+                        pass
+
+            # If all 3 fields captured, the next turn will enter PROJECT_DISCOVERY
+            return {
+                "reply": reply, "sources": [], "intent": intent,
+                "tools_called": [], "session_token": token,
+                "session_id": token,
+                "lead_captured": bool(existing_lead.get("email")),
+                "missing_fields": [],
+                "agent": AGENT_SLUG, "used_llm": False,
+                "duration_ms": 0,
+                "language": language,
+            }
+
+        # If stage just transitioned from capture → PROJECT_DISCOVERY,
+        # keep going (normal tool/LLM flow below)
+        if current_stage != resolved_stage and resolved_stage == STAGE_PROJECT_DISCOVERY:
+            await db["customer_conversations"].update_one(
+                {"_id": sess["_id"]},
+                {"$set": {"conversation_stage": resolved_stage}})
+    else:
+        token, sess = (session_token or "preview"), {}
+        current_stage = STAGE_DISCOVER_INTENT
+        resolved_stage = STAGE_DISCOVER_INTENT
+
     # RAG-first level 0: structured MongoDB answer before any tools/LLM (global cache, no token)
     # Handles skills, projects, products etc. straight from MongoDB when evidence exists.
-    # Note: "contact" and "live_url" are already LLM-free via compose_tool_only — keep them
-    # on the normal tool path so intent stays lowercase "contact" (test expects it).
-    if not preview and intent not in ("hire_lead", "idea_discovery", "greeting", "general_conversation", "contact", "live_url"):
+    if not preview and intent not in ("hire_lead", "idea_discovery", "greeting", "general_conversation", "contact", "live_url", "business_application"):
         try:
             from app.services import ai_economy as _eco0
-            # global cache for structured-equivalent questions (no per-session token)
             _gcache = await _eco0.response_cache_get(db, message, "concierge-global")
             if _gcache:
-                # serve from global cache without any retrieval/tool call
                 return {
                     "reply": _gcache.get("answer", ""),
                     "sources": _gcache.get("sources", []),
                     "intent": _gcache.get("intent", intent),
                     "tools_called": [],
-                    "session_token": session_token or "",
-                    "session_id": session_token or "",
+                    "session_token": token or "",
+                    "session_id": token or "",
                     "lead_captured": False,
                     "missing_fields": [],
                     "agent": AGENT_SLUG,
@@ -398,41 +682,29 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
             if _direct and _direct.get("answer"):
                 _ans = _direct["answer"]
                 _srcs = [{"title": s.get("title",""), "url": s.get("url"), "source_type": s.get("source_type","")} for s in _direct.get("sources", [])]
-                # cache globally for next visitors
                 try:
                     await _eco0.response_cache_set(db, message, {"answer": _ans, "sources": _srcs, "intent": _direct.get("intent", intent), "grounded": True}, "concierge-global")
                 except Exception:
                     pass
-                # need session for persistence but reply is already grounded
-                if not preview:
-                    sess, token = await _lp.get_or_create_session(db, session_token, client_ip)
-                    await db["customer_messages"].insert_one({
-                        "conversation_id": str(sess["_id"]), "session_token": token,
-                        "sender": "user", "role": "user", "message": message, "content": message,
-                        "intent": intent, "agent_slug": AGENT_SLUG,
-                        "ai_provider": None, "ai_model": None, "usage": {}, "created_at": utcnow()})
-                    # persist assistant reply directly without LLM
-                    await db["customer_messages"].insert_one({
-                        "conversation_id": str(sess["_id"]), "session_token": token,
-                        "sender": "assistant", "role": "assistant",
-                        "message": _ans, "content": _ans,
-                        "intent": _direct.get("intent", intent), "tools_called": [],
-                        "sources_used": _srcs, "agent_slug": AGENT_SLUG, "duration_ms": int((time.time() - t0) * 1000),
-                        "ai_provider": None, "ai_model": None, "usage": {}, "created_at": utcnow()})
-                    await db["customer_conversations"].update_one({"_id": sess["_id"]}, {"$set": {"last_message_at": utcnow()}})
-                    await agents.bump_stat(db, AGENT_SLUG, "turns")
-                    return {"reply": _ans, "sources": _srcs, "intent": _direct.get("intent", intent), "tools_called": [], "session_token": token, "session_id": token, "lead_captured": False, "missing_fields": [], "agent": AGENT_SLUG, "used_llm": False, "duration_ms": int((time.time() - t0)*1000), "language": language}
+                await db["customer_messages"].insert_one({
+                    "conversation_id": str(sess["_id"]), "session_token": token,
+                    "sender": "assistant", "role": "assistant",
+                    "message": _ans, "content": _ans,
+                    "intent": _direct.get("intent", intent), "tools_called": [],
+                    "sources_used": _srcs, "agent_slug": AGENT_SLUG,
+                    "duration_ms": int((time.time() - t0) * 1000),
+                    "ai_provider": None, "ai_model": None, "usage": {},
+                    "created_at": utcnow()})
+                await db["customer_conversations"].update_one(
+                    {"_id": sess["_id"]}, {"$set": {"last_message_at": utcnow()}})
+                await agents.bump_stat(db, AGENT_SLUG, "turns")
+                return {"reply": _ans, "sources": _srcs, "intent": _direct.get("intent", intent),
+                        "tools_called": [], "session_token": token, "session_id": token,
+                        "lead_captured": False, "missing_fields": [],
+                        "agent": AGENT_SLUG, "used_llm": False,
+                        "duration_ms": int((time.time() - t0)*1000), "language": language}
         except Exception as _e:
             log.warning("concierge fast structured skipped: %s", _e)
-    if not preview:
-        sess, token = await _lp.get_or_create_session(db, session_token, client_ip)
-        await db["customer_messages"].insert_one({
-            "conversation_id": str(sess["_id"]), "session_token": token,
-            "sender": "user", "role": "user", "message": message, "content": message,
-            "intent": intent, "agent_slug": AGENT_SLUG,
-            "ai_provider": None, "ai_model": None, "usage": {}, "created_at": utcnow()})
-    else:
-        token, sess = (session_token or "preview"), {}
 
     allowed = agent.get("allowed_tools") or []
     calls = select_tools(intent, {**entities, "message": message}, allowed)
@@ -499,7 +771,7 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
     # lead flow: gradual, one field at a time (pipeline owns storage rules)
     lead_captured, missing, lead, idea, just_captured = False, [], {}, {}, False
     lead_mode = bool(agent.get("lead_capture_enabled")) and (
-        intent in ("hire_lead", "idea_discovery", "contact") or wants_lead_flow(
+        intent in ("hire_lead", "idea_discovery", "contact", "business_application") or wants_lead_flow(
             message, bool((sess.get("lead_id") if isinstance(sess, dict) else None)
                           or (await _lp.get_active_idea(db, token) if not preview else None))))
     if lead_mode and not preview:
@@ -601,13 +873,13 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
                  *history,
                  {"role": "user", "content": (
                      f"Intent: {intent}\nVerified tool results:\n{context}\n"
-                     + ("The visitor just shared a NEW business/software idea. "
-                        "Your first job is a short warm acknowledgement plus ONE "
-                        "natural discovery question about the idea itself (what "
-                        "they want to make easier, or how they handle it today). "
-                        "Do NOT pitch services, summarize capabilities, or ask "
-                        "for contact details yet.\n"
-                        if intent in ("hire_lead", "idea_discovery") else "")
+                      + ("The visitor just shared a NEW business/software idea. "
+                         "Your first job is a short warm acknowledgement plus ONE "
+                         "natural discovery question about the idea itself (what "
+                         "they want to make easier, or how they handle it today). "
+                         "Do NOT pitch services, summarize capabilities, or ask "
+                         "for contact details yet.\n"
+                         if intent in ("hire_lead", "idea_discovery", "business_application") else "")
                      + "Reply as a JSON object with a single key 'reply' "
                      "containing your answer text.")}],
                 max_tokens=400, temperature=0.2, tag="concierge-reply",

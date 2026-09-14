@@ -35,8 +35,9 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `content_validator.py` (universal content validation engine — deterministic-first,
   30 rules, 9 scoring dimensions, content-type-agnostic, version tracking).
 - `rajiblabs-ai-backend/tests/` — `test_api.py`, `test_lead_chat.py`, `test_rag.py`,
-  `test_workbench.py`, `test_concierge.py`, `test_github_knowledge.py`, `test_kb_policy.py`,
-  `test_i18n.py`, `test_content_validator.py` (56 tests), `test_aspnet_learning.py` (9 tests).
+  `test_workbench.py`, `test_concierge.py` (113 tests), `test_github_knowledge.py`,
+  `test_kb_policy.py`, `test_i18n.py`, `test_content_validator.py` (56 tests),
+  `test_aspnet_learning.py` (9 tests).
   HTTP mocks via `respx` (in requirements; install if missing).
 
 ## Adding a new admin page (copy this recipe)
@@ -167,6 +168,12 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   `AIService.chat_with_lead` call. Simple knowledge queries (`what are your skills`,
   `what projects have you built`) return in ~40 ms with `used_llm=False`.
   Only `hire`/`build`/`idea` lead-intent messages go to the LLM.
+- **Business application capture fast path** (`concierge.run_concierge_turn`):
+  When `conversation_stage` is a capture stage (BUSINESS_APPLICATION, CAPTURE_NAME,
+  CAPTURE_EMAIL, CAPTURE_PHONE), the turn uses `_get_capture_prompt()` — pure regex
+  + string formatting, zero LLM/RAG/embedding cost. Stage is stored on
+  `customer_conversations.conversation_stage`. "skip" advances past phone.
+  All 3 fields captured → next turn enters PROJECT_DISCOVERY (normal flow).
 - Admin usage dashboard: `GET /api/admin/usage/{today,week,cache-stats,health}` for
   monitoring LLM costs, cache hit rates, and latency.
 
@@ -178,6 +185,14 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   **Fast path:** global `concierge-global` structured cache + `tool_answer_ok`
   for `projects_list`/`github_work`/`products`/`services`/`about_rajib` etc. with
   verified tool output — no LLM when retrieval is sufficient.
+- **Business application fast path**: when a visitor expresses business/application intent
+  ("I want to create an app", "I need a website"), the concierge uses a deterministic
+  contact-capture flow (no LLM, no RAG). Stage machine: DISCOVER_INTENT →
+  BUSINESS_APPLICATION → CAPTURE_NAME → CAPTURE_EMAIL → CAPTURE_PHONE →
+  CONTACT_CAPTURED → PROJECT_DISCOVERY. Each capture turn uses regex extraction
+  (`extract_contact_bits`) and returns a canned prompt. The stage is stored on
+  `customer_conversations.conversation_stage`. "skip" advances past phone.
+  All 3 fields captured → next turn enters PROJECT_DISCOVERY (normal tool/LLM flow).
 - Public tools live ONLY in `agent_tools.PUBLIC_TOOL_NAMES`; `run_public_tool`
   rejects admin-only/unknown names server-side — the LLM never decides authorization.
   Tool outputs are allowlisted + secret-scrubbed; reply URLs are validated against
@@ -385,11 +400,14 @@ Stack is locked: React + TypeScript + Vite + Tailwind (`frontend/`), FastAPI + P
   REQUIRES the literal word "json" somewhere in messages when using
   `response_format: json_object` (HTTP 400 otherwise — diagnosed live via the
   classified error log); new intents `recruiter/career/technical/
-  idea_discovery/general_conversation` are rule-ordered (career+technical sit
+  business_application/idea_discovery/general_conversation` are rule-ordered
+  (business_application sits before hire_lead; career+technical sit
   before products/about_rajib; general is last); `what is <Name>?` needs the
   lowercase-tolerant rule because matching runs on lowercased text; social
   acks (thanks/bye) short-circuit with zero LLM cost; fresh-idea turns lead
-  with ONE discovery question, never a contact ask.
+  with ONE discovery question, never a contact ask; business_application
+  intent triggers deterministic contact capture (name→email→phone) via
+  `_get_capture_prompt()` — no LLM on capture turns.
 - Homepage agent section is `rlz/RlzAgent.tsx` (between Experience and
   Contact); starter clicks dispatch `OPEN_CHAT_EVENT` with `{detail: message}`
   which `ChatWidget` auto-sends via a `sendTextRef` (stale-closure safe).

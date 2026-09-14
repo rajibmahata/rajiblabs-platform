@@ -10,6 +10,11 @@ from app.services.concierge import (
     SUGGESTED_STARTERS, collect_allowed_urls, compose_tool_only,
     detect_intent, extract_contact_bits, filter_policy_sources,
     select_tools, validate_reply_urls, wants_lead_flow,
+    is_business_application_intent, _compute_conversation_stage,
+    _get_capture_prompt, _is_capture_stage, _next_capture_stage,
+    STAGE_DISCOVER_INTENT, STAGE_BUSINESS_APPLICATION, STAGE_CAPTURE_NAME,
+    STAGE_CAPTURE_EMAIL, STAGE_CAPTURE_PHONE, STAGE_CONTACT_CAPTURED,
+    STAGE_PROJECT_DISCOVERY,
 )
 from app.services.agent_tools import (
     ADMIN_ONLY_TOOLS, PUBLIC_TOOL_NAMES, _clean, run_public_tool,
@@ -240,14 +245,16 @@ async def test_lead_capture_flow_live():
     try:
         r1 = await cg.run_concierge_turn(
             db, "Hi, I need a website built for my bakery", None, "127.0.0.1")
-        assert r1["intent"] == "hire_lead"
+        assert r1["intent"] == "business_application"
         token = r1["session_token"]
-        assert "name" in (r1["missing_fields"] or [])
+        # business_application fast path should ask for name
+        assert "name" in r1["reply"].lower()
         r2 = await cg.run_concierge_turn(db, "My name is Baker Ted", token, "127.0.0.1")
-        assert "email" in (r2["missing_fields"] or [])
+        assert "email" in r2["reply"].lower()
         r3 = await cg.run_concierge_turn(db, "ted@bakery.example", token, "127.0.0.1")
-        assert r3["lead_captured"] is True
-        assert "Ted" in r3["reply"] or "ted@bakery.example" in r3["reply"] or "Thanks" in r3["reply"]
+        assert "phone" in r3["reply"].lower() or "reach" in r3["reply"].lower()
+        r4 = await cg.run_concierge_turn(db, "+1 555 123 4567", token, "127.0.0.1")
+        assert r4["reply"]
     finally:
         if token:
             lead = await db["customer_leads"].find_one(
@@ -318,7 +325,7 @@ LIVE_AGENT_INTENT_CASES = [
     ("Is Rajib open to new roles?", "recruiter"),
     ("Tell me about Rajib's career", "career"),
     ("Where did Rajib work before?", "career"),
-    ("How would you design a SaaS platform?", "technical"),
+    ("How would you design a SaaS platform?", "business_application"),
     ("Can Rajib build an AI agent system?", "hire_lead"),
     ("How does PestFlow compare to alternatives?", "technical"),
     ("I have an idea for a restaurant app", "hire_lead"),
@@ -416,3 +423,367 @@ def test_social_ack_is_deterministic():
     r, _ = compose_tool_only("general_conversation", {}, {}, "FB",
                              message="bye!")
     assert "Goodbye" in r
+
+
+# ── business application intent detection ──
+
+BUSINESS_APPLICATION_CASES = [
+    ("I want to create an application for inventory management", "business_application"),
+    ("I need a website built for my restaurant", "business_application"),
+    ("I'd like to develop a SaaS platform for HR management", "business_application"),
+    ("Help me make a tool for tracking expenses", "business_application"),
+    ("Looking to build a system for order processing", "business_application"),
+    ("I have a business idea for a marketplace app", "business_application"),
+    ("I want to launch an MVP for my startup", "business_application"),
+    ("Need a custom software solution for our warehouse", "business_application"),
+    ("I want to automate our invoice processing", "business_application"),
+    # hire_lead with application keywords should also match
+    ("I want to hire you to build a web app", "hire_lead"),
+    ("Can you build a mobile app for booking appointments?", "hire_lead"),
+    ("I need a developer for my SaaS product", "business_application"),
+    # Non-application intents should not match
+    ("What projects has Rajib completed?", "projects_list"),
+    ("Tell me about Rajib", "about_rajib"),
+    ("Contact RajibLabs", "contact"),
+]
+
+
+@pytest.mark.parametrize("message,expected", BUSINESS_APPLICATION_CASES)
+def test_business_application_intent_detection(message, expected):
+    intent, _ = detect_intent(message)
+    assert intent == expected
+
+
+def test_business_application_tool_mapping():
+    names = [n for n, _ in select_tools("business_application", {}, None)]
+    assert "search_knowledge" in names
+    assert "get_projects" in names
+    assert "get_relevant_sources" in names
+
+
+def test_is_business_application_intent():
+    assert is_business_application_intent("business_application", "I want to build an app") is True
+    assert is_business_application_intent("hire_lead", "I need a website") is True
+    assert is_business_application_intent("hire_lead", "How much does it cost?") is False
+    assert is_business_application_intent("idea_discovery", "I have an app idea") is True
+    assert is_business_application_intent("about_rajib", "Tell me about Rajib") is False
+    assert is_business_application_intent("contact", "What's your email?") is False
+
+
+# ── conversation stage state machine (pure) ──
+
+def test_stage_computation_from_discover_intent():
+    """Starting from DISCOVER_INTENT, business intent moves to BUSINESS_APPLICATION."""
+    stage = _compute_conversation_stage(
+        "I want to create an application", {}, {}, STAGE_DISCOVER_INTENT)
+    assert stage == STAGE_BUSINESS_APPLICATION
+
+
+def test_stage_computation_business_to_name():
+    """After business intent detected, next stage is CAPTURE_NAME."""
+    stage = _compute_conversation_stage(
+        "I want to build an app", {}, {}, STAGE_BUSINESS_APPLICATION)
+    assert stage == STAGE_CAPTURE_NAME
+
+
+def test_stage_computation_name_provided():
+    """When name is provided in CAPTURE_NAME, advance to CAPTURE_EMAIL."""
+    stage = _compute_conversation_stage(
+        "My name is John Smith", {}, {}, STAGE_CAPTURE_NAME)
+    assert stage == STAGE_CAPTURE_EMAIL
+
+
+def test_stage_computation_name_not_provided():
+    """When name is NOT provided in CAPTURE_NAME, stay in CAPTURE_NAME."""
+    stage = _compute_conversation_stage(
+        "just browsing", {}, {}, STAGE_CAPTURE_NAME)
+    assert stage == STAGE_CAPTURE_NAME
+
+
+def test_stage_computation_email_provided():
+    """When email is provided in CAPTURE_EMAIL, advance to CAPTURE_PHONE."""
+    stage = _compute_conversation_stage(
+        "john@example.com", {}, {}, STAGE_CAPTURE_EMAIL)
+    assert stage == STAGE_CAPTURE_PHONE
+
+
+def test_stage_computation_email_not_provided():
+    """When email is NOT provided in CAPTURE_EMAIL, stay in CAPTURE_EMAIL."""
+    stage = _compute_conversation_stage(
+        "not sure yet", {}, {}, STAGE_CAPTURE_EMAIL)
+    assert stage == STAGE_CAPTURE_EMAIL
+
+
+def test_stage_computation_phone_provided():
+    """When phone is provided in CAPTURE_PHONE, advance to CONTACT_CAPTURED."""
+    stage = _compute_conversation_stage(
+        "+1 555 123 4567", {}, {}, STAGE_CAPTURE_PHONE)
+    assert stage == STAGE_CONTACT_CAPTURED
+
+
+def test_stage_computation_phone_skip():
+    """When 'skip' is provided in CAPTURE_PHONE, advance to CONTACT_CAPTURED."""
+    stage = _compute_conversation_stage(
+        "skip", {}, {}, STAGE_CAPTURE_PHONE)
+    assert stage == STAGE_CONTACT_CAPTURED
+
+
+def test_stage_computation_phone_not_provided():
+    """When phone is NOT provided in CAPTURE_PHONE, stay in CAPTURE_PHONE."""
+    stage = _compute_conversation_stage(
+        "let me think", {}, {}, STAGE_CAPTURE_PHONE)
+    assert stage == STAGE_CAPTURE_PHONE
+
+
+def test_stage_computation_existing_lead_fields():
+    """If lead already has fields, skip those stages."""
+    lead = {"name": "John", "email": "john@example.com"}
+    stage = _compute_conversation_stage(
+        "I want to build an app", lead, {}, STAGE_DISCOVER_INTENT)
+    # Should jump to CAPTURE_PHONE since name and email already exist
+    assert stage == STAGE_CAPTURE_PHONE
+
+
+def test_stage_computation_all_fields_present():
+    """If all fields are present, jump to CONTACT_CAPTURED."""
+    lead = {"name": "John", "email": "john@example.com", "phone": "+15551234567"}
+    stage = _compute_conversation_stage(
+        "Let's proceed", lead, {}, STAGE_CAPTURE_NAME)
+    assert stage == STAGE_CONTACT_CAPTURED
+
+
+def test_stage_computation_project_discovery_stays():
+    """Once in PROJECT_DISCOVERY, stay there."""
+    stage = _compute_conversation_stage(
+        "Tell me more", {}, {}, STAGE_PROJECT_DISCOVERY)
+    assert stage == STAGE_PROJECT_DISCOVERY
+
+
+def test_stage_computation_contact_captured_stays():
+    """Once in CONTACT_CAPTURED, stay there."""
+    stage = _compute_conversation_stage(
+        "Let's talk about my project", {}, {}, STAGE_CONTACT_CAPTURED)
+    assert stage == STAGE_CONTACT_CAPTURED
+
+
+def test_is_capture_stage():
+    assert _is_capture_stage(STAGE_BUSINESS_APPLICATION) is True
+    assert _is_capture_stage(STAGE_CAPTURE_NAME) is True
+    assert _is_capture_stage(STAGE_CAPTURE_EMAIL) is True
+    assert _is_capture_stage(STAGE_CAPTURE_PHONE) is True
+    assert _is_capture_stage(STAGE_DISCOVER_INTENT) is False
+    assert _is_capture_stage(STAGE_CONTACT_CAPTURED) is False
+    assert _is_capture_stage(STAGE_PROJECT_DISCOVERY) is False
+
+
+def test_next_capture_stage():
+    assert _next_capture_stage(STAGE_BUSINESS_APPLICATION) == STAGE_CAPTURE_NAME
+    assert _next_capture_stage(STAGE_CAPTURE_NAME) == STAGE_CAPTURE_EMAIL
+    assert _next_capture_stage(STAGE_CAPTURE_EMAIL) == STAGE_CAPTURE_PHONE
+    assert _next_capture_stage(STAGE_CAPTURE_PHONE) == STAGE_CONTACT_CAPTURED
+    assert _next_capture_stage(STAGE_CONTACT_CAPTURED) == STAGE_PROJECT_DISCOVERY
+    assert _next_capture_stage(STAGE_PROJECT_DISCOVERY) == STAGE_PROJECT_DISCOVERY
+
+
+# ── capture prompts (pure) ──
+
+def test_capture_prompt_business_application():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_BUSINESS_APPLICATION, {}, {}, "I want to build an app")
+    assert "exciting project" in reply.lower() or "name" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_NAME
+
+
+def test_capture_prompt_name_not_provided():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_CAPTURE_NAME, {}, {}, "just browsing")
+    assert "name" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_NAME
+
+
+def test_capture_prompt_name_provided():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_CAPTURE_NAME, {}, {}, "My name is John Smith")
+    assert "email" in reply.lower() or "john" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_EMAIL
+
+
+def test_capture_prompt_email_not_provided():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_CAPTURE_EMAIL, {}, {}, "not sure")
+    assert "email" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_EMAIL
+
+
+def test_capture_prompt_email_provided():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_CAPTURE_EMAIL, {}, {}, "john@example.com")
+    assert "phone" in reply.lower() or "reach" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_PHONE
+
+
+def test_capture_prompt_phone_skip():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_CAPTURE_PHONE, {}, {}, "skip")
+    assert "talk" in reply.lower() or "project" in reply.lower() or "build" in reply.lower()
+    assert next_stage == STAGE_CONTACT_CAPTURED
+
+
+def test_capture_prompt_phone_provided():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_CAPTURE_PHONE, {}, {}, "+1 555 123 4567")
+    assert "talk" in reply.lower() or "project" in reply.lower() or "build" in reply.lower()
+    assert next_stage == STAGE_CONTACT_CAPTURED
+
+
+def test_capture_prompt_phone_not_provided():
+    reply, next_stage = _get_capture_prompt(
+        STAGE_CAPTURE_PHONE, {}, {}, "let me think")
+    assert "phone" in reply.lower() or "reach" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_PHONE
+
+
+# ── live: business application flow ──
+
+@pytest.mark.asyncio
+async def test_business_application_fast_path_live():
+    """Business application intent triggers deterministic fast path (no LLM)."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch_target = AIService
+    import pytest as _pt
+    _pt.MonkeyPatch().setattr(monkeypatch_target, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "I want to create an application for managing inventory", None, "127.0.0.1")
+        assert r1["intent"] == "business_application"
+        token = r1["session_token"]
+        # Should get a deterministic reply asking for name
+        assert r1["reply"]
+        assert "name" in r1["reply"].lower()
+        assert r1["used_llm"] is False
+
+        # Provide name
+        r2 = await cg.run_concierge_turn(db, "My name is Alice Johnson", token, "127.0.0.1")
+        assert r2["reply"]
+        assert "email" in r2["reply"].lower()
+        assert r2["used_llm"] is False
+
+        # Provide email
+        r3 = await cg.run_concierge_turn(db, "alice@example.com", token, "127.0.0.1")
+        assert r3["reply"]
+        assert "phone" in r3["reply"].lower() or "reach" in r3["reply"].lower()
+        assert r3["used_llm"] is False
+
+        # Provide phone
+        r4 = await cg.run_concierge_turn(db, "+1 555 123 4567", token, "127.0.0.1")
+        assert r4["reply"]
+        assert r4["used_llm"] is False
+        # After phone, should transition to PROJECT_DISCOVERY
+    finally:
+        if token:
+            lead = await db["customer_leads"].find_one({"email": "alice@example.com"})
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+            await db["ideas"].delete_many({"session_id": token})
+            if lead:
+                await db["customer_leads"].delete_one({"_id": lead["_id"]})
+
+
+@pytest.mark.asyncio
+async def test_business_application_skip_phone_live():
+    """Skip phone during capture flow."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    import pytest as _pt
+    _pt.MonkeyPatch().setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "I need a SaaS platform", None, "127.0.0.1")
+        token = r1["session_token"]
+
+        r2 = await cg.run_concierge_turn(db, "Bob Smith", token, "127.0.0.1")
+        r3 = await cg.run_concierge_turn(db, "bob@test.com", token, "127.0.0.1")
+        r4 = await cg.run_concierge_turn(db, "skip", token, "127.0.0.1")
+        assert r4["reply"]
+        assert r4["used_llm"] is False
+    finally:
+        if token:
+            lead = await db["customer_leads"].find_one({"email": "bob@test.com"})
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+            await db["ideas"].delete_many({"session_id": token})
+            if lead:
+                await db["customer_leads"].delete_one({"_id": lead["_id"]})
+
+
+@pytest.mark.asyncio
+async def test_business_application_batch_input_live():
+    """Batch all contact fields in one message during capture."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    import pytest as _pt
+    _pt.MonkeyPatch().setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "I want to build an app", None, "127.0.0.1")
+        token = r1["session_token"]
+
+        # Provide all fields at once
+        r2 = await cg.run_concierge_turn(
+            db, "My name is Carol, email carol@test.com, phone +1 555 999 0000",
+            token, "127.0.0.1")
+        assert r2["reply"]
+        assert r2["used_llm"] is False
+    finally:
+        if token:
+            lead = await db["customer_leads"].find_one({"email": "carol@test.com"})
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+            await db["ideas"].delete_many({"session_id": token})
+            if lead:
+                await db["customer_leads"].delete_one({"_id": lead["_id"]})
+
+
+@pytest.mark.asyncio
+async def test_regular_chat_not_affected_live():
+    """Regular chat intents still work through normal path."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on greeting/contact fast paths")
+
+    import pytest as _pt
+    _pt.MonkeyPatch().setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r = await cg.run_concierge_turn(db, "Hello!", None, "127.0.0.1")
+        assert r["intent"] == "greeting"
+        token = r["session_token"]
+        r = await cg.run_concierge_turn(db, "What is your email?", token, "127.0.0.1")
+        assert r["intent"] == "contact"
+        assert "@" in r["reply"]
+    finally:
+        if token:
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
