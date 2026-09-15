@@ -4,10 +4,12 @@
 #  Services:
 #    frontend   React PWA (nginx)          http://localhost:5010
 #    ai-api     FastAPI + Mongo (all API)  http://localhost:8090  (/api/*, /health)
+#    mcp        MCP Content Intelligence   http://localhost:8100  (/api/mcp/*, /health, /tools)
 #    mongo      MongoDB 7 for ai-api       localhost:27017
 #    qdrant     Vector index for RAG       localhost:6333 (graceful fallback when down)
 #
 #  Single backend: FastAPI serves every /api/* route (see frontend/nginx.conf).
+#  MCP layer: Reusable tool interface for content intelligence.
 # ═══════════════════════════════════════════════════════════════════
 
 services:
@@ -45,6 +47,27 @@ services:
     depends_on:
       - mongo
       - qdrant
+
+  mcp:
+    build: ./rajiblabs-mcp
+    container_name: rajiblabs-mcp
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    env_file:
+      - ./rajiblabs-mcp/.env
+    environment:
+      MCP_DATABASE_URL: mongodb://mongo:27017/rajiblabs
+      MCP_QDRANT_URL: http://qdrant:6333
+    depends_on:
+      - mongo
+      - qdrant
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build: ./frontend
