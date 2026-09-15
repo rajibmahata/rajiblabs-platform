@@ -231,6 +231,10 @@ async def get_content_freshness() -> dict:
     for p in projects:
         updated = p.get("updated_at") or p.get("created_at")
         if updated:
+            # Handle both naive (MongoDB default) and aware datetimes
+            if updated.tzinfo is None:
+                from datetime import timezone as _tz
+                updated = updated.replace(tzinfo=_tz.utc)
             if updated > thirty_days:
                 fresh += 1
             elif updated > ninety_days:

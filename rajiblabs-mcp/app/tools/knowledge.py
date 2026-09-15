@@ -65,8 +65,21 @@ async def validate_knowledge() -> dict:
     issues = []
 
     # Check for stale entries (older than 90 days with no update)
-    cutoff = datetime.now(timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0)
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+    # Handle naive datetimes from MongoDB
+    stale_entries = await db["knowledge"].find({
+        "$or": [
+            {"updated_at": {"$lt": cutoff}},
+            {"created_at": {"$lt": cutoff, "updated_at": {"$exists": False}}},
+        ]
+    }).to_list(20)
+    for entry in stale_entries:
+        issues.append({
+            "type": "stale",
+            "title": entry.get("title", ""),
+            "source_type": entry.get("source_type", ""),
+        })
 
     # Count by source type
     pipeline = [

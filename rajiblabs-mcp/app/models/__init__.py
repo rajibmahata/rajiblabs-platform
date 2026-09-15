@@ -1,10 +1,15 @@
 """MCP data models and schemas."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    """Timezone-aware UTC now (replaces deprecated _utcnow())."""
+    return datetime.now(timezone.utc)
 
 
 # ── Tool Registry ──
@@ -70,7 +75,7 @@ class ContentVersion(BaseModel):
     agent: str = ""
     mcp_tool: str = ""
     evidence: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
     validation_score: float = 0.0
     seo_score: float = 0.0
     rollback_data: dict[str, Any] = Field(default_factory=dict)
@@ -86,8 +91,8 @@ class SkillEvidence(BaseModel):
     evidence: list[str] = Field(default_factory=list)
     related_projects: list[str] = Field(default_factory=list)
     related_repositories: list[str] = Field(default_factory=list)
-    first_seen: datetime = Field(default_factory=datetime.utcnow)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    first_seen: datetime = Field(default_factory=_utcnow)
+    last_updated: datetime = Field(default_factory=_utcnow)
 
 
 # ── Portfolio Ranking ──
@@ -139,4 +144,4 @@ class ContentHealth(BaseModel):
     overall_score: float = 0.0
     issues: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
-    last_analyzed: datetime = Field(default_factory=datetime.utcnow)
+    last_analyzed: datetime = Field(default_factory=_utcnow)

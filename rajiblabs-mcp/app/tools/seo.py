@@ -6,7 +6,6 @@ achievements, keywords, or content.
 
 import re
 from datetime import datetime, timezone
-from urllib.parse import urlparse
 
 from app.database import get_db, utcnow
 from app.tools import mcp_tool, _oid_str, _clean_secret_keys
