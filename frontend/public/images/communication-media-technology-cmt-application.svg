@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <g opacity="0.04" stroke="#38bdf8" stroke-width="0.5"><line x1="0" y1="90" x2="800" y2="90"/><line x1="0" y1="180" x2="800" y2="180"/><line x1="0" y1="270" x2="800" y2="270"/><line x1="0" y1="360" x2="800" y2="360"/><line x1="200" y1="0" x2="200" y2="450"/><line x1="400" y1="0" x2="400" y2="450"/><line x1="600" y1="0" x2="600" y2="450"/></g>
+  <!-- Network provisioning diagram -->
+  <g transform="translate(400, 30)" filter="url(#glow)">
+    <!-- Equipment types -->
+    <g transform="translate(0, 20)">
+      <rect width="120" height="70" rx="8" fill="#16213e" stroke="#38bdf8" stroke-width="1"/>
+      <text x="60" y="20" text-anchor="middle" fill="#38bdf8" font-family="system-ui" font-size="8">📡 Network Equipment</text>
+      <text x="60" y="36" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Routers</text>
+      <text x="60" y="48" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Switches</text>
+      <text x="60" y="60" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Firewalls</text>
+    </g>
+    <!-- Provisioning engine -->
+    <g transform="translate(140, 20)">
+      <rect width="120" height="70" rx="8" fill="#16213e" stroke="#f59e0b" stroke-width="1"/>
+      <text x="60" y="20" text-anchor="middle" fill="#f59e0b" font-family="system-ui" font-size="8">⚙️ Provisioning</text>
+      <text x="60" y="36" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Auto-Config</text>
+      <text x="60" y="48" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">LLM Assist</text>
+      <text x="60" y="60" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Validation</text>
+    </g>
+    <line x1="120" y1="55" x2="140" y2="55" stroke="#38bdf8" stroke-width="0.8" opacity="0.4"/>
+    <!-- Individual customers -->
+    <g transform="translate(280, 20)">
+      <rect width="110" height="70" rx="8" fill="#16213e" stroke="#22d3ee" stroke-width="1"/>
+      <text x="55" y="20" text-anchor="middle" fill="#22d3ee" font-family="system-ui" font-size="8">👥 Customers</text>
+      <text x="55" y="36" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Individual Lines</text>
+      <text x="55" y="48" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Service Tiers</text>
+      <text x="55" y="60" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="7">Billing Rules</text>
+    </g>
+    <line x1="260" y1="55" x2="280" y2="55" stroke="#f59e0b" stroke-width="0.8" opacity="0.4"/>
+    <!-- LLM integration -->
+    <g transform="translate(0, 120)">
+      <rect width="390" height="70" rx="10" fill="#16213e" stroke="#a78bfa" stroke-width="1"/>
+      <text x="195" y="20" text-anchor="middle" fill="#a78bfa" font-family="system-ui" font-size="10" font-weight="bold">🤖 LLM-Powered Network Intelligence</text>
+      <text x="195" y="38" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="8">Natural Language Equipment Configuration • Auto-Troubleshooting</text>
+      <text x="195" y="52" text-anchor="middle" fill="#c7d2fe" font-family="system-ui" font-size="8">Cincinnati Bell — Accenture, 2016–2019</text>
+      <text x="195" y="64" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="7">Individual customer line provisioning with automated rules</text>
+    </g>
+    <!-- Impact -->
+    <g transform="translate(0, 210)">
+      <rect width="120" height="44" rx="8" fill="#16213e" stroke="#38bdf8" stroke-width="0.5"/>
+      <text x="60" y="18" text-anchor="middle" fill="#38bdf8" font-family="system-ui" font-size="16" font-weight="bold">60%</text>
+      <text x="60" y="34" text-anchor="middle" fill="#7dd3fc" font-family="system-ui" font-size="7">Provisioning Time ↓</text>
+      <rect x="140" width="120" height="44" rx="8" fill="#16213e" stroke="#38bdf8" stroke-width="0.5"/>
+      <text x="200" y="18" text-anchor="middle" fill="#38bdf8" font-family="system-ui" font-size="16" font-weight="bold">3 Years</text>
+      <text x="200" y="34" text-anchor="middle" fill="#7dd3fc" font-family="system-ui" font-size="7">Enterprise Delivery</text>
+    </g>
+  </g>
+  <!-- Title -->
+  <text x="50" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="800" fill="white" letter-spacing="-1">CMT Application</text>
+  <text x="50" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#7dd3fc">Communication Media Technology</text>
+  <text x="50" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#94a3b8">Cincinnati Bell — Accenture, 2016–2019</text>
+  <!-- Features -->
+  <g transform="translate(50, 225)" font-family="system-ui" font-size="10">
+    <text y="0" fill="#38bdf8">▸</text><text x="14" y="0" fill="#e0f2fe">Network Equipment Provisioning Platform</text>
+    <text y="16" fill="#38bdf8">▸</text><text x="14" y="16" fill="#e0f2fe">LLM-Assisted Configuration</text>
+    <text y="32" fill="#38bdf8">▸</text><text x="14" y="32" fill="#e0f2fe">Individual Customer Line Management</text>
+  </g>
+  <!-- Tech badges -->
+  <g transform="translate(50, 290)">
+    <rect width="60" height="24" rx="12" fill="#16213e" stroke="#38bdf8" stroke-width="1"/><text x="30" y="16" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="9">Azure</text>
+    <rect x="68" width="44" height="24" rx="12" fill="#16213e" stroke="#a78bfa" stroke-width="1"/><text x="90" y="16" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="9">LLM</text>
+    <rect x="120" width="60" height="24" rx="12" fill="#16213e" stroke="#38bdf8" stroke-width="1"/><text x="150" y="16" text-anchor="middle" fill="#e2e8f0" font-family="system-ui" font-size="9">Accenture</text>
+  </g>
+  <circle cx="380" cy="50" r="2" fill="#38bdf8" opacity="0.3"/><circle cx="780" cy="400" r="2.5" fill="#0ea5e9" opacity="0.2"/><circle cx="30" cy="400" r="1.5" fill="#38bdf8" opacity="0.3"/>
+</svg>
