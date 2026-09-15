@@ -241,10 +241,10 @@ export default function RlzProjects() {
       <div className="rlz-container">
         <div className="rlz-center rlz-reveal">
           <div className="rlz-section-tag">
-            <i className="material-symbols-outlined">rocket_launch</i> SHIPPED_SYSTEMS
+            <i className="material-symbols-outlined">rocket_launch</i> PORTFOLIO
           </div>
           <h2 className="rlz-section-title">
-            Featured <span className="rlz-grad-text">Projects</span>
+            All <span className="rlz-grad-text">Projects</span>
           </h2>
           <p className="rlz-section-desc">
             Real products solving real problems — each one production-grade and built around intelligence. Click any project for the full case study.
