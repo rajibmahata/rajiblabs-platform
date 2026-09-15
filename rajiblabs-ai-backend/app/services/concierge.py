@@ -54,11 +54,22 @@ _STAGE_ORDER = [
 # For reverse lookup
 _STAGE_INDEX = {s: i for i, s in enumerate(_STAGE_ORDER)}
 
-# Intent → initial stage when no prior stage exists on this session
+# Intent → initial stage when no prior stage exists on this session.
+# Covers ALL meaningful conversation types — contact capture is universal,
+# not limited to business_application.
 _INTENT_STAGE_MAP = {
     "business_application": STAGE_BUSINESS_APPLICATION,
     "hire_lead": STAGE_BUSINESS_APPLICATION,
     "idea_discovery": STAGE_BUSINESS_APPLICATION,
+    "contact": STAGE_BUSINESS_APPLICATION,
+    "services": STAGE_BUSINESS_APPLICATION,
+    "products": STAGE_BUSINESS_APPLICATION,
+    "project_detail": STAGE_BUSINESS_APPLICATION,
+    "projects_list": STAGE_BUSINESS_APPLICATION,
+    "similar_project": STAGE_BUSINESS_APPLICATION,
+    "about_rajiblabs": STAGE_BUSINESS_APPLICATION,
+    "recruiter": STAGE_BUSINESS_APPLICATION,
+    "career": STAGE_BUSINESS_APPLICATION,
 }
 
 
@@ -119,42 +130,70 @@ def _compute_conversation_stage(message: str, lead: dict, idea: dict,
         if has_phone_now or is_skip:
             return STAGE_CONTACT_CAPTURED
 
-    # If in DISCOVER_INTENT and intent was just detected, advance
+    # If in DISCOVER_INTENT and a capturable intent was just detected, advance
     if stage == STAGE_DISCOVER_INTENT:
         intent, _ = detect_intent(message)
-        if intent in _INTENT_STAGE_MAP:
+        if is_universal_business_intent(intent, message):
             # If lead already has fields, skip to the first missing one
             if has_name_now and has_email_now:
                 return STAGE_CAPTURE_PHONE
             if has_name_now:
                 return STAGE_CAPTURE_EMAIL
-            return _INTENT_STAGE_MAP[intent]
+            return STAGE_BUSINESS_APPLICATION
 
     return stage
 
 
 def _get_capture_prompt(stage: str, lead: dict, idea: dict,
-                        message: str) -> tuple[str, str]:
+                        message: str, intent: str = "fallback") -> tuple[str, str]:
     """Return (reply, next_stage) for deterministic contact-capture turns.
-    No LLM, no RAG — pure regex + string formatting."""
+    No LLM, no RAG — pure regex + string formatting.
+    
+    The intent parameter enables contextually appropriate prompts for
+    different conversation types (services inquiry, product question,
+    business build, etc.)."""
     bits = extract_contact_bits(message)
     has_name = bool(lead.get("name")) or bool(bits.get("name"))
     has_email = bool(lead.get("email")) or bool(bits.get("email"))
     has_phone = bool(lead.get("phone")) or bool(bits.get("phone"))
 
     if stage == STAGE_BUSINESS_APPLICATION:
-        # Acknowledge the business intent, then ask for name
-        return (
-            "That sounds like an exciting project! I'd love to help you get started. "
-            "Let me take a few quick details so Rajib can follow up personally.\n\n"
-            "What's your name?",
-            STAGE_CAPTURE_NAME,
-        )
+        # Contextually appropriate opening based on intent type
+        if intent in ("services", "products", "project_detail", "projects_list",
+                       "similar_project", "about_rajiblabs", "technical"):
+            return (
+                "I can definitely help you with that! "
+                "Let me take a quick detail so Rajib can follow up personally.\n\n"
+                "What's your name?",
+                STAGE_CAPTURE_NAME,
+            )
+        elif intent in ("contact", "hire_lead"):
+            return (
+                "Great! I'd love to connect you with Rajib. "
+                "Let me grab a couple of quick details.\n\n"
+                "What's your name?",
+                STAGE_CAPTURE_NAME,
+            )
+        elif intent in ("recruiter", "career"):
+            return (
+                "Thanks for your interest! Let me take a couple of quick details "
+                "so Rajib can follow up.\n\n"
+                "What's your name?",
+                STAGE_CAPTURE_NAME,
+            )
+        else:
+            # Default: business_application, idea_discovery, and others
+            return (
+                "That sounds like an exciting project! I'd love to help you get started. "
+                "Let me take a few quick details so Rajib can follow up personally.\n\n"
+                "What's your name?",
+                STAGE_CAPTURE_NAME,
+            )
     elif stage == STAGE_CAPTURE_NAME:
         if has_name:
             return (
-                "Great to meet you! "
-                "What email can Rajib reach you at?",
+                "Great to meet you, " + (lead.get("name") or bits.get("name") or "there") + "! "
+                "What email can we reach you at?",
                 STAGE_CAPTURE_EMAIL,
             )
         return (
@@ -169,18 +208,38 @@ def _get_capture_prompt(stage: str, lead: dict, idea: dict,
                 STAGE_CAPTURE_PHONE,
             )
         return (
-            "What email can Rajib reach you at?",
+            "What email can we reach you at?",
             STAGE_CAPTURE_EMAIL,
         )
     elif stage == STAGE_CAPTURE_PHONE:
         if has_phone or "skip" in (message or "").lower():
             # All fields captured — transition to project discovery
-            return (
-                "Thanks! Now let's talk about what you want to build. "
-                "Tell me about your project idea — what problem does it solve, "
-                "and how do you handle it today?",
-                STAGE_CONTACT_CAPTURED,
-            )
+            if intent in ("services", "products", "project_detail", "projects_list",
+                           "similar_project", "about_rajiblabs", "technical"):
+                return (
+                    "Thanks! How can I help you today?",
+                    STAGE_CONTACT_CAPTURED,
+                )
+            elif intent in ("contact", "hire_lead"):
+                return (
+                    "Thanks! I'll make sure Rajib gets back to you shortly. "
+                    "Is there anything specific you'd like to discuss?",
+                    STAGE_CONTACT_CAPTURED,
+                )
+            elif intent in ("recruiter", "career"):
+                return (
+                    "Thanks! Rajib will follow up with you directly. "
+                    "Is there anything specific you'd like to know?",
+                    STAGE_CONTACT_CAPTURED,
+                )
+            else:
+                # Default: business_application, idea_discovery
+                return (
+                    "Thanks! Now let's talk about what you want to build. "
+                    "Tell me about your project idea — what problem does it solve, "
+                    "and how do you handle it today?",
+                    STAGE_CONTACT_CAPTURED,
+                )
         return (
             "And a phone number where you can be reached? (or say 'skip')",
             STAGE_CAPTURE_PHONE,
@@ -423,6 +482,42 @@ def is_business_application_intent(intent: str, message: str) -> bool:
     return False
 
 
+# Intents that represent meaningful customer conversations warranting
+# contact capture. Covers every scenario in the universal lead spec:
+#   - Business inquiries (hire, proposal, build)
+#   - Technical questions (architecture, services, products)
+#   - Project exploration (similar, detail, list)
+#   - Company interest (about_rajiblabs, services, products)
+#   - Contact requests
+#   - Career/recruiter conversations
+# Excludes: greeting, fallback, general_conversation (social acks only)
+_CAPTURABLE_INTENTS = frozenset({
+    "business_application", "hire_lead", "idea_discovery",
+    "contact", "services", "products",
+    "project_detail", "projects_list", "similar_project",
+    "about_rajiblabs", "recruiter", "career",
+    "technical", "about_rajib", "github_work", "live_url",
+})
+
+
+def is_universal_business_intent(intent: str, message: str) -> bool:
+    """True for ANY conversation type where contact capture is appropriate.
+    
+    This is the universal trigger — covers business inquiries, service
+    questions, product interest, technical discussions, project exploration,
+    contact requests, and career conversations.
+    """
+    if intent in _CAPTURABLE_INTENTS:
+        return True
+    # Fallback: if contact info is already in the message, always capture
+    bits = extract_contact_bits(message)
+    if bits.get("email") or bits.get("phone") or bits.get("name"):
+        return True
+    # Check buy-words in the message
+    text = (message or "").lower()
+    return any(w in text for w in _BUY_WORDS)
+
+
 from app.services.kb_policy import (
     collect_allowed_urls as _collect_urls,
     validate_reply_urls as _validate_urls,
@@ -597,7 +692,7 @@ async def run_concierge_turn(db, message: str, session_token: str | None,
         # If stage advanced or is still a capture stage, use deterministic fast path
         if _is_capture_stage(resolved_stage):
             reply, next_stage = _get_capture_prompt(
-                resolved_stage, existing_lead, existing_idea, message)
+                resolved_stage, existing_lead, existing_idea, message, intent)
 
             # Persist assistant reply (no LLM)
             await db["customer_messages"].insert_one({

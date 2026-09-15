@@ -10,7 +10,8 @@ from app.services.concierge import (
     SUGGESTED_STARTERS, collect_allowed_urls, compose_tool_only,
     detect_intent, extract_contact_bits, filter_policy_sources,
     select_tools, validate_reply_urls, wants_lead_flow,
-    is_business_application_intent, _compute_conversation_stage,
+    is_business_application_intent, is_universal_business_intent,
+    _compute_conversation_stage,
     _get_capture_prompt, _is_capture_stage, _next_capture_stage,
     STAGE_DISCOVER_INTENT, STAGE_BUSINESS_APPLICATION, STAGE_CAPTURE_NAME,
     STAGE_CAPTURE_EMAIL, STAGE_CAPTURE_PHONE, STAGE_CONTACT_CAPTURED,
@@ -229,7 +230,9 @@ async def test_tool_only_turns_skip_llm_live(monkeypatch):
         r = await cg.run_concierge_turn(db, "Hello!", None, "127.0.0.1")
         assert r["intent"] == "greeting" and r["tools_called"] == []
         r = await cg.run_concierge_turn(db, "What is your email?", None, "127.0.0.1")
-        assert r["intent"] == "contact" and "@" in r["reply"]
+        assert r["intent"] == "contact"
+        # Contact intent now triggers universal capture (asks for name first)
+        assert "name" in r["reply"].lower()
         token = r["session_token"]
     finally:
         if token:
@@ -777,7 +780,401 @@ async def test_regular_chat_not_affected_live(monkeypatch):
         token = r["session_token"]
         r = await cg.run_concierge_turn(db, "What is your email?", token, "127.0.0.1")
         assert r["intent"] == "contact"
-        assert "@" in r["reply"]
+        # Contact intent now triggers universal capture (asks for name first)
+        assert "name" in r["reply"].lower()
+    finally:
+        if token:
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+
+
+# ── universal lead capture tests ──
+# Tests for the universal contact capture system that works across ALL
+# conversation types (services, products, technical, contact, etc.)
+
+def test_universal_intent_services_triggers_capture():
+    """Services inquiry should trigger contact capture."""
+    intent, _ = detect_intent("What services do you offer?")
+    assert intent == "services"
+    assert is_universal_business_intent(intent, "What services do you offer?")
+
+
+def test_universal_intent_products_triggers_capture():
+    """Product inquiry should trigger contact capture."""
+    intent, _ = detect_intent("Tell me about DocuFlow")
+    assert intent == "products"
+    assert is_universal_business_intent(intent, "Tell me about DocuFlow")
+
+
+def test_universal_intent_contact_triggers_capture():
+    """Contact request should trigger contact capture."""
+    intent, _ = detect_intent("How can I contact Rajib?")
+    assert intent == "contact"
+    assert is_universal_business_intent(intent, "How can I contact Rajib?")
+
+
+def test_universal_intent_technical_triggers_capture():
+    """Technical question should trigger contact capture."""
+    intent, _ = detect_intent("How would you architect a microservices system?")
+    assert intent == "technical"
+    assert is_universal_business_intent(intent, "How would you architect a microservices system?")
+
+
+def test_universal_intent_about_rajiblabs_triggers_capture():
+    """Company inquiry should trigger contact capture."""
+    intent, _ = detect_intent("What is RajibLabs?")
+    assert intent == "about_rajiblabs"
+    assert is_universal_business_intent(intent, "What is RajibLabs?")
+
+
+def test_universal_intent_project_detail_triggers_capture():
+    """Project detail inquiry should trigger contact capture."""
+    intent, _ = detect_intent("Tell me about PestFlow")
+    assert intent == "project_detail"
+    assert is_universal_business_intent(intent, "Tell me about PestFlow")
+
+
+def test_universal_intent_greeting_no_capture():
+    """Greeting should NOT trigger contact capture."""
+    intent, _ = detect_intent("Hello!")
+    assert intent == "greeting"
+    assert not is_universal_business_intent(intent, "Hello!")
+
+
+def test_universal_intent_general_conversation_no_capture():
+    """General conversation should NOT trigger contact capture."""
+    intent, _ = detect_intent("Thanks!")
+    assert intent == "general_conversation"
+    assert not is_universal_business_intent(intent, "Thanks!")
+
+
+def test_universal_stage_computation_services_intent():
+    """Services inquiry should advance to BUSINESS_APPLICATION stage."""
+    stage = _compute_conversation_stage(
+        "What services do you offer?", {}, {}, STAGE_DISCOVER_INTENT)
+    assert stage == STAGE_BUSINESS_APPLICATION
+
+
+def test_universal_stage_computation_with_existing_lead():
+    """If lead already has fields, skip those stages."""
+    lead = {"name": "John", "email": "john@example.com"}
+    stage = _compute_conversation_stage(
+        "What services do you offer?", lead, {}, STAGE_DISCOVER_INTENT)
+    # Should jump to CAPTURE_PHONE since name and email already exist
+    assert stage == STAGE_CAPTURE_PHONE
+
+
+def test_universal_capture_prompt_services():
+    """Services inquiry should get contextually appropriate prompt."""
+    reply, next_stage = _get_capture_prompt(
+        STAGE_BUSINESS_APPLICATION, {}, {}, "What services do you offer?",
+        intent="services")
+    assert "help" in reply.lower() or "name" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_NAME
+
+
+def test_universal_capture_prompt_contact():
+    """Contact request should get contextually appropriate prompt."""
+    reply, next_stage = _get_capture_prompt(
+        STAGE_BUSINESS_APPLICATION, {}, {}, "How can I contact Rajib?",
+        intent="contact")
+    assert "connect" in reply.lower() or "name" in reply.lower()
+    assert next_stage == STAGE_CAPTURE_NAME
+
+
+@pytest.mark.asyncio
+async def test_universal_services_flow_live(monkeypatch):
+    """Services inquiry triggers deterministic fast path (no LLM)."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "What services do you offer?", None, "127.0.0.1")
+        assert r1["intent"] == "services"
+        token = r1["session_token"]
+        # Should get a deterministic reply asking for name
+        assert r1["reply"]
+        assert "name" in r1["reply"].lower()
+        assert r1["used_llm"] is False
+
+        # Provide name
+        r2 = await cg.run_concierge_turn(db, "My name is Dave Wilson", token, "127.0.0.1")
+        assert r2["reply"]
+        assert "email" in r2["reply"].lower()
+        assert r2["used_llm"] is False
+
+        # Provide email
+        r3 = await cg.run_concierge_turn(db, "dave@example.com", token, "127.0.0.1")
+        assert r3["reply"]
+        assert "phone" in r3["reply"].lower() or "reach" in r3["reply"].lower()
+        assert r3["used_llm"] is False
+
+        # Skip phone
+        r4 = await cg.run_concierge_turn(db, "skip", token, "127.0.0.1")
+        assert r4["reply"]
+        assert r4["used_llm"] is False
+    finally:
+        if token:
+            lead = await db["customer_leads"].find_one({"email": "dave@example.com"})
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+            await db["ideas"].delete_many({"session_id": token})
+            if lead:
+                await db["customer_leads"].delete_one({"_id": lead["_id"]})
+
+
+@pytest.mark.asyncio
+async def test_universal_products_flow_live(monkeypatch):
+    """Product inquiry triggers deterministic fast path (no LLM)."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "Tell me about DocuFlow", None, "127.0.0.1")
+        assert r1["intent"] == "products"
+        token = r1["session_token"]
+        assert r1["reply"]
+        assert "name" in r1["reply"].lower()
+        assert r1["used_llm"] is False
+    finally:
+        if token:
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+
+
+@pytest.mark.asyncio
+async def test_universal_contact_request_flow_live(monkeypatch):
+    """Contact request triggers deterministic fast path (no LLM)."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "How can I contact Rajib?", None, "127.0.0.1")
+        assert r1["intent"] == "contact"
+        token = r1["session_token"]
+        assert r1["reply"]
+        assert "name" in r1["reply"].lower()
+        assert r1["used_llm"] is False
+    finally:
+        if token:
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+
+
+@pytest.mark.asyncio
+async def test_universal_technical_flow_live(monkeypatch):
+    """Technical question triggers deterministic fast path (no LLM)."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "How would you architect a microservices system?", None, "127.0.0.1")
+        token = r1["session_token"]
+        # Technical questions should trigger capture
+        assert r1["reply"]
+        assert "name" in r1["reply"].lower()
+        assert r1["used_llm"] is False
+    finally:
+        if token:
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+
+
+@pytest.mark.asyncio
+async def test_universal_batch_input_all_fields_live(monkeypatch):
+    """Batch all contact fields in one message during universal capture."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "What services do you offer?", None, "127.0.0.1")
+        token = r1["session_token"]
+
+        # Provide all fields at once
+        r2 = await cg.run_concierge_turn(
+            db, "My name is Eve, email eve@test.com, phone +1 555 111 2222",
+            token, "127.0.0.1")
+        assert r2["reply"]
+        assert r2["used_llm"] is False
+    finally:
+        if token:
+            lead = await db["customer_leads"].find_one({"email": "eve@test.com"})
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+            await db["ideas"].delete_many({"session_id": token})
+            if lead:
+                await db["customer_leads"].delete_one({"_id": lead["_id"]})
+
+
+@pytest.mark.asyncio
+async def test_universal_contact_request_name_capture_live(monkeypatch):
+    """Contact request triggers name capture as first step."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "How can I contact Rajib?", None, "127.0.0.1")
+        assert r1["intent"] == "contact"
+        token = r1["session_token"]
+        # Should ask for name
+        assert "name" in r1["reply"].lower()
+        assert r1["used_llm"] is False
+
+        # Provide name
+        r2 = await cg.run_concierge_turn(db, "My name is Frank Lee", token, "127.0.0.1")
+        assert "email" in r2["reply"].lower()
+        assert r2["used_llm"] is False
+    finally:
+        if token:
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+
+
+@pytest.mark.asyncio
+async def test_universal_phone_decline_live(monkeypatch):
+    """User can decline phone by saying 'skip' during universal capture."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "What services do you offer?", None, "127.0.0.1")
+        token = r1["session_token"]
+
+        r2 = await cg.run_concierge_turn(db, "Grace Park", token, "127.0.0.1")
+        r3 = await cg.run_concierge_turn(db, "grace@test.com", token, "127.0.0.1")
+        r4 = await cg.run_concierge_turn(db, "no", token, "127.0.0.1")
+        assert r4["reply"]
+        assert r4["used_llm"] is False
+    finally:
+        if token:
+            lead = await db["customer_leads"].find_one({"email": "grace@test.com"})
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+            await db["ideas"].delete_many({"session_id": token})
+            if lead:
+                await db["customer_leads"].delete_one({"_id": lead["_id"]})
+
+
+@pytest.mark.asyncio
+async def test_universal_existing_lead_skip_stages_live(monkeypatch):
+    """Existing lead fields cause stage skipping during universal capture."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        # First create a lead with name and email
+        r1 = await cg.run_concierge_turn(
+            db, "I want to build an app", None, "127.0.0.1")
+        token = r1["session_token"]
+        r2 = await cg.run_concierge_turn(db, "My name is Test User", token, "127.0.0.1")
+        r3 = await cg.run_concierge_turn(db, "test@example.com", token, "127.0.0.1")
+        r4 = await cg.run_concierge_turn(db, "skip", token, "127.0.0.1")
+
+        # Now start a new session with the same email
+        r5 = await cg.run_concierge_turn(
+            db, "What services do you offer?", None, "127.0.0.1")
+        token2 = r5["session_token"]
+        # Should ask for name
+        assert "name" in r5["reply"].lower()
+
+        # Provide name
+        r6 = await cg.run_concierge_turn(db, "My name is Test User", token2, "127.0.0.1")
+        # Should ask for email
+        assert "email" in r6["reply"].lower()
+
+        # Provide email (same as existing lead)
+        r7 = await cg.run_concierge_turn(db, "test@example.com", token2, "127.0.0.1")
+        # Should skip to phone (existing email matched)
+        assert "phone" in r7["reply"].lower() or "reach" in r7["reply"].lower()
+        assert r7["used_llm"] is False
+    finally:
+        if token:
+            await db["customer_messages"].delete_many({"session_token": token})
+            await db["customer_conversations"].delete_many({"session_token": token})
+            await db["ideas"].delete_many({"session_id": token})
+        if token2:
+            await db["customer_messages"].delete_many({"session_token": token2})
+            await db["customer_conversations"].delete_many({"session_token": token2})
+            await db["ideas"].delete_many({"session_id": token2})
+        lead = await db["customer_leads"].find_one({"email": "test@example.com"})
+        if lead:
+            await db["customer_leads"].delete_one({"_id": lead["_id"]})
+
+
+@pytest.mark.asyncio
+async def test_universal_project_detail_flow_live(monkeypatch):
+    """Project detail inquiry triggers deterministic fast path (no LLM)."""
+    from app.services import concierge as cg
+    from app.services.lead_ai import AIService
+    db = await _live_db()
+
+    async def _boom(*a, **k):
+        raise AssertionError("LLM must not be called on capture fast path")
+
+    monkeypatch.setattr(AIService, "_complete", _boom)
+    token = None
+    try:
+        r1 = await cg.run_concierge_turn(
+            db, "Tell me about PestFlow", None, "127.0.0.1")
+        token = r1["session_token"]
+        assert r1["reply"]
+        assert "name" in r1["reply"].lower()
+        assert r1["used_llm"] is False
     finally:
         if token:
             await db["customer_messages"].delete_many({"session_token": token})
