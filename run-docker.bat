@@ -7,6 +7,7 @@ title RajibLabs Platform - Docker
 ::  Runs the FULL stack in containers via Docker Compose:
 ::    frontend    React PWA (nginx)       http://localhost:5010
 ::    ai-api      FastAPI + Mongo (API)   http://localhost:8090
+::    mcp         MCP Content Intelligence http://localhost:8100
 ::    mongo       MongoDB 7               localhost:27017
 ::
 ::  Usage:
@@ -199,6 +200,7 @@ echo    Stack is running!
 echo  ==========================================================================
 echo    Frontend   : http://localhost:5010  (PWA + nginx routes /api/*)
 echo    API        : http://localhost:8090  (FastAPI: public CMS, admin, AI, chat)
+echo    MCP        : http://localhost:8100  (Content Intelligence Platform)
 echo    API Docs   : http://localhost:8090/docs  (dev only)
 echo    MongoDB    : localhost:27017  (db: rajiblabs)
 echo  --------------------------------------------------------------------------
@@ -216,6 +218,8 @@ timeout /t 2 /nobreak >nul
 start "" "http://localhost:5010"
 timeout /t 1 /nobreak >nul
 start "" "http://localhost:8090/docs"
+timeout /t 1 /nobreak >nul
+start "" "http://localhost:8100/docs"
 echo  Done. Keep containers running with Docker Desktop, or run 'run-docker.bat down'.
 pause
 exit /b 0
@@ -264,7 +268,8 @@ echo  run-docker.bat down     Stop + remove containers (mongo data KEPT)
 echo  run-docker.bat help     Show this help
 echo.
 echo  URLs after start:
-echo    Frontend  http://localhost:5010   (API :8090, Mongo :27017)
+echo    Frontend  http://localhost:5010   (API :8090, MCP :8100, Mongo :27017)
+echo    MCP Docs  http://localhost:8100/docs
 echo.
 echo  First run: .env is auto-created from .env.example - fill secrets!
 echo.
