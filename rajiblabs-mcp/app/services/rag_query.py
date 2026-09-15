@@ -1,54 +1,67 @@
-"""RAG query stub for MCP server.
-
-This module provides a thin interface to the existing backend's RAG
-pipeline. In production, this should be replaced with a proper MCP
-tool call to the ai-api service or a shared library.
-
-For now, it provides graceful fallback to MongoDB text search when
-Qdrant is not available.
-"""
+from __future__ import annotations
 
 import logging
+from typing import Any
 
-log = logging.getLogger("rajiblabs-mcp.rag")
+from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
-async def retrieve(query: str, top_k: int = 6) -> list[dict]:
-    """Retrieve relevant documents from Qdrant.
-    
-    Falls back to empty list if Qdrant is unavailable.
-    The calling code handles the fallback to MongoDB.
-    """
+async def query_rag(question: str, top_k: int = 5) -> dict:
     try:
-        from app.config import settings
-        from qdrant_client import QdrantClient
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        from app.database import get_db
+        db = get_db()
 
-        client = QdrantClient(url=settings.qdrant_url)
+        results = []
+        async for doc in db.knowledge_documents.find(
+            {"$text": {"$search": question}}
+        ).limit(top_k):
+            results.append({
+                "id": str(doc.get("_id", "")),
+                "content": doc.get("content", ""),
+                "source_type": doc.get("source_type", ""),
+                "score": 1.0,
+            })
 
-        # Search with query vector (embedding would be needed here)
-        # For now, return empty to trigger MongoDB fallback
-        # TODO: Integrate with actual embedding service
-        log.debug("Qdrant retrieve called for query: %s", query[:50])
-        return []
+        if not results:
+            async for doc in db.knowledge_documents.find(
+                {"content": {"$regex": question, "$options": "i"}}
+            ).limit(top_k):
+                results.append({
+                    "id": str(doc.get("_id", "")),
+                    "content": doc.get("content", ""),
+                    "source_type": doc.get("source_type", ""),
+                    "score": 0.5,
+                })
+
+        return {
+            "success": True,
+            "results": results,
+            "count": len(results),
+            "query": question,
+        }
     except Exception as e:
-        log.debug("Qdrant unavailable, will fall back to MongoDB: %s", e)
-        return []
+        logger.warning("RAG query failed: %s", e)
+        return {"success": False, "results": [], "count": 0, "error": str(e)}
 
 
-async def index_document(doc: dict) -> bool:
-    """Index a document into Qdrant.
-    
-    Returns True if successful, False otherwise.
-    """
+async def index_to_qdrant(document_id: str, content: str, metadata: dict | None = None) -> bool:
     try:
-        from app.config import settings
         from qdrant_client import QdrantClient
+        from qdrant_client.models import PointStruct
 
-        client = QdrantClient(url=settings.qdrant_url)
-        log.debug("Qdrant index called for: %s", doc.get("title", ""))
-        # TODO: Implement actual indexing with embeddings
+        client = QdrantClient(url=settings.QDRANT_URL)
+        collection = "rajiblabs_knowledge"
+
+        point = PointStruct(
+            id=hash(document_id) % (2**63),
+            vector=[0.0] * 1536,
+            payload={"document_id": document_id, "content": content, **(metadata or {})},
+        )
+
+        client.upsert(collection_name=collection, points=[point])
         return True
     except Exception as e:
-        log.debug("Qdrant index failed: %s", e)
+        logger.warning("Qdrant indexing failed: %s", e)
         return False

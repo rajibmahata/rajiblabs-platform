@@ -1,49 +1,38 @@
-"""MCP server configuration."""
-
 from pydantic_settings import BaseSettings
 
 
 class MCPSettings(BaseSettings):
-    """MCP server settings loaded from environment variables."""
+    APP_ENV: str = "development"
+    DEBUG: bool = False
 
-    # App
-    app_name: str = "rajiblabs-mcp"
-    app_env: str = "development"
-    debug: bool = False
+    DATABASE_URL: str = "mongodb://localhost:27017/rajiblabs"
+    MONGO_DB_NAME: str = "rajiblabs"
 
-    # Database
-    database_url: str = "mongodb://localhost:27017/rajiblabs"
-    mongo_db_name: str = "rajiblabs"
+    QDRANT_URL: str = "http://localhost:6333"
 
-    # Qdrant
-    qdrant_url: str = "http://localhost:6333"
-    qdrant_collection: str = "rajiblabs_knowledge"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
-    # GitHub
-    github_owner: str = "rajib-mahata"
-    github_token: str = ""
+    GITHUB_OWNER: str = "rajibmahata"
+    GITHUB_TOKEN: str = ""
 
-    # AI
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
 
-    # MCP Server
-    mcp_host: str = "0.0.0.0"
-    mcp_port: int = 8100
-    mcp_workers: int = 1
+    MCP_HOST: str = "0.0.0.0"
+    MCP_PORT: int = 8100
+    MCP_TRANSPORT: str = "sse"
 
-    # Auth
-    mcp_api_key: str = ""
-    admin_api_key: str = ""
+    MCP_API_KEY: str = ""
+    ADMIN_API_KEY: str = ""
 
-    # Logging
-    log_level: str = "INFO"
+    LOG_LEVEL: str = "INFO"
+    ENABLE_AUDIT_LOG: bool = True
+    ENABLE_TOOL_METRICS: bool = True
 
-    # Observability
-    enable_audit_log: bool = True
-    enable_tool_metrics: bool = True
+    CACHE_TTL_SECONDS: int = 300
+    CACHE_ENABLED: bool = True
 
-    model_config = {"env_prefix": "MCP_", "env_file": ".env"}
+    model_config = {"env_prefix": "MCP_", "env_file": ".env", "extra": "ignore"}
 
 
 settings = MCPSettings()

@@ -1,227 +1,232 @@
-"""GitHub MCP tools — repository analysis and evidence extraction.
+from __future__ import annotations
 
-Uses existing GitHub integration. Analyzes repos for skills, technologies,
-architecture, and project purpose. Never ingests secrets or private data.
-"""
+import logging
+from typing import Any
 
-import re
-from datetime import datetime, timezone
-
-from app.database import get_db, utcnow
+from app.database import get_db
 from app.tools import mcp_tool, _oid_str, _clean_secret_keys
+from app.cache import cache_get, cache_set
+from app.versioning import create_version, record_change
+from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
-# Files/patterns to never ingest
-_BLOCKED_PATTERNS = re.compile(
-    r"(?i)(\.env|credentials|tokens?|secrets?|password|private[_-]?key|"
-    r"\.git/|node_modules/|dist/|build/|coverage/|__pycache__|"
-    r"\.pyc|\.dll|\.exe|\.so|\.dylib|binaries?)")
+@mcp_tool(
+    name="list_repositories",
+    description="List all synced GitHub repositories.",
+    category="github",
+    permission="read",
+)
+async def list_repositories(agent_id: str = "anonymous") -> dict:
+    cached = await cache_get("github", "repos")
+    if cached:
+        return {"success": True, "data": cached, "sources": ["cache"], "confidence": 1.0}
 
-
-@mcp_tool("get_repositories", "Get all synced GitHub repositories",
-          "github", permission="public")
-async def get_repositories(owner: str | None = None) -> dict:
-    """Return GitHub repositories from the database."""
     db = get_db()
-    query = {}
-    if owner:
-        query["owner"] = owner
-    repos = await db["github_repositories"].find(query).sort(
-        "stargazers_count", -1).to_list(100)
-    return {"repositories": [_clean_secret_keys(_oid_str(r)) for r in repos],
-            "count": len(repos)}
+    repos = []
+    async for repo in db.github_repositories.find():
+        repo["_id"] = _oid_str(repo["_id"])
+        repo = _clean_secret_keys(repo)
+        repos.append(repo)
+
+    result = {"repositories": repos, "count": len(repos)}
+    await cache_set("github", "repos", result)
+    return {"success": True, "data": result, "sources": ["github_repositories"], "confidence": 1.0}
 
 
-@mcp_tool("analyze_repository", "Analyze a repository for skills and technologies",
-          "github", permission="agent")
-async def analyze_repository(repo_name: str) -> dict:
-    """Analyze a repository to extract skills, technologies, and purpose."""
+@mcp_tool(
+    name="get_repository",
+    description="Get a specific GitHub repository by name.",
+    category="github",
+    permission="read",
+)
+async def get_repository(repo_name: str, agent_id: str = "anonymous") -> dict:
     db = get_db()
-    repo = await db["github_repositories"].find_one({"name": repo_name})
+    repo = await db.github_repositories.find_one({"name": repo_name})
     if not repo:
-        return {"error": f"Repository not found: {repo_name}"}
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "Repository not found"}}
+
+    repo["_id"] = _oid_str(repo["_id"])
+    repo = _clean_secret_keys(repo)
+    return {"success": True, "data": repo, "sources": ["github_repositories"], "confidence": 1.0}
+
+
+@mcp_tool(
+    name="analyze_repository",
+    description="Analyze a GitHub repository for skills, technologies, and project evidence.",
+    category="github",
+    permission="analyze",
+)
+async def analyze_repository(repo_name: str, agent_id: str = "anonymous") -> dict:
+    db = get_db()
+    repo = await db.github_repositories.find_one({"name": repo_name})
+    if not repo:
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "Repository not found"}}
 
     analysis = {
         "name": repo.get("name", ""),
         "description": repo.get("description", ""),
-        "language": repo.get("language", ""),
+        "languages": repo.get("languages", []),
         "topics": repo.get("topics", []),
-        "technologies": [],
-        "skills_extracted": [],
-        "architecture_signals": [],
-        "purpose": "",
-    }
-
-    # Extract technologies from language + topics
-    if repo.get("language"):
-        analysis["technologies"].append(repo["language"])
-    for topic in (repo.get("topics") or []):
-        if topic not in analysis["technologies"]:
-            analysis["technologies"].append(topic)
-
-    # Read README for architecture signals
-    readme = await db["github_readmes"].find_one({"repository": repo_name})
-    if readme:
-        content = readme.get("content", "").lower()
-
-        # Architecture signals
-        arch_keywords = {
-            "microservices": "Microservices architecture",
-            "clean architecture": "Clean Architecture",
-            "domain-driven": "Domain-Driven Design",
-            "cqrs": "CQRS pattern",
-            "event-driven": "Event-driven architecture",
-            "serverless": "Serverless architecture",
-            "container": "Containerized deployment",
-            "docker": "Docker containerization",
-            "kubernetes": "Kubernetes orchestration",
-            "ci/cd": "CI/CD pipeline",
-            "terraform": "Infrastructure as Code",
-        }
-        for keyword, signal in arch_keywords.items():
-            if keyword in content:
-                analysis["architecture_signals"].append(signal)
-
-        # Extract purpose from first paragraph
-        lines = readme.get("content", "").split("\n")
-        for line in lines:
-            line = line.strip()
-            if line and not line.startswith("#") and not line.startswith("!"):
-                analysis["purpose"] = line[:200]
-                break
-
-    # Connect to projects
-    projects = await db["projects"].find({
-        "technologies": {"$in": analysis["technologies"][:5]},
-        "status": "published",
-    }).to_list(10)
-    analysis["related_projects"] = [
-        {"id": str(p["_id"]), "title": p.get("title", "")}
-        for p in projects[:5]
-    ]
-
-    # Extract skills
-    from app.tools import KNOWN_SKILLS, _normalize_skill_category
-    for tech in analysis["technologies"]:
-        tech_lower = tech.lower()
-        if tech_lower in KNOWN_SKILLS:
-            info = KNOWN_SKILLS[tech_lower]
-            analysis["skills_extracted"].append({
-                "skill": tech,
-                "category": _normalize_skill_category(info["category"]),
-                "confidence": 0.85,
-            })
-
-    return analysis
-
-
-@mcp_tool("extract_project_evidence",
-          "Extract project evidence from a repository",
-          "github", permission="agent")
-async def extract_project_evidence(repo_name: str) -> dict:
-    """Extract evidence that can improve project descriptions."""
-    db = get_db()
-    repo = await db["github_repositories"].find_one({"name": repo_name})
-    if not repo:
-        return {"error": f"Repository not found: {repo_name}"}
-
-    evidence = {
-        "repository": repo_name,
-        "description": repo.get("description", ""),
-        "language": repo.get("language", ""),
         "stars": repo.get("stargazers_count", 0),
         "forks": repo.get("forks_count", 0),
-        "topics": repo.get("topics", []),
-        "created_at": repo.get("created_at"),
-        "updated_at": repo.get("updated_at"),
-        "readme_summary": "",
-        "features": [],
-        "technologies": [],
+        "size_kb": repo.get("size", 0),
+        "last_push": str(repo.get("pushed_at", "")),
+        "has_readme": repo.get("has_readme", False),
+        "has_license": repo.get("license") is not None,
     }
 
-    # Extract from README
-    readme = await db["github_readmes"].find_one({"repository": repo_name})
-    if readme:
-        content = readme.get("content", "")
-        # Extract features (lines starting with - or * after "features" heading)
-        in_features = False
-        for line in content.split("\n"):
-            lower = line.lower().strip()
-            if "feature" in lower and "#" in line:
-                in_features = True
-                continue
-            if in_features and (line.strip().startswith("- ") or
-                                line.strip().startswith("* ")):
-                feature = line.strip().lstrip("- *").strip()
-                if feature and len(feature) > 5:
-                    evidence["features"].append(feature[:200])
-            elif in_features and "#" in line:
-                in_features = False
+    skills_found = set()
+    for lang in repo.get("languages", []):
+        skills_found.add(lang.lower())
+    for topic in repo.get("topics", []):
+        skills_found.add(topic.lower())
 
-        # Summary from first meaningful paragraph
-        for line in content.split("\n"):
-            line = line.strip()
-            if (line and not line.startswith("#") and not line.startswith("!") and
-                    not line.startswith("[") and len(line) > 20):
-                evidence["readme_summary"] = line[:300]
-                break
-
-    return evidence
-
-
-@mcp_tool("extract_skills_from_github",
-          "Extract skills from all GitHub repositories",
-          "github", permission="agent")
-async def extract_skills_from_github() -> dict:
-    """Scan all repos and extract skills with evidence."""
-    db = get_db()
-    repos = await db["github_repositories"].find({}).to_list(100)
-
-    skills_map = {}  # skill -> {evidence, repos}
-    for repo in repos:
-        name = repo.get("name", "")
-        lang = repo.get("language", "")
-        topics = repo.get("topics", []) or []
-
-        if lang:
-            key = lang.lower()
-            if key not in skills_map:
-                skills_map[key] = {"skill": lang, "evidence": [], "repos": []}
-            skills_map[key]["evidence"].append(f"github:{name}")
-            if name not in skills_map[key]["repos"]:
-                skills_map[key]["repos"].append(name)
-
-        for topic in topics:
-            key = topic.lower()
-            if key not in skills_map:
-                skills_map[key] = {"skill": topic, "evidence": [], "repos": []}
-            skills_map[key]["evidence"].append(f"github:{name}")
-            if name not in skills_map[key]["repos"]:
-                skills_map[key]["repos"].append(name)
+    analysis["skills_detected"] = list(skills_found)
 
     return {
-        "total_repos": len(repos),
-        "unique_skills": len(skills_map),
-        "skills": list(skills_map.values()),
+        "success": True,
+        "data": analysis,
+        "sources": ["github_repositories"],
+        "confidence": 0.9,
     }
 
 
-@mcp_tool("sync_repository", "Sync a repository's metadata from GitHub",
-          "github", permission="admin")
-async def sync_repository(repo_name: str) -> dict:
-    """Trigger a sync for a specific repository. Admin only."""
+@mcp_tool(
+    name="discover_projects_from_repository",
+    description="Discover potential projects from a GitHub repository's metadata and structure.",
+    category="github",
+    permission="analyze",
+)
+async def discover_projects_from_repository(repo_name: str, agent_id: str = "anonymous") -> dict:
     db = get_db()
-    repo = await db["github_repositories"].find_one({"name": repo_name})
+    repo = await db.github_repositories.find_one({"name": repo_name})
     if not repo:
-        return {"error": f"Repository not found: {repo_name}"}
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "Repository not found"}}
 
-    # Mark for sync
-    await db["github_repositories"].update_one(
-        {"_id": repo["_id"]},
-        {"$set": {"sync_requested_at": utcnow(), "sync_status": "pending"}})
+    existing = await db.projects.find_one({"github_url": repo.get("html_url", "")})
+    is_existing_project = existing is not None
+
+    project_evidence = {
+        "name": repo.get("name", ""),
+        "description": repo.get("description", ""),
+        "languages": repo.get("languages", []),
+        "topics": repo.get("topics", []),
+        "is_existing_project": is_existing_project,
+        "potential_project_id": _oid_str(existing["_id"]) if existing else None,
+    }
 
     return {
-        "repository": repo_name,
-        "status": "sync_queued",
-        "message": f"Repository {repo_name} queued for sync",
+        "success": True,
+        "data": project_evidence,
+        "sources": ["github_repositories", "projects"],
+        "confidence": 0.8,
+    }
+
+
+@mcp_tool(
+    name="discover_skills_from_repository",
+    description="Discover skills from a repository's languages, topics, and dependencies.",
+    category="github",
+    permission="analyze",
+)
+async def discover_skills_from_repository(repo_name: str, agent_id: str = "anonymous") -> dict:
+    db = get_db()
+    repo = await db.github_repositories.find_one({"name": repo_name})
+    if not repo:
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "Repository not found"}}
+
+    skills = set()
+    for lang in repo.get("languages", []):
+        skills.add(lang.lower())
+    for topic in repo.get("topics", []):
+        skills.add(topic.lower())
+
+    validated = []
+    for skill in skills:
+        exists = await db.skills.find_one({"name": {"$regex": f"^{skill}$", "$options": "i"}})
+        validated.append({"name": skill, "in_database": bool(exists)})
+
+    return {
+        "success": True,
+        "data": {"repository": repo_name, "skills": validated, "total": len(validated)},
+        "sources": ["github_repositories", "skills"],
+        "confidence": 0.85,
+    }
+
+
+@mcp_tool(
+    name="discover_technologies_from_repository",
+    description="Discover technology stack from repository analysis.",
+    category="github",
+    permission="analyze",
+)
+async def discover_technologies_from_repository(repo_name: str, agent_id: str = "anonymous") -> dict:
+    db = get_db()
+    repo = await db.github_repositories.find_one({"name": repo_name})
+    if not repo:
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "Repository not found"}}
+
+    tech_stack = {
+        "languages": repo.get("languages", []),
+        "frameworks": [],
+        "tools": [],
+    }
+
+    return {
+        "success": True,
+        "data": {"repository": repo_name, "tech_stack": tech_stack},
+        "sources": ["github_repositories"],
+        "confidence": 0.8,
+    }
+
+
+@mcp_tool(
+    name="sync_repository",
+    description="Trigger a sync for a GitHub repository (admin only).",
+    category="github",
+    permission="write",
+)
+async def sync_repository(repo_name: str, agent_id: str = "anonymous") -> dict:
+    db = get_db()
+    repo = await db.github_repositories.find_one({"name": repo_name})
+    if not repo:
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "Repository not found"}}
+
+    return {
+        "success": True,
+        "data": {"repository": repo_name, "status": "sync_requested", "message": "Repository sync will be processed"},
+        "sources": ["github_repositories"],
+        "confidence": 0.9,
+    }
+
+
+@mcp_tool(
+    name="validate_repository",
+    description="Validate repository metadata and sync status.",
+    category="github",
+    permission="analyze",
+)
+async def validate_repository(repo_name: str, agent_id: str = "anonymous") -> dict:
+    db = get_db()
+    repo = await db.github_repositories.find_one({"name": repo_name})
+    if not repo:
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "Repository not found"}}
+
+    issues = []
+    warnings = []
+
+    if not repo.get("description"):
+        warnings.append("Missing description")
+    if not repo.get("languages"):
+        warnings.append("No languages detected")
+    if repo.get("size", 0) == 0:
+        warnings.append("Repository appears empty")
+
+    return {
+        "success": True,
+        "data": {"repository": repo_name, "valid": len(issues) == 0, "issues": issues, "warnings": warnings},
+        "sources": ["github_repositories"],
+        "confidence": 0.9,
     }

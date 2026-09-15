@@ -4,12 +4,13 @@
 #  Services:
 #    frontend   React PWA (nginx)          http://localhost:5010
 #    ai-api     FastAPI + Mongo (all API)  http://localhost:8090  (/api/*, /health)
-#    mcp        MCP Content Intelligence   http://localhost:8100  (/api/mcp/*, /health, /tools)
+#    mcp        MCP Content Intelligence   http://localhost:8100  (REST API + MCP SSE)
 #    mongo      MongoDB 7 for ai-api       localhost:27017
 #    qdrant     Vector index for RAG       localhost:6333 (graceful fallback when down)
+#    redis      Cache layer for MCP        localhost:6379
 #
 #  Single backend: FastAPI serves every /api/* route (see frontend/nginx.conf).
-#  MCP layer: Reusable tool interface for content intelligence.
+#  MCP layer: Official MCP SDK + REST API for content intelligence.
 # ═══════════════════════════════════════════════════════════════════
 
 services:
@@ -30,6 +31,20 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+
+  redis:
+    image: redis:7-alpine
+    container_name: rajiblabs-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   ai-api:
     build: ./rajiblabs-ai-backend
@@ -57,21 +72,30 @@ services:
     environment:
       MCP_APP_ENV: development
       MCP_DATABASE_URL: mongodb://mongo:27017/rajiblabs
+      MCP_MONGO_DB_NAME: rajiblabs
       MCP_QDRANT_URL: http://qdrant:6333
+      MCP_REDIS_URL: redis://redis:6379/0
       MCP_MCP_PORT: "8100"
+      MCP_MCP_TRANSPORT: sse
       MCP_LOG_LEVEL: INFO
+      MCP_CACHE_ENABLED: "true"
+      MCP_CACHE_TTL_SECONDS: "300"
     env_file:
       - path: ./rajiblabs-mcp/.env
         required: false
     depends_on:
-      - mongo
-      - qdrant
+      mongo:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
   frontend:
     build: ./frontend
@@ -85,3 +109,4 @@ services:
 volumes:
   mongo_data:
   qdrant_data:
+  redis_data:

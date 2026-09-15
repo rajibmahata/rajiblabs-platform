@@ -1,76 +1,54 @@
-"""MongoDB connection for MCP server."""
+from __future__ import annotations
 
-from datetime import datetime, timezone
+import logging
+from typing import Any
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 _client: AsyncIOMotorClient | None = None
-_db = None
+_db: AsyncIOMotorDatabase | None = None
 
 
-async def connect_db():
-    """Initialize MongoDB connection."""
+async def connect_db() -> None:
     global _client, _db
-    if _client is None:
-        _client = AsyncIOMotorClient(settings.database_url)
-        _db = _client[settings.mongo_db_name]
-    return _db
+    _client = AsyncIOMotorClient(settings.DATABASE_URL)
+    _db = _client[settings.MONGO_DB_NAME]
+    await _ensure_indexes()
+    logger.info("MongoDB connected: %s", settings.MONGO_DB_NAME)
 
 
-async def close_db():
-    """Close MongoDB connection."""
+async def disconnect_db() -> None:
     global _client, _db
     if _client:
         _client.close()
         _client = None
         _db = None
+        logger.info("MongoDB disconnected")
 
 
-def get_db():
-    """Get the database instance."""
+def get_db() -> AsyncIOMotorDatabase:
     if _db is None:
-        raise RuntimeError("Database not initialized. Call connect_db() first.")
+        raise RuntimeError("Database not initialized")
     return _db
 
 
-def utcnow() -> datetime:
-    """Current UTC time."""
-    return datetime.now(timezone.utc)
-
-
-async def ensure_indexes():
-    """Create indexes for MCP collections."""
+async def _ensure_indexes() -> None:
     db = get_db()
-
-    # Tool usage audit log
-    await db["mcp_audit_log"].create_index(
-        [("tool", 1), ("started_at", -1)], background=True)
-    await db["mcp_audit_log"].create_index(
-        [("agent", 1), ("started_at", -1)], background=True)
-    await db["mcp_audit_log"].create_index(
-        [("status", 1), ("started_at", -1)], background=True)
-
-    # Content versions
-    await db["content_versions"].create_index(
-        [("entity_type", 1), ("entity_id", 1), ("version", -1)],
-        background=True)
-    await db["content_versions"].create_index(
-        [("created_at", -1)], background=True)
-
-    # MCP tool registry
-    await db["mcp_tools"].create_index(
-        [("name", 1)], unique=True, background=True)
-
-    # Skill evidence
-    await db["skill_evidence"].create_index(
-        [("skill", 1), ("category", 1)], background=True)
-    await db["skill_evidence"].create_index(
-        [("confidence", -1)], background=True)
-
-    # Content intelligence
-    await db["content_intelligence"].create_index(
-        [("entity_type", 1), ("entity_id", 1)], background=True)
-    await db["content_intelligence"].create_index(
-        [("last_analyzed", -1)], background=True)
+    await db.mcp_audit_log.create_index([("timestamp", -1)])
+    await db.mcp_audit_log.create_index([("tool_name", 1)])
+    await db.mcp_audit_log.create_index([("agent_id", 1)])
+    await db.content_versions.create_index([("entity_type", 1), ("entity_id", 1)])
+    await db.content_versions.create_index([("created_at", -1)])
+    await db.content_changes.create_index([("entity_type", 1), ("entity_id", 1)])
+    await db.content_changes.create_index([("created_at", -1)])
+    await db.content_relationships.create_index([("source_type", 1), ("source_id", 1)])
+    await db.content_relationships.create_index([("target_type", 1), ("target_id", 1)])
+    await db.skill_evidence.create_index([("skill_name", 1)])
+    await db.skill_evidence.create_index([("source_type", 1), ("source_id", 1)])
+    await db.mcp_tool_usage.create_index([("tool_name", 1)])
+    await db.mcp_tool_usage.create_index([("timestamp", -1)])
+    logger.info("MCP indexes created")

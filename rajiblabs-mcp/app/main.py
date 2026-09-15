@@ -1,111 +1,87 @@
-"""RajibLabs MCP Content Intelligence Platform — Server Entry Point.
+"""RajibLabs Content Intelligence MCP Server — main entry point.
 
-A reusable, Dockerized MCP layer that allows RajibLabs agents to
-intelligently manage, validate, organize, refine, and continuously
-improve profile, portfolio, projects, products, skills, GitHub knowledge,
-SEO content, and RAG knowledge.
-
-Architecture:
-  MongoDB = Source of Truth
-  Qdrant = Retrieval Layer
-  MCP = Controlled Tool Interface
-  Agents = Reasoning + Orchestration
-  FastAPI = Application/API Layer
+Uses the official MCP Python SDK (v2.x) with MCPServer.
+Exposes tools via SSE transport for agent integration.
 """
 
-import logging
-from contextlib import asynccontextmanager
+from __future__ import annotations
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import logging
+import sys
+import time
+from contextlib import asynccontextmanager
+from typing import Any
 
 from app.config import settings
-from app.database import connect_db, close_db, ensure_indexes
+from app.database import connect_db, disconnect_db
+from app.redis import connect_redis, disconnect_redis
+from app.tools import TOOL_REGISTRY
 
 logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-log = logging.getLogger("rajiblabs-mcp")
+logger = logging.getLogger("rajiblabs-mcp")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Startup/shutdown lifecycle."""
-    log.info("Starting RajibLabs MCP Content Intelligence Platform...")
+async def lifespan(server: Any):
+    logger.info("Starting RajibLabs Content Intelligence MCP v2.0.0")
     await connect_db()
-    await ensure_indexes()
-    log.info("MCP server ready — %s tools registered",
-             _count_tools())
+    await connect_redis()
+    logger.info("MCP server ready — %d tools registered", len(TOOL_REGISTRY))
     yield
-    log.info("Shutting down MCP server...")
-    await close_db()
+    await disconnect_redis()
+    await disconnect_db()
+    logger.info("MCP server stopped")
 
 
-def _count_tools() -> int:
-    """Count registered MCP tools."""
-    count = 0
-    import inspect
-    import app.tools.profile
-    import app.tools.project
-    import app.tools.skill
-    import app.tools.github
-    import app.tools.knowledge
-    import app.tools.seo
-    import app.tools.content
-    for module in [app.tools.profile, app.tools.project, app.tools.skill,
-                   app.tools.github, app.tools.knowledge, app.tools.seo,
-                   app.tools.content]:
-        for name, obj in inspect.getmembers(module, inspect.iscoroutinefunction):
-            if hasattr(obj, "_mcp_tool_name"):
-                count += 1
-    return count
+def _build_mcp_server():
+    from mcp.server.mcpserver import MCPServer
+
+    server = MCPServer(
+        name="rajiblabs-mcp",
+        version="2.0.0",
+        lifespan=lifespan,
+    )
+
+    for tool_name, tool_info in TOOL_REGISTRY.items():
+        fn = tool_info["function"]
+        server.add_tool(
+            fn,
+            name=tool_name,
+            title=tool_name.replace("_", " ").title(),
+            description=tool_info["description"],
+        )
+
+    return server
 
 
-app = FastAPI(
-    title="RajibLabs MCP Content Intelligence Platform",
-    description=(
-        "Dockerized MCP (Model Context Protocol) layer for intelligent "
-        "content management across profile, portfolio, projects, skills, "
-        "GitHub, knowledge, and SEO."
-    ),
-    version="1.0.0",
-    lifespan=lifespan,
-)
-
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Register routers
-from app.routers import (
-    health_router, profile_router, project_router,
-    skill_router, github_router, knowledge_router,
-    seo_router, content_router, audit_router,
-)
-
-app.include_router(health_router)
-app.include_router(profile_router)
-app.include_router(project_router)
-app.include_router(skill_router)
-app.include_router(github_router)
-app.include_router(knowledge_router)
-app.include_router(seo_router)
-app.include_router(content_router)
-app.include_router(audit_router)
+mcp_server = _build_mcp_server()
 
 
-@app.get("/")
-async def root():
-    return {
-        "service": "rajiblabs-mcp",
-        "version": "1.0.0",
-        "description": "RajibLabs MCP Content Intelligence Platform",
-        "tools": _count_tools(),
-        "docs": "/docs",
-    }
+async def main():
+    if settings.MCP_TRANSPORT == "sse":
+        await mcp_server.run_sse_async(
+            host=settings.MCP_HOST,
+            port=settings.MCP_PORT,
+            sse_path="/sse",
+            message_path="/messages/",
+        )
+    elif settings.MCP_TRANSPORT == "streamable-http":
+        await mcp_server.run_streamable_http_async(
+            host=settings.MCP_HOST,
+            port=settings.MCP_PORT,
+            streamable_http_path="/mcp",
+        )
+    else:
+        await mcp_server.run_stdio_async()
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Interrupted")
+        sys.exit(0)

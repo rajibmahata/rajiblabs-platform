@@ -1,200 +1,228 @@
-"""MCP tool base module with audit logging and metrics."""
+from __future__ import annotations
 
 import time
-import functools
-from datetime import datetime, timezone
+import logging
+from functools import wraps
 from typing import Any, Callable
 
-from app.database import get_db, utcnow
+from app.permissions import has_permission
+from app.audit import audit_log, record_tool_usage
+
+logger = logging.getLogger(__name__)
+
+TOOL_REGISTRY: dict[str, dict[str, Any]] = {}
 
 
-def mcp_tool(name: str, description: str, category: str,
-             permission: str = "agent", timeout_seconds: int = 30,
-             idempotent: bool = False):
-    """Decorator to register an MCP tool with audit logging."""
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            db = get_db()
-            t0 = time.time()
-            request_id = kwargs.pop("request_id", "")
-            agent = kwargs.pop("agent", "")
-            entry = {
-                "tool": name,
-                "agent": agent,
-                "request_id": request_id,
-                "started_at": utcnow(),
-                "status": "success",
-                "input_summary": str(kwargs)[:200],
-                "records_changed": 0,
-                "llm_used": False,
-                "tokens_used": 0,
-                "estimated_cost": 0.0,
-            }
+def mcp_tool(
+    name: str,
+    description: str,
+    category: str,
+    permission: str = "read",
+    timeout: float = 30.0,
+    idempotent: bool = True,
+):
+    def decorator(fn: Callable) -> Callable:
+        TOOL_REGISTRY[name] = {
+            "name": name,
+            "description": description,
+            "category": category,
+            "permission": permission,
+            "timeout": timeout,
+            "idempotent": idempotent,
+            "function": fn,
+        }
+
+        @wraps(fn)
+        async def wrapper(*args: Any, agent_id: str = "anonymous", **kwargs: Any) -> dict:
+            start = time.monotonic()
+            granted = has_permission(agent_id, name)
+
+            if not granted:
+                await audit_log(
+                    tool_name=name,
+                    agent_id=agent_id,
+                    arguments=kwargs,
+                    result={},
+                    permission_granted=False,
+                    error="permission_denied",
+                )
+                return {
+                    "success": False,
+                    "error": {
+                        "code": "PERMISSION_DENIED",
+                        "message": f"Role '{agent_id}' lacks permission for tool '{name}'",
+                    },
+                }
+
             try:
-                result = await func(*args, **kwargs)
-                entry["duration_ms"] = int((time.time() - t0) * 1000)
-                entry["completed_at"] = utcnow()
-                if isinstance(result, dict):
-                    entry["records_changed"] = result.get("_records_changed", 0)
-                    entry["llm_used"] = result.get("_llm_used", False)
-                    entry["tokens_used"] = result.get("_tokens_used", 0)
-                    entry["estimated_cost"] = result.get("_estimated_cost", 0.0)
+                result = await fn(*args, agent_id=agent_id, **kwargs)
+                duration = (time.monotonic() - start) * 1000
+                await audit_log(
+                    tool_name=name,
+                    agent_id=agent_id,
+                    arguments=kwargs,
+                    result=result if isinstance(result, dict) else {"data": result},
+                    duration_ms=duration,
+                )
+                await record_tool_usage(name, agent_id, True, duration)
                 return result
             except Exception as e:
-                entry["status"] = "error"
-                entry["error"] = str(e)[:500]
-                entry["duration_ms"] = int((time.time() - t0) * 1000)
-                entry["completed_at"] = utcnow()
-                raise
-            finally:
-                try:
-                    await db["mcp_audit_log"].insert_one(entry)
-                except Exception:
-                    pass
+                duration = (time.monotonic() - start) * 1000
+                logger.exception("Tool %s failed", name)
+                await audit_log(
+                    tool_name=name,
+                    agent_id=agent_id,
+                    arguments=kwargs,
+                    result={},
+                    duration_ms=duration,
+                    error=str(e),
+                )
+                await record_tool_usage(name, agent_id, False, duration)
+                return {
+                    "success": False,
+                    "error": {
+                        "code": "TOOL_ERROR",
+                        "message": str(e),
+                    },
+                }
 
-        # Attach metadata
         wrapper._mcp_tool_name = name
-        wrapper._mcp_description = description
-        wrapper._mcp_category = category
-        wrapper._mcp_permission = permission
-        wrapper._mcp_timeout = timeout_seconds
-        wrapper._mcp_idempotent = idempotent
+        wrapper._mcp_tool_description = description
+        wrapper._mcp_tool_category = category
+        wrapper._mcp_tool_permission = permission
+        wrapper._mcp_tool_timeout = timeout
+        wrapper._mcp_tool_idempotent = idempotent
         return wrapper
+
     return decorator
 
 
-def _oid_str(doc: dict | None) -> dict:
-    """Convert MongoDB _id to string id."""
-    if not doc:
-        return {}
-    d = dict(doc)
-    if "_id" in d:
-        d["id"] = str(d.pop("_id"))
-    return d
+def _oid_str(obj: Any) -> str | None:
+    if obj is None:
+        return None
+    if isinstance(obj, str):
+        return obj
+    from bson import ObjectId
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    return str(obj)
 
 
-def _clean_secret_keys(obj: Any) -> Any:
-    """Recursively remove secret-looking keys from output."""
+def _clean_secret_keys(data: dict) -> dict:
+    sensitive = {"password", "secret", "token", "api_key", "jwt_secret", "smtp_password"}
+    cleaned = {}
+    for k, v in data.items():
+        if any(s in k.lower() for s in sensitive):
+            cleaned[k] = "***" if v else ""
+        else:
+            cleaned[k] = v
+    return cleaned
+
+
+def _scrub_text(text: str) -> str:
     import re
-    blocked = re.compile(
-        r"(?i)(password|secret|token|api[_-]?key|jwt|credential|"
-        r"private[_-]?key|connection[_-]?string)")
-    if isinstance(obj, dict):
-        return {k: _clean_secret_keys(v) for k, v in obj.items()
-                if not blocked.search(str(k))}
-    if isinstance(obj, list):
-        return [_clean_secret_keys(v) for v in obj]
-    return obj
+    patterns = [
+        r"(?i)(password|secret|token|api_key)\s*[:=]\s*\S+",
+        r"(?i)(smtp_password|jwt_secret)\s*[:=]\s*\S+",
+    ]
+    for p in patterns:
+        text = re.sub(p, r"\1=***", text)
+    return text
 
 
-def _normalize_skill_category(raw: str) -> str:
-    """Normalize skill category names."""
+def _normalize_skill_category(category: str) -> str:
     mapping = {
-        "backend": "Backend",
-        "frontend": "Frontend",
-        "database": "Databases",
-        "databases": "Databases",
-        "cloud": "Cloud",
-        "devops": "DevOps",
-        "ai": "AI / ML",
-        "ml": "AI / ML",
-        "ai/ml": "AI / ML",
-        "agentic ai": "Agentic AI",
-        "architecture": "Architecture",
-        "api": "APIs",
-        "apis": "APIs",
-        "testing": "Testing / QA",
-        "qa": "Testing / QA",
-        "tools": "Tools",
-        "business": "Business / Domain",
-        "domain": "Business / Domain",
-        "languages": "Programming Languages",
-        "frameworks": "Frameworks",
+        "frontend": "frontend",
+        "front-end": "frontend",
+        "backend": "backend",
+        "back-end": "backend",
+        "fullstack": "fullstack",
+        "full-stack": "fullstack",
+        "full stack": "fullstack",
+        "devops": "devops",
+        "mobile": "mobile",
+        "database": "database",
+        "data": "data",
+        "ai": "ai",
+        "ml": "ai",
+        "design": "design",
+        "testing": "testing",
+        "security": "security",
+        "cloud": "cloud",
+        "other": "other",
     }
-    return mapping.get(raw.lower().strip(), raw.strip().title())
+    return mapping.get(category.lower().strip(), "other")
 
 
-# ── Known Skills Database ──
-
-KNOWN_SKILLS: dict[str, dict] = {
-    # Programming Languages
-    "c#": {"category": "Backend", "aliases": ["csharp", "c-sharp"]},
-    "python": {"category": "Backend", "aliases": ["py"]},
-    "javascript": {"category": "Frontend", "aliases": ["js"]},
-    "typescript": {"category": "Frontend", "aliases": ["ts"]},
-    "sql": {"category": "Databases", "aliases": ["tsql", "t-sql"]},
-    "powershell": {"category": "DevOps", "aliases": ["pwsh"]},
-    "bash": {"category": "DevOps", "aliases": ["shell", "sh"]},
-    "html": {"category": "Frontend", "aliases": []},
-    "css": {"category": "Frontend", "aliases": ["scss", "sass", "less"]},
-
-    # Frameworks
-    ".net": {"category": "Backend", "aliases": ["dotnet", ".net core", "aspnet", "asp.net"]},
-    "asp.net": {"category": "Backend", "aliases": ["aspnet", "aspnet core", "asp.net core"]},
-    "asp.net core": {"category": "Backend", "aliases": ["aspnet core"]},
-    "blazor": {"category": "Frontend", "aliases": []},
-    "react": {"category": "Frontend", "aliases": ["reactjs", "react.js"]},
-    "angular": {"category": "Frontend", "aliases": ["angularjs"]},
-    "vue": {"category": "Frontend", "aliases": ["vuejs", "vue.js"]},
-    "fastapi": {"category": "Backend", "aliases": ["fast api"]},
-    "flask": {"category": "Backend", "aliases": []},
-    "django": {"category": "Backend", "aliases": []},
-    "node.js": {"category": "Backend", "aliases": ["nodejs", "node"]},
-    "express": {"category": "Backend", "aliases": ["expressjs"]},
-    "next.js": {"category": "Frontend", "aliases": ["nextjs"]},
-    "tailwind": {"category": "Frontend", "aliases": ["tailwindcss", "tailwind css"]},
-    "vite": {"category": "Frontend", "aliases": []},
-
-    # Databases
-    "mongodb": {"category": "Databases", "aliases": ["mongo"]},
-    "sql server": {"category": "Databases", "aliases": ["mssql", "ms sql", "sqlserver"]},
-    "postgresql": {"category": "Databases", "aliases": ["postgres", "psql"]},
-    "mysql": {"category": "Databases", "aliases": []},
-    "redis": {"category": "Databases", "aliases": []},
-    "elasticsearch": {"category": "Databases", "aliases": ["elastic", "es"]},
-    "qdrant": {"category": "Databases", "aliases": []},
-    "cosmos db": {"category": "Databases", "aliases": ["cosmosdb", "cosmos"]},
-
-    # Cloud
-    "azure": {"category": "Cloud", "aliases": ["microsoft azure"]},
-    "aws": {"category": "Cloud", "aliases": ["amazon web services"]},
-    "gcp": {"category": "Cloud", "aliases": ["google cloud"]},
-    "docker": {"category": "DevOps", "aliases": []},
-    "kubernetes": {"category": "DevOps", "aliases": ["k8s"]},
-
-    # AI / ML
-    "openai": {"category": "AI / ML", "aliases": ["gpt", "gpt-4", "gpt-4o"]},
-    "langchain": {"category": "AI / ML", "aliases": []},
-    "semantic kernel": {"category": "AI / ML", "aliases": ["sk"]},
-    "ai": {"category": "AI / ML", "aliases": ["artificial intelligence"]},
-    "machine learning": {"category": "AI / ML", "aliases": ["ml"]},
-    "agentic ai": {"category": "Agentic AI", "aliases": ["agents", "ai agents"]},
-    "rag": {"category": "AI / ML", "aliases": ["retrieval augmented generation"]},
-    "llm": {"category": "AI / ML", "aliases": ["large language model"]},
-    "vector database": {"category": "AI / ML", "aliases": ["vector db"]},
-
-    # Architecture
-    "microservices": {"category": "Architecture", "aliases": []},
-    "clean architecture": {"category": "Architecture", "aliases": []},
-    "domain-driven design": {"category": "Architecture", "aliases": ["ddd"]},
-    "cqrs": {"category": "Architecture", "aliases": []},
-    "event sourcing": {"category": "Architecture", "aliases": []},
-    "mediator": {"category": "Architecture", "aliases": ["mediatr"]},
-
-    # Tools
-    "git": {"category": "Tools", "aliases": ["github"]},
-    "github actions": {"category": "DevOps", "aliases": []},
-    "jira": {"category": "Tools", "aliases": []},
-    "figma": {"category": "Tools", "aliases": []},
-    "visual studio": {"category": "Tools", "aliases": ["vs"]},
-    "vs code": {"category": "Tools", "aliases": ["vscode"]},
-
-    # Business
-    "erp": {"category": "Business / Domain", "aliases": []},
-    "crm": {"category": "Business / Domain", "aliases": []},
-    "fintech": {"category": "Business / Domain", "aliases": ["financial technology"]},
-    "healthcare": {"category": "Business / Domain", "aliases": []},
-    "ecommerce": {"category": "Business / Domain", "aliases": ["e-commerce"]},
-    "saas": {"category": "Business / Domain", "aliases": ["software as a service"]},
+KNOWN_SKILLS: dict[str, dict[str, str]] = {
+    "python": {"category": "backend", "family": "language"},
+    "javascript": {"category": "frontend", "family": "language"},
+    "typescript": {"category": "frontend", "family": "language"},
+    "csharp": {"category": "backend", "family": "language"},
+    "c#": {"category": "backend", "family": "language"},
+    "java": {"category": "backend", "family": "language"},
+    "go": {"category": "backend", "family": "language"},
+    "rust": {"category": "backend", "family": "language"},
+    "php": {"category": "backend", "family": "language"},
+    "ruby": {"category": "backend", "family": "language"},
+    "swift": {"category": "mobile", "family": "language"},
+    "kotlin": {"category": "mobile", "family": "language"},
+    "dart": {"category": "mobile", "family": "language"},
+    "sql": {"category": "database", "family": "language"},
+    "html": {"category": "frontend", "family": "markup"},
+    "css": {"category": "frontend", "family": "style"},
+    "react": {"category": "frontend", "family": "framework"},
+    "nextjs": {"category": "frontend", "family": "framework"},
+    "next.js": {"category": "frontend", "family": "framework"},
+    "vue": {"category": "frontend", "family": "framework"},
+    "angular": {"category": "frontend", "family": "framework"},
+    "svelte": {"category": "frontend", "family": "framework"},
+    "node.js": {"category": "backend", "family": "runtime"},
+    "nodejs": {"category": "backend", "family": "runtime"},
+    "django": {"category": "backend", "family": "framework"},
+    "fastapi": {"category": "backend", "family": "framework"},
+    "flask": {"category": "backend", "family": "framework"},
+    "express": {"category": "backend", "family": "framework"},
+    "asp.net": {"category": "backend", "family": "framework"},
+    "asp.net core": {"category": "backend", "family": "framework"},
+    "dotnet": {"category": "backend", "family": "framework"},
+    ".net": {"category": "backend", "family": "framework"},
+    ".net core": {"category": "backend", "family": "framework"},
+    "spring": {"category": "backend", "family": "framework"},
+    "rails": {"category": "backend", "family": "framework"},
+    "laravel": {"category": "backend", "family": "framework"},
+    "mongodb": {"category": "database", "family": "database"},
+    "postgresql": {"category": "database", "family": "database"},
+    "mysql": {"category": "database", "family": "database"},
+    "redis": {"category": "database", "family": "cache"},
+    "elasticsearch": {"category": "database", "family": "search"},
+    "qdrant": {"category": "database", "family": "vector_db"},
+    "docker": {"category": "devops", "family": "tool"},
+    "kubernetes": {"category": "devops", "family": "platform"},
+    "aws": {"category": "cloud", "family": "provider"},
+    "azure": {"category": "cloud", "family": "provider"},
+    "gcp": {"category": "cloud", "family": "provider"},
+    "google cloud": {"category": "cloud", "family": "provider"},
+    "microsoft azure": {"category": "cloud", "family": "provider"},
+    "azure functions": {"category": "cloud", "family": "service"},
+    "azure devops": {"category": "devops", "family": "platform"},
+    "github actions": {"category": "devops", "family": "ci"},
+    "ci/cd": {"category": "devops", "family": "practice"},
+    "git": {"category": "devops", "family": "tool"},
+    "openai": {"category": "ai", "family": "provider"},
+    "langchain": {"category": "ai", "family": "framework"},
+    "tensorflow": {"category": "ai", "family": "framework"},
+    "pytorch": {"category": "ai", "family": "framework"},
+    "llm": {"category": "ai", "family": "concept"},
+    "rag": {"category": "ai", "family": "concept"},
+    "mcp": {"category": "ai", "family": "protocol"},
+    "tailwind": {"category": "frontend", "family": "style"},
+    "bootstrap": {"category": "frontend", "family": "style"},
+    "sass": {"category": "frontend", "family": "style"},
+    "vite": {"category": "frontend", "family": "tool"},
+    "webpack": {"category": "frontend", "family": "tool"},
+    "pytest": {"category": "testing", "family": "tool"},
+    "jest": {"category": "testing", "family": "tool"},
+    "cypress": {"category": "testing", "family": "tool"},
+    "selenium": {"category": "testing", "family": "tool"},
 }

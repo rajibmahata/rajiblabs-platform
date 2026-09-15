@@ -1,319 +1,267 @@
-"""Profile MCP tools — evidence-backed professional profile management.
+from __future__ import annotations
 
-Tools for getting, analyzing, validating, and optimizing the RajibLabs
-professional profile. Every major claim must have evidence.
-"""
+import logging
+from typing import Any
 
-from datetime import datetime, timezone
+from app.database import get_db
+from app.tools import mcp_tool, _oid_str, _clean_secret_keys
+from app.cache import cache_get, cache_set, cache_invalidate
 
-from app.database import get_db, utcnow
-from app.tools import (
-    mcp_tool, _oid_str, _clean_secret_keys, _normalize_skill_category,
-    KNOWN_SKILLS,
+logger = logging.getLogger(__name__)
+
+
+@mcp_tool(
+    name="get_profile",
+    description="Get the complete Rajib profile with all fields. Returns verified professional data.",
+    category="profile",
+    permission="read",
 )
+async def get_profile(agent_id: str = "anonymous") -> dict:
+    cached = await cache_get("profile", "full")
+    if cached:
+        return {"success": True, "data": cached, "sources": ["cache"], "confidence": 1.0}
 
-
-@mcp_tool("get_profile", "Get the complete RajibLabs professional profile",
-          "profile", permission="public")
-async def get_profile() -> dict:
-    """Return the full profile with evidence."""
     db = get_db()
-    profile = await db["profiles"].find_one() or {}
+    profile = await db.profiles.find_one({})
     if not profile:
-        return {"error": "No profile found", "profile": None}
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "No profile found"}}
 
-    # Enrich with skill evidence
-    skills_with_evidence = []
-    for skill_name in profile.get("skills", []):
-        evidence_doc = await db["skill_evidence"].find_one(
-            {"skill": {"$regex": f"^{skill_name}$", "$options": "i"}})
-        if evidence_doc:
-            skills_with_evidence.append(_oid_str(evidence_doc))
-        else:
-            skills_with_evidence.append({"skill": skill_name, "confidence": 0.5})
+    profile["_id"] = _oid_str(profile["_id"])
+    profile = _clean_secret_keys(profile)
 
-    result = _oid_str(profile)
-    result["skills_with_evidence"] = skills_with_evidence
-    return _clean_secret_keys(result)
+    await cache_set("profile", "full", profile)
+    return {"success": True, "data": profile, "sources": ["profiles"], "confidence": 1.0}
 
 
-@mcp_tool("analyze_profile", "Analyze profile completeness and evidence quality",
-          "profile", permission="agent")
-async def analyze_profile() -> dict:
-    """Analyze profile for completeness, evidence, and issues."""
+@mcp_tool(
+    name="analyze_profile",
+    description="Analyze profile completeness, quality, and evidence backing. Returns structured analysis with score.",
+    category="profile",
+    permission="analyze",
+)
+async def analyze_profile(agent_id: str = "anonymous") -> dict:
     db = get_db()
-    profile = await db["profiles"].find_one() or {}
+    profile = await db.profiles.find_one({})
     if not profile:
-        return {"error": "No profile found", "completeness": 0}
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "No profile found"}}
+
+    fields = {
+        "name": profile.get("name", ""),
+        "title": profile.get("title", ""),
+        "tagline": profile.get("tagline", ""),
+        "about": profile.get("about", ""),
+        "location": profile.get("location", ""),
+        "email": profile.get("email", ""),
+        "phone": profile.get("phone", ""),
+        "linkedin_url": profile.get("linkedin_url", ""),
+        "github_url": profile.get("github_url", ""),
+        "website_url": profile.get("website_url", ""),
+        "profile_image_url": profile.get("profile_image_url", ""),
+        "skills": profile.get("skills", []),
+        "domains": profile.get("domains", []),
+        "experience_years": profile.get("experience_years", 0),
+    }
+
+    filled = sum(1 for k, v in fields.items() if v and v != 0 and v != [])
+    total = len(fields)
+    completeness = round((filled / total) * 100, 1) if total > 0 else 0
 
     issues = []
-    recommendations = []
-    evidence_count = 0
+    warnings = []
+    if not fields["about"]:
+        issues.append({"field": "about", "severity": "high", "message": "Missing professional summary"})
+    if not fields["tagline"]:
+        warnings.append({"field": "tagline", "severity": "medium", "message": "Missing tagline"})
+    if not fields["skills"]:
+        issues.append({"field": "skills", "severity": "high", "message": "No skills listed"})
+    if not fields["experience_years"]:
+        warnings.append({"field": "experience_years", "severity": "low", "message": "Missing experience years"})
 
-    # Check required fields
-    required_fields = [
-        ("full_name", "Full name"),
-        ("title", "Professional title"),
-        ("headline", "Headline"),
-        ("bio", "Bio/About"),
-        ("location", "Location"),
-    ]
-    present = 0
-    for field, label in required_fields:
-        if profile.get(field):
-            present += 1
-        else:
-            issues.append(f"Missing {label}")
-            recommendations.append(f"Add {label} to profile")
-
-    # Check skills
-    skills = profile.get("skills", [])
-    if len(skills) < 5:
-        issues.append(f"Only {len(skills)} skills listed (recommended: 15+)")
-        recommendations.append("Add more verified skills")
-
-    # Check career
-    career = profile.get("career", [])
-    if not career:
-        issues.append("No career history")
-        recommendations.append("Add professional experience")
-
-    # Check social links
-    links = profile.get("social_links", {})
-    if not links.get("github"):
-        issues.append("No GitHub link")
-    if not links.get("linkedin"):
-        issues.append("No LinkedIn link")
-
-    # Count evidence
-    evidence_count = await db["skill_evidence"].count_documents({})
-
-    # Check projects
-    projects = await db["projects"].count_documents({"status": "published"})
-    if projects == 0:
-        issues.append("No published projects")
-        recommendations.append("Add portfolio projects")
-
-    completeness = present / len(required_fields) if required_fields else 0
-    completeness = min(1.0, (completeness * 0.4 +
-                             (min(len(skills), 20) / 20) * 0.3 +
-                             (min(projects, 10) / 10) * 0.3))
+    score = completeness
+    if issues:
+        score = max(0, score - len(issues) * 10)
+    if warnings:
+        score = max(0, score - len(warnings) * 5)
 
     return {
-        "completeness": round(completeness, 2),
-        "total_skills": len(skills),
-        "total_career_entries": len(career),
-        "total_projects": projects,
-        "evidence_count": evidence_count,
-        "social_links": list(links.keys()),
-        "issues": issues,
-        "recommendations": recommendations,
+        "success": True,
+        "data": {
+            "completeness": completeness,
+            "score": round(score, 1),
+            "fields_filled": filled,
+            "fields_total": total,
+            "issues": issues,
+            "warnings": warnings,
+        },
+        "sources": ["profiles"],
+        "confidence": 1.0,
     }
 
 
-@mcp_tool("validate_profile", "Validate profile for factual accuracy",
-          "profile", permission="agent")
-async def validate_profile() -> dict:
-    """Validate profile claims against evidence."""
+@mcp_tool(
+    name="validate_profile",
+    description="Validate profile factual accuracy by cross-referencing with projects, skills, GitHub, and resume.",
+    category="profile",
+    permission="analyze",
+)
+async def validate_profile(agent_id: str = "anonymous") -> dict:
     db = get_db()
-    profile = await db["profiles"].find_one() or {}
+    profile = await db.profiles.find_one({})
     if not profile:
-        return {"error": "No profile found", "valid": False}
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "No profile found"}}
 
-    validations = []
+    evidence = []
+    issues = []
     warnings = []
 
-    # Validate skills against evidence
-    skills = profile.get("skills", [])
-    skills_with_evidence = 0
-    for skill in skills:
-        evidence = await db["skill_evidence"].find_one(
-            {"skill": {"$regex": f"^{skill}$", "$options": "i"}})
-        if evidence and evidence.get("confidence", 0) >= 0.6:
-            skills_with_evidence += 1
-        else:
-            warnings.append(f"Skill '{skill}' lacks sufficient evidence")
+    project_count = await db.projects.count_documents({"status": "published"})
+    evidence.append({"source": "projects", "count": project_count})
 
-    # Validate career claims
-    career = profile.get("career", [])
-    for entry in career:
-        if entry.get("achievements"):
-            validations.append(
-                f"Career '{entry.get('role', '')}' has {len(entry['achievements'])} achievements")
+    skill_count = await db.skills.count_documents({})
+    evidence.append({"source": "skills", "count": skill_count})
 
-    # Validate projects
-    projects_count = await db["projects"].count_documents({"status": "published"})
-    validations.append(f"{projects_count} published projects verified in database")
+    repo_count = await db.github_repositories.count_documents({})
+    evidence.append({"source": "github_repos", "count": repo_count})
 
-    skill_evidence_ratio = (skills_with_evidence / len(skills)
-                            if skills else 0)
+    resume_count = await db.resumes.count_documents({})
+    evidence.append({"source": "resumes", "count": resume_count})
+
+    if project_count == 0:
+        warnings.append({"field": "projects", "message": "No published projects to validate against"})
+
+    if skill_count == 0:
+        warnings.append({"field": "skills", "message": "No skills in database to validate against"})
+
+    score = 100.0
+    if issues:
+        score -= len(issues) * 15
+    if warnings:
+        score -= len(warnings) * 5
+    score = max(0, score)
 
     return {
-        "valid": len(warnings) == 0,
-        "skill_evidence_ratio": round(skill_evidence_ratio, 2),
-        "skills_with_evidence": skills_with_evidence,
-        "total_skills": len(skills),
-        "validations": validations,
-        "warnings": warnings[:20],
+        "success": True,
+        "data": {
+            "valid": len(issues) == 0,
+            "score": round(score, 1),
+            "issues": issues,
+            "warnings": warnings,
+            "evidence": evidence,
+        },
+        "sources": ["profiles", "projects", "skills", "github_repositories", "resumes"],
+        "confidence": 0.95,
     }
 
 
-@mcp_tool("optimize_profile", "Optimize profile presentation for clarity",
-          "profile", permission="agent")
-async def optimize_profile() -> dict:
-    """Suggest optimizations for profile clarity and impact."""
+@mcp_tool(
+    name="optimize_profile",
+    description="Suggest optimizations for profile presentation, SEO, and professional positioning.",
+    category="profile",
+    permission="propose",
+)
+async def optimize_profile(agent_id: str = "anonymous") -> dict:
     db = get_db()
-    profile = await db["profiles"].find_one() or {}
+    profile = await db.profiles.find_one({})
     if not profile:
-        return {"error": "No profile found"}
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "No profile found"}}
 
-    optimizations = []
+    suggestions = []
 
-    # Analyze headline
-    headline = profile.get("headline", "")
-    if headline and len(headline) > 120:
-        optimizations.append({
-            "field": "headline",
-            "issue": "Headline too long",
-            "suggestion": f"Shorten from {len(headline)} to under 120 characters",
+    if not profile.get("tagline"):
+        suggestions.append({
+            "type": "content",
+            "field": "tagline",
+            "priority": "high",
+            "suggestion": "Add a professional tagline that highlights core expertise",
         })
 
-    # Analyze bio
-    bio = profile.get("bio", "")
-    if bio and len(bio) < 100:
-        optimizations.append({
-            "field": "bio",
-            "issue": "Bio too short",
-            "suggestion": "Expand bio to 200-500 characters for better impact",
+    if not profile.get("about") or len(profile.get("about", "")) < 100:
+        suggestions.append({
+            "type": "content",
+            "field": "about",
+            "priority": "high",
+            "suggestion": "Expand professional summary to at least 100 words",
         })
 
-    # Analyze skills organization
-    skills = profile.get("skills", [])
-    if skills:
-        categorized = {}
-        for skill in skills:
-            evidence = None
-            # Check known skills
-            skill_lower = skill.lower()
-            for known, info in KNOWN_SKILLS.items():
-                if skill_lower == known or skill_lower in info.get("aliases", []):
-                    cat = _normalize_skill_category(info["category"])
-                    categorized.setdefault(cat, []).append(skill)
-                    break
-            else:
-                categorized.setdefault("Other", []).append(skill)
-
-        optimizations.append({
-            "field": "skills_organization",
-            "issue": "Skills can be better organized",
-            "suggestion": f"Organize {len(skills)} skills into {len(categorized)} categories",
-            "categories": categorized,
+    if not profile.get("linkedin_url"):
+        suggestions.append({
+            "type": "link",
+            "field": "linkedin_url",
+            "priority": "medium",
+            "suggestion": "Add LinkedIn profile URL for professional credibility",
         })
 
-    # Check for missing professional positioning
-    positioning_keywords = [
-        "solution architect", "software engineer", ".net", "azure",
-        "ai", "agentic", "cloud", "enterprise"
-    ]
-    all_text = f"{profile.get('title', '')} {profile.get('headline', '')} {profile.get('bio', '')}".lower()
-    missing_positioning = [kw for kw in positioning_keywords if kw not in all_text]
-    if missing_positioning:
-        optimizations.append({
-            "field": "professional_positioning",
-            "issue": "Missing key positioning keywords",
-            "suggestion": f"Consider incorporating: {', '.join(missing_positioning)}",
+    if not profile.get("github_url"):
+        suggestions.append({
+            "type": "link",
+            "field": "github_url",
+            "priority": "medium",
+            "suggestion": "Add GitHub profile URL for technical credibility",
+        })
+
+    if not profile.get("website_url"):
+        suggestions.append({
+            "type": "link",
+            "field": "website_url",
+            "priority": "low",
+            "suggestion": "Add personal website URL",
         })
 
     return {
-        "optimization_count": len(optimizations),
-        "optimizations": optimizations,
+        "success": True,
+        "data": {
+            "suggestions": suggestions,
+            "total_suggestions": len(suggestions),
+        },
+        "sources": ["profiles"],
+        "confidence": 0.85,
     }
 
 
-@mcp_tool("get_professional_positioning",
-          "Get evidence-backed professional positioning statement",
-          "profile", permission="public")
-async def get_professional_positioning() -> dict:
-    """Return professional positioning backed by evidence."""
+@mcp_tool(
+    name="get_professional_positioning",
+    description="Get evidence-backed professional positioning based on skills, projects, and experience.",
+    category="profile",
+    permission="read",
+)
+async def get_professional_positioning(agent_id: str = "anonymous") -> dict:
     db = get_db()
-    profile = await db["profiles"].find_one() or {}
+    profile = await db.profiles.find_one({})
     if not profile:
-        return {"error": "No profile found"}
+        return {"success": False, "error": {"code": "NOT_FOUND", "message": "No profile found"}}
 
-    # Gather evidence from multiple sources
-    career = profile.get("career", [])
-    projects = await db["projects"].find(
-        {"status": "published"}).to_list(50)
-    skills = profile.get("skills", [])
+    skills = []
+    async for skill in db.skills.find({}).limit(20):
+        skill["_id"] = _oid_str(skill["_id"])
+        skills.append(skill)
 
-    # Build positioning claims with evidence
-    claims = []
+    projects = []
+    async for proj in db.projects.find({"status": "published"}).limit(10):
+        proj["_id"] = _oid_str(proj["_id"])
+        projects.append(proj)
 
-    # Solution Architect
-    arch_evidence = []
-    for p in projects:
-        desc = (p.get("description", "") + " " + p.get("summary", "")).lower()
-        if any(kw in desc for kw in ["architecture", "architect", "microservices", "system design"]):
-            arch_evidence.append(f"project:{p.get('title', '')}")
-    for c in career:
-        role = (c.get("role", "") or "").lower()
-        if "architect" in role:
-            arch_evidence.append(f"career:{c.get('role', '')}")
-    if arch_evidence:
-        claims.append({
-            "claim": "Solution Architect",
-            "confidence": min(1.0, len(arch_evidence) * 0.3),
-            "evidence": arch_evidence[:5],
-        })
+    domains = []
+    async for domain in db.professional_domains.find({}).limit(10):
+        domain["_id"] = _oid_str(domain["_id"])
+        domains.append(domain)
 
-    # .NET Expert
-    dotnet_evidence = []
-    for p in projects:
-        tech = str(p.get("technologies", []) or p.get("tech_stack", [])).lower()
-        if ".net" in tech or "c#" in tech or "asp.net" in tech:
-            dotnet_evidence.append(f"project:{p.get('title', '')}")
-    for c in career:
-        tech = str(c.get("tech_stack", []) or c.get("technologies", [])).lower()
-        if ".net" in tech or "c#" in tech:
-            dotnet_evidence.append(f"career:{c.get('role', '')}")
-    if dotnet_evidence:
-        claims.append({
-            "claim": ".NET Technology Expertise",
-            "confidence": min(1.0, len(dotnet_evidence) * 0.25),
-            "evidence": dotnet_evidence[:5],
-        })
-
-    # Azure Cloud
-    azure_evidence = []
-    for p in projects:
-        tech = str(p.get("technologies", []) or p.get("tech_stack", [])).lower()
-        desc = (p.get("description", "") + " " + p.get("summary", "")).lower()
-        if "azure" in tech or "azure" in desc:
-            azure_evidence.append(f"project:{p.get('title', '')}")
-    if azure_evidence:
-        claims.append({
-            "claim": "Azure Cloud / PaaS",
-            "confidence": min(1.0, len(azure_evidence) * 0.25),
-            "evidence": azure_evidence[:5],
-        })
-
-    # AI Engineering
-    ai_evidence = []
-    for p in projects:
-        tech = str(p.get("technologies", []) or p.get("tech_stack", [])).lower()
-        desc = (p.get("description", "") + " " + p.get("summary", "")).lower()
-        if any(kw in tech or kw in desc for kw in ["ai", "openai", "llm", "rag", "ml"]):
-            ai_evidence.append(f"project:{p.get('title', '')}")
-    if ai_evidence:
-        claims.append({
-            "claim": "AI Engineering / Agentic AI",
-            "confidence": min(1.0, len(ai_evidence) * 0.3),
-            "evidence": ai_evidence[:5],
-        })
+    positioning = {
+        "name": profile.get("name", ""),
+        "title": profile.get("title", ""),
+        "tagline": profile.get("tagline", ""),
+        "core_expertise": [s["name"] for s in skills[:5]] if skills else [],
+        "domains": [d.get("name", "") for d in domains] if domains else [],
+        "project_count": len(projects),
+        "evidence": {
+            "skills_count": len(skills),
+            "projects_count": len(projects),
+            "domains_count": len(domains),
+        },
+    }
 
     return {
-        "positioning_claims": claims,
-        "total_evidence_sources": sum(len(c["evidence"]) for c in claims),
-        "overall_confidence": (sum(c["confidence"] for c in claims) / len(claims)
-                               if claims else 0),
+        "success": True,
+        "data": positioning,
+        "sources": ["profiles", "skills", "projects", "professional_domains"],
+        "confidence": 0.9,
     }

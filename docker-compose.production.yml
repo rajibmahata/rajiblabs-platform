@@ -176,6 +176,7 @@ services:
       - ai-api
       - frontend
       - mcp
+      - redis
     ports:
       # Phase 1: direct public edge on :8080 (PasteControl owns :80/:443).
       # Phase 2: after rajiblabs.com moves behind the existing edge proxy,
@@ -194,6 +195,20 @@ services:
       # PestFlow containers/networks/volumes are never referenced.
       - edge-link
 
+  redis:
+    image: redis:7-alpine
+    container_name: rajiblabs-redis
+    restart: unless-stopped
+    volumes:
+      - /opt/rajiblabs/data/redis:/data
+    networks:
+      - rajiblabs-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   mcp:
     build:
       context: ./rajiblabs-mcp
@@ -206,21 +221,27 @@ services:
       MCP_DATABASE_URL: "mongodb://mongo:27017/rajiblabs"
       MCP_MONGO_DB_NAME: "rajiblabs"
       MCP_QDRANT_URL: "http://qdrant:6333"
+      MCP_REDIS_URL: "redis://redis:6379/0"
       MCP_GITHUB_OWNER: "${GITHUB_OWNER:-rajibmahata}"
       MCP_GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
       MCP_OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       MCP_OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
       MCP_MCP_HOST: "0.0.0.0"
       MCP_MCP_PORT: "8100"
+      MCP_MCP_TRANSPORT: "sse"
       MCP_MCP_API_KEY: "${MCP_API_KEY:-}"
       MCP_ADMIN_API_KEY: "${MCP_ADMIN_API_KEY:-}"
       MCP_LOG_LEVEL: "${MCP_LOG_LEVEL:-INFO}"
       MCP_ENABLE_AUDIT_LOG: "true"
       MCP_ENABLE_TOOL_METRICS: "true"
+      MCP_CACHE_ENABLED: "true"
+      MCP_CACHE_TTL_SECONDS: "300"
     networks:
       - rajiblabs-internal
     depends_on:
       mongo:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8100/health')"]
