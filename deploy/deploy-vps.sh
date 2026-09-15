@@ -85,7 +85,7 @@ fi
 # Rollback reference: revision being deployed + current image IDs (the prior
 # build is restored via sh deploy/rollback-vps.sh [<sha>] — no git needed).
 echo "Deploying revision: ${DEPLOY_SHA:-unknown} (see $APP_DIR/.release after success)"
-docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' rajiblabs-ai-api rajiblabs-frontend 2>/dev/null || true
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' rajiblabs-ai-api rajiblabs-frontend rajiblabs-mcp 2>/dev/null || true
 # edge-link is the isolated network shared ONLY by rajiblabs-gateway and
 # pestflow-gateway (public edge proxies rajiblabs.com here). External: we
 # never delete it; creating an existing one is a harmless no-op.
@@ -109,6 +109,21 @@ until [ "$(docker inspect -f '{{.State.Health.Status}}' rajiblabs-ai-api 2>/dev/
   sleep 5
 done
 echo "  - ai-api healthy"
+
+# MCP health check (non-blocking — MCP is optional but should be running)
+echo "Checking MCP server..."
+tries=0
+until [ "$(docker inspect -f '{{.State.Health.Status}}' rajiblabs-mcp 2>/dev/null)" = "healthy" ]; do
+  tries=$((tries + 1))
+  if [ "$tries" -gt 12 ]; then
+    echo "  [WARN] MCP server not healthy yet (non-fatal, continuing deploy)"
+    break
+  fi
+  sleep 5
+done
+if [ "$tries" -le 12 ]; then
+  echo "  - mcp healthy"
+fi
 
 fail=0
 check() {  # check <label> <url>
@@ -135,6 +150,12 @@ check "gateway /health"      "$SITE/health"
 check "gateway /api/health"  "$SITE/api/health"
 check "gateway /"            "$SITE/"
 check "projects API"         "$SITE/api/projects"
+# MCP is internal-only — health check via Docker, not through gateway
+if docker inspect -f '{{.State.Health.Status}}' rajiblabs-mcp 2>/dev/null | grep -q healthy; then
+  echo "  - MCP health OK (internal)"
+else
+  echo "  - MCP health: not running (non-fatal)"
+fi
 if [ "$fail" -ne 0 ]; then
   echo "[ERROR] smoke tests failed — diagnostics (rajiblabs only, no secrets):"
   echo "--- containers ---"

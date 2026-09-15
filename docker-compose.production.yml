@@ -175,6 +175,7 @@ services:
     depends_on:
       - ai-api
       - frontend
+      - mcp
     ports:
       # Phase 1: direct public edge on :8080 (PasteControl owns :80/:443).
       # Phase 2: after rajiblabs.com moves behind the existing edge proxy,
@@ -182,6 +183,7 @@ services:
       - "8080:80"
     volumes:
       # Edge routing: / → frontend PWA, /api/* + /health → ai-api
+      # /api/mcp/* → mcp:8100 (Content Intelligence Platform)
       - /opt/rajiblabs/config/nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
       # Nginx access/error logs on the host for persistence/rotation
       - /opt/rajiblabs/logs/nginx:/var/log/nginx
@@ -191,6 +193,41 @@ services:
       # can proxy rajiblabs.com here. No other service joins this network;
       # PestFlow containers/networks/volumes are never referenced.
       - edge-link
+
+  mcp:
+    build:
+      context: ./rajiblabs-mcp
+      dockerfile: Dockerfile
+    image: rajiblabs-mcp:latest
+    container_name: rajiblabs-mcp
+    restart: unless-stopped
+    environment:
+      MCP_APP_ENV: "production"
+      MCP_DATABASE_URL: "mongodb://mongo:27017/rajiblabs"
+      MCP_MONGO_DB_NAME: "rajiblabs"
+      MCP_QDRANT_URL: "http://qdrant:6333"
+      MCP_GITHUB_OWNER: "${GITHUB_OWNER:-rajibmahata}"
+      MCP_GITHUB_TOKEN: "${GITHUB_TOKEN:-}"
+      MCP_OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      MCP_OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      MCP_MCP_HOST: "0.0.0.0"
+      MCP_MCP_PORT: "8100"
+      MCP_MCP_API_KEY: "${MCP_API_KEY:-}"
+      MCP_ADMIN_API_KEY: "${MCP_ADMIN_API_KEY:-}"
+      MCP_LOG_LEVEL: "${MCP_LOG_LEVEL:-INFO}"
+      MCP_ENABLE_AUDIT_LOG: "true"
+      MCP_ENABLE_TOOL_METRICS: "true"
+    networks:
+      - rajiblabs-internal
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8100/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 networks:
   rajiblabs-internal:

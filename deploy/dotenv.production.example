@@ -73,3 +73,10 @@ SMTP_PORT=587
 SMTP_USER=
 SMTP_PASSWORD=
 SMTP_FROM=
+
+# ── MCP Content Intelligence Platform ──
+# MCP runs on internal port 8100, proxied through gateway at /api/mcp/*
+# Optional: empty = dev mode allows all (not recommended for production)
+MCP_API_KEY=
+MCP_ADMIN_API_KEY=
+MCP_LOG_LEVEL=INFO

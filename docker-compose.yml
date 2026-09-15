@@ -54,11 +54,15 @@ services:
     restart: unless-stopped
     ports:
       - "8100:8100"
-    env_file:
-      - ./rajiblabs-mcp/.env
     environment:
+      MCP_APP_ENV: development
       MCP_DATABASE_URL: mongodb://mongo:27017/rajiblabs
       MCP_QDRANT_URL: http://qdrant:6333
+      MCP_MCP_PORT: "8100"
+      MCP_LOG_LEVEL: INFO
+    env_file:
+      - path: ./rajiblabs-mcp/.env
+        required: false
     depends_on:
       - mongo
       - qdrant
