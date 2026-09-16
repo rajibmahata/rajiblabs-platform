@@ -5,10 +5,12 @@ title RajibLabs Platform - Docker
 :: ============================================================================
 ::  RajibLabs Platform - One-Click Docker Runner  (Windows)
 ::  Runs the FULL stack in containers via Docker Compose:
-::    frontend    React PWA (nginx)       http://localhost:5010
-::    ai-api      FastAPI + Mongo (API)   http://localhost:8090
-::    mcp         MCP Content Intelligence http://localhost:8100
-::    mongo       MongoDB 7               localhost:27017
+::    frontend      React PWA (nginx)       http://localhost:5010
+::    ai-api        FastAPI + Mongo (API)   http://localhost:8090
+::    mcp           MCP Content Intelligence http://localhost:8100
+::    orchestrator  PydanticAI Orchestrator  http://localhost:8200
+::    mongo         MongoDB 7               localhost:27017
+::    redis         Redis Cache             localhost:6379
 ::
 ::  Usage:
 ::    run-docker.bat           -> build + start all (detached) + open browser
@@ -201,8 +203,10 @@ echo  ==========================================================================
 echo    Frontend   : http://localhost:5010  (PWA + nginx routes /api/*)
 echo    API        : http://localhost:8090  (FastAPI: public CMS, admin, AI, chat)
 echo    MCP        : http://localhost:8100  (Content Intelligence Platform)
+echo    Orchestrator: http://localhost:8200  (PydanticAI Agent Orchestration)
 echo    API Docs   : http://localhost:8090/docs  (dev only)
 echo    MongoDB    : localhost:27017  (db: rajiblabs)
+echo    Redis      : localhost:6379  (cache layer)
 echo  --------------------------------------------------------------------------
 echo    Admin      : http://localhost:5010/admin/login
 echo                 (ADMIN_EMAILS + ADMIN_INITIAL_PASSWORD from
@@ -220,6 +224,8 @@ timeout /t 1 /nobreak >nul
 start "" "http://localhost:8090/docs"
 timeout /t 1 /nobreak >nul
 start "" "http://localhost:8100/docs"
+timeout /t 1 /nobreak >nul
+start "" "http://localhost:8200/docs"
 echo  Done. Keep containers running with Docker Desktop, or run 'run-docker.bat down'.
 pause
 exit /b 0

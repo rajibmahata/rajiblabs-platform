@@ -176,6 +176,7 @@ services:
       - ai-api
       - frontend
       - mcp
+      - orchestrator
       - redis
     ports:
       # Phase 1: direct public edge on :8080 (PasteControl owns :80/:443).
@@ -245,6 +246,39 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8100/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  orchestrator:
+    build:
+      context: ./rajiblabs-agent-orchestrator
+      dockerfile: Dockerfile
+    image: rajiblabs-orchestrator:latest
+    container_name: rajiblabs-orchestrator
+    restart: unless-stopped
+    environment:
+      ORCH_APP_ENV: "production"
+      ORCH_DATABASE_URL: "mongodb://mongo:27017/rajiblabs"
+      ORCH_MONGO_DB_NAME: "rajiblabs"
+      ORCH_QDRANT_URL: "http://qdrant:6333"
+      ORCH_REDIS_URL: "redis://redis:6379/0"
+      ORCH_MCP_URL: "http://mcp:8100"
+      ORCH_OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ORCH_OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      ORCH_LOG_LEVEL: "${ORCH_LOG_LEVEL:-INFO}"
+    networks:
+      - rajiblabs-internal
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8200/health')"]
       interval: 15s
       timeout: 5s
       retries: 3

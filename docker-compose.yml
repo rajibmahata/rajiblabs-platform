@@ -97,6 +97,37 @@ services:
       retries: 3
       start_period: 15s
 
+  orchestrator:
+    build: ./rajiblabs-agent-orchestrator
+    container_name: rajiblabs-orchestrator
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      ORCH_APP_ENV: development
+      ORCH_DATABASE_URL: mongodb://mongo:27017/rajiblabs
+      ORCH_MONGO_DB_NAME: rajiblabs
+      ORCH_QDRANT_URL: http://qdrant:6333
+      ORCH_REDIS_URL: redis://redis:6379/0
+      ORCH_MCP_URL: http://mcp:8100
+      ORCH_LOG_LEVEL: INFO
+    env_file:
+      - path: ./rajiblabs-agent-orchestrator/.env
+        required: false
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8200/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   frontend:
     build: ./frontend
     container_name: rajiblabs-frontend
