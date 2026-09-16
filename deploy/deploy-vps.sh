@@ -60,7 +60,8 @@ fi
 
 # ── 3. Host dirs + gateway config (versioned file wins, live backup kept) ──
 mkdir -p /opt/rajiblabs/config/nginx /opt/rajiblabs/data/mongo \
-         /opt/rajiblabs/data/qdrant /opt/rajiblabs/data/uploads /opt/rajiblabs/logs/nginx
+         /opt/rajiblabs/data/qdrant /opt/rajiblabs/data/uploads \
+         /opt/rajiblabs/data/redis /opt/rajiblabs/logs/nginx
 if [ ! -f /opt/rajiblabs/config/nginx/gateway.conf ]; then
   cp deploy/nginx/gateway.conf /opt/rajiblabs/config/nginx/gateway.conf
   echo "  - installed gateway.conf (edit live copy at /opt/rajiblabs/config/nginx/)"
@@ -85,7 +86,7 @@ fi
 # Rollback reference: revision being deployed + current image IDs (the prior
 # build is restored via sh deploy/rollback-vps.sh [<sha>] — no git needed).
 echo "Deploying revision: ${DEPLOY_SHA:-unknown} (see $APP_DIR/.release after success)"
-docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' rajiblabs-ai-api rajiblabs-frontend rajiblabs-mcp 2>/dev/null || true
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' rajiblabs-ai-api rajiblabs-frontend rajiblabs-mcp rajiblabs-orchestrator 2>/dev/null || true
 # edge-link is the isolated network shared ONLY by rajiblabs-gateway and
 # pestflow-gateway (public edge proxies rajiblabs.com here). External: we
 # never delete it; creating an existing one is a harmless no-op.
@@ -123,6 +124,36 @@ until [ "$(docker inspect -f '{{.State.Health.Status}}' rajiblabs-mcp 2>/dev/nul
 done
 if [ "$tries" -le 12 ]; then
   echo "  - mcp healthy"
+fi
+
+# Orchestrator health check (non-blocking)
+echo "Checking orchestrator..."
+tries=0
+until [ "$(docker inspect -f '{{.State.Health.Status}}' rajiblabs-orchestrator 2>/dev/null)" = "healthy" ]; do
+  tries=$((tries + 1))
+  if [ "$tries" -gt 12 ]; then
+    echo "  [WARN] orchestrator not healthy yet (non-fatal, continuing deploy)"
+    break
+  fi
+  sleep 5
+done
+if [ "$tries" -le 12 ]; then
+  echo "  - orchestrator healthy"
+fi
+
+# Redis health check (non-blocking)
+echo "Checking Redis..."
+tries=0
+until [ "$(docker inspect -f '{{.State.Health.Status}}' rajiblabs-redis 2>/dev/null)" = "healthy" ]; do
+  tries=$((tries + 1))
+  if [ "$tries" -gt 12 ]; then
+    echo "  [WARN] Redis not healthy yet (non-fatal, continuing deploy)"
+    break
+  fi
+  sleep 5
+done
+if [ "$tries" -le 12 ]; then
+  echo "  - redis healthy"
 fi
 
 fail=0

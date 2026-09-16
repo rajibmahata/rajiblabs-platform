@@ -80,3 +80,8 @@ SMTP_FROM=
 MCP_API_KEY=
 MCP_ADMIN_API_KEY=
 MCP_LOG_LEVEL=INFO
+
+# ── Agent Orchestrator (PydanticAI) ──
+# Orchestrator runs on internal port 8200, proxied through gateway at /api/orchestrator/*
+ORCH_LOG_LEVEL=INFO
+ORCH_OPENAI_MODEL=gpt-4o-mini
