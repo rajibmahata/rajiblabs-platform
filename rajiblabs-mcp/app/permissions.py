@@ -118,6 +118,18 @@ TOOL_PERMISSIONS: dict[str, Permission] = {
     "validate_canonical": Permission.ANALYZE,
     "validate_sitemap": Permission.ANALYZE,
     "rollback_content": Permission.DELETE,
+    "detect_missing_translations": Permission.ANALYZE,
+    "generate_translation": Permission.WRITE,
+    "validate_translation": Permission.ANALYZE,
+    "sync_translations": Permission.WRITE,
+    "preview_content": Permission.READ,
+    "publish_content": Permission.PUBLISH,
+    "unpublish_content": Permission.PUBLISH,
+    "system_health": Permission.READ,
+    "system_agent_status": Permission.READ,
+    "system_rag_status": Permission.READ,
+    "system_cache_status": Permission.READ,
+    "system_mcp_status": Permission.READ,
 }
 
 

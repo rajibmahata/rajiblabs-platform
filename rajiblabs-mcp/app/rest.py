@@ -20,6 +20,7 @@ from app.config import settings
 from app.database import connect_db, disconnect_db
 from app.redis import connect_redis, disconnect_redis
 from app.tools import TOOL_REGISTRY
+from app.tools import profile, resume, project, portfolio, product, skill, github, knowledge, content, seo, translation, publishing, system  # noqa: F401
 from app.permissions import ROLE_PERMISSIONS, TOOL_PERMISSIONS, has_permission
 from app.audit import get_audit_logs, get_tool_usage_stats
 
