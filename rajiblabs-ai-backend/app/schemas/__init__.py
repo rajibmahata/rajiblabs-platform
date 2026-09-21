@@ -1,9 +1,42 @@
 """Pydantic request/response schemas with structured validation."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field, field_validator
+import re
 
 GITHUB_URL_PREFIX = "https://github.com/"
+
+# ── Date validation helpers ──
+
+_ISO_DATE_RE = re.compile(
+    r"^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])"
+    r"(?:T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?)?$"
+)
+
+
+def _validate_date_str(v: Optional[str], field_name: str) -> Optional[str]:
+    """Validate that a date string is a sensible ISO date, not a typo like '20226-10-01'."""
+    if v in (None, ""):
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    if not _ISO_DATE_RE.match(v):
+        raise ValueError(
+            f"{field_name} must be a valid ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:mm), "
+            f"got: {v!r}"
+        )
+    # Additional sanity: year must be 1900–current_year+1
+    try:
+        year = int(v[:4])
+        current_year = datetime.now(timezone.utc).year
+        if year < 1900 or year > current_year + 1:
+            raise ValueError(
+                f"{field_name} year {year} is out of valid range (1900–{current_year + 1})"
+            )
+    except ValueError:
+        raise
+    return v
 
 
 def validate_github_url(v: Optional[str]) -> Optional[str]:
@@ -511,6 +544,10 @@ class JobIn(BaseModel):
     status: CareerJobStatus = "Draft"
     agent_slug: Optional[str] = None
 
+    _val_deadline = field_validator("deadline")(
+        lambda cls, v: _validate_date_str(v, "deadline")
+    )
+
 
 class JobPatch(BaseModel):
     company_id: Optional[str] = None
@@ -527,6 +564,10 @@ class JobPatch(BaseModel):
     deadline: Optional[str] = None
     status: Optional[CareerJobStatus] = None
     agent_slug: Optional[str] = None
+
+    _val_deadline = field_validator("deadline")(
+        lambda cls, v: _validate_date_str(v, "deadline")
+    )
 
 
 class CareerAnalyzeIn(BaseModel):
@@ -552,6 +593,13 @@ class ApplicationPatch(BaseModel):
     email_body: Optional[str] = None
     cover_letter: Optional[str] = None
     summary: Optional[str] = None
+
+    _val_followup = field_validator("followup_date")(
+        lambda cls, v: _validate_date_str(v, "followup_date")
+    )
+    _val_response = field_validator("response_at")(
+        lambda cls, v: _validate_date_str(v, "response_at")
+    )
 
 
 # ── Customer marketing (templates, campaigns, sends) ──
@@ -593,6 +641,10 @@ class EmailCampaignIn(BaseModel):
     min_interval_hours: int = Field(default=48, ge=1, le=720)
     schedule_at: Optional[str] = Field(default=None, max_length=40)
     auto_send: bool = False
+
+    _val_schedule = field_validator("schedule_at")(
+        lambda cls, v: _validate_date_str(v, "schedule_at")
+    )
 
 
 class CampaignDecision(BaseModel):

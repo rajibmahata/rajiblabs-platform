@@ -71,7 +71,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
 export interface Project {
   num: string; name: string; desc: string; chips: string[];
   image?: string; icon: string; featured?: boolean; live?: boolean;
-  liveUrl?: string | null; githubUrl?: string | null;
+  liveUrl?: string | null; githubUrl?: string | null; videoUrl?: string | null;
 }
 export const PROJECTS: Project[] = [
   {
@@ -80,6 +80,7 @@ export const PROJECTS: Project[] = [
     chips: [".NET", "SQL Server", "SignalR"],
     image: "/images/pestflow.svg", icon: "bug_report",
     githubUrl: "https://github.com/rajibmahata/pestflow", liveUrl: null,
+    videoUrl: "https://youtu.be/cezZuIBDDIY",
   },
   {
     num: "02", name: "ARIA", icon: "smart_toy",

@@ -5,6 +5,7 @@ import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admi
 import { toast } from "../../components/admin/toast";
 import { useAsyncActions } from "../../components/admin/async";
 import { InlineLoader } from "../../components/admin/ui";
+import { safeFormatDate, safeFormatDateTime } from "../../utils/date";
 
 function DetailSection({ icon, title, children, tone }: { icon: string; title: string; children: React.ReactNode; tone?: string }) {
   if (!children) return null;
@@ -166,7 +167,7 @@ export default function LearningManage(){
                   <td>{p.duration} days</td>
                   <td><StatusPill status={p.status} /></td>
                   <td>{p.progress ?? 0}%</td>
-                  <td className="text-xs">{p.updated_at? new Date(p.updated_at).toLocaleDateString() : "—"}</td>
+                  <td className="text-xs">{p.updated_at? safeFormatDate(p.updated_at) : "—"}</td>
                   <td>
                     <button onClick={()=>setSelected(p.slug)} className={`rla-mini-btn ${selected===p.slug ? "active" : ""}`} title="View blocks"><i className="fas fa-eye" /></button>
                     <button onClick={()=>openEdit(p)} className="rla-mini-btn" title="Edit path" style={{marginLeft:4}}><i className="fas fa-pen" /></button>
@@ -195,7 +196,7 @@ export default function LearningManage(){
                           </div>
                           <div className="text-xs" style={{color:"var(--rla-text-faint)", marginTop:4, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden"}}>{b.learning_objective || b.topic}</div>
                           <div className="text-xs" style={{color:"var(--rla-text-faint)", marginTop:4}}>
-                            {b.generated_at ? `Generated ${new Date(b.generated_at).toLocaleString()}` : "Not generated"} {b.validated_at ? `· Validated ${new Date(b.validated_at).toLocaleDateString()}` : ""}
+                            {b.generated_at ? `Generated ${safeFormatDateTime(b.generated_at)}` : "Not generated"} {b.validated_at ? `· Validated ${safeFormatDate(b.validated_at)}` : ""}
                             {b.content_hash ? ` · ${b.content_hash.slice(0,8)}` : ""}
                           </div>
                         </div>
@@ -259,7 +260,7 @@ export default function LearningManage(){
                 <div style={{display:"flex", justifyContent:"space-between"}}>
                   <b>Day {b.day_number}: {b.title}</b> <StatusPill status={b.status} />
                 </div>
-                <div className="text-xs" style={{color:"var(--rla-text-faint)"}}>v{b.version} · {b.content_hash?.slice(0,8) || "no hash"} · {b.generated_at? new Date(b.generated_at).toLocaleString():"not generated"}</div>
+                <div className="text-xs" style={{color:"var(--rla-text-faint)"}}>v{b.version} · {b.content_hash?.slice(0,8) || "no hash"} · {b.generated_at? safeFormatDateTime(b.generated_at):"not generated"}</div>
                 <div className="text-xs" style={{color:"var(--rla-violet)", marginTop:4}}>Click to view full lesson →</div>
               </div>
             ))}
@@ -306,8 +307,8 @@ export default function LearningManage(){
                 </div>
                 <h3 style={{margin:"8px 0 4px", fontSize:"1.15rem", lineHeight:1.3}}>{detailBlock.title || detailBlock.topic}</h3>
                 <div className="text-xs" style={{color:"var(--rla-text-faint)"}}>
-                  v{detailBlock.version} · {detailBlock.content_hash?.slice(0,12) || "no hash"} · {detailBlock.generated_at ? `Generated ${new Date(detailBlock.generated_at).toLocaleString()}` : "Not generated"}
-                  {detailBlock.validated_at ? ` · Validated ${new Date(detailBlock.validated_at).toLocaleString()}` : ""}
+                  v{detailBlock.version} · {detailBlock.content_hash?.slice(0,12) || "no hash"} · {detailBlock.generated_at ? `Generated ${safeFormatDateTime(detailBlock.generated_at)}` : "Not generated"}
+                  {detailBlock.validated_at ? ` · Validated ${safeFormatDateTime(detailBlock.validated_at)}` : ""}
                 </div>
               </div>
               <button onClick={()=>setShowDetail(false)} className="rla-mini-btn" style={{flexShrink:0}}><i className="fas fa-times" /></button>
@@ -402,7 +403,7 @@ export default function LearningManage(){
               <DetailSection icon="fa-forward" title="Next up">{detailBlock.next_preview}</DetailSection>
 
               <div style={{marginTop:20, padding:"12px 14px", background:"var(--rla-bg)", border:"1px solid var(--rla-border)", borderRadius:10, display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8}}>
-                <span className="text-xs" style={{color:"var(--rla-text-faint)"}}>Status: <StatusPill status={detailBlock.status} /> · v{detailBlock.version} · {detailBlock.generated_at ? new Date(detailBlock.generated_at).toLocaleString() : "not generated"}</span>
+                <span className="text-xs" style={{color:"var(--rla-text-faint)"}}>Status: <StatusPill status={detailBlock.status} /> · v{detailBlock.version} · {detailBlock.generated_at ? safeFormatDateTime(detailBlock.generated_at) : "not generated"}</span>
                 <div style={{display:"flex", gap:8}}>
                   <button onClick={()=>{ setShowDetail(false); runSingleDay(selected, detailBlock.day_number); }} disabled={busy} className="rla-btn rla-btn-ghost rla-btn-sm"><i className="fas fa-sync" /> Regenerate</button>
                   <button onClick={()=>setShowDetail(false)} className="rla-btn rla-btn-primary rla-btn-sm">Close</button>

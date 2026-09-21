@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 export default function ProfileAgent() {
   const [cfg, setCfg] = useState<any>(null);
@@ -76,11 +77,11 @@ export default function ProfileAgent() {
         <div className="rla-panel"><div className="rla-panel-head"><div><h3>Profile</h3><p>{dash.profile_completeness}% complete</p></div><StatusPill status={dash.resume_status} /></div>
           <div className="rla-panel-body text-xs">Resume: {dash.resume_status} · Health warnings: {dash.health?.warnings?.length||0}</div></div>
         <div className="rla-panel"><div className="rla-panel-head"><div><h3>GitHub</h3><p>{dash.github_sync?.repos||0} repos</p></div></div>
-          <div className="rla-panel-body text-xs">Last sync: {dash.github_sync?.last_synced ? new Date(dash.github_sync.last_synced).toLocaleString() : "never"}</div></div>
+          <div className="rla-panel-body text-xs">Last sync: {dash.github_sync?.last_synced ? safeFormatDateTime(dash.github_sync.last_synced) : "never"}</div></div>
         <div className="rla-panel"><div className="rla-panel-head"><div><h3>Content</h3><p>{dash.portfolio} portfolio · {dash.products} products</p></div></div>
           <div className="rla-panel-body text-xs">Knowledge docs: {dash.knowledge} · Pending: {dash.pending_approvals}</div></div>
         <div className="rla-panel"><div className="rla-panel-head"><div><h3>Agent</h3><p>Next: {dash.next_run}</p></div><StatusPill status={dash.agent?.enabled?"active":"disabled"} /></div>
-          <div className="rla-panel-body text-xs">Last run: {dash.last_run? new Date(dash.last_run.started_at).toLocaleString():"never"} · Proposed {dash.last_run?.proposed||0}</div></div>
+          <div className="rla-panel-body text-xs">Last run: {dash.last_run? safeFormatDateTime(dash.last_run.started_at):"never"} · Proposed {dash.last_run?.proposed||0}</div></div>
       </div>
       <div style={{height:16}} />
 
@@ -105,7 +106,7 @@ export default function ProfileAgent() {
             <div key={p.id} className="rla-list-card text-sm">
               <div><b>{p.target_collection}.{p.field}</b> — {p.reason} <span className="rla-code">{p.confidence}</span></div>
               <div className="text-xs">Before: {JSON.stringify(p.before)?.slice(0,120)} → After: {JSON.stringify(p.after)?.slice(0,120)}</div>
-              <div className="text-xs" style={{color:"var(--rla-text-faint)"}}>Source: {p.source?.type}:{p.source?.id} · {new Date(p.created_at).toLocaleString()} · <StatusPill status={p.status} /></div>
+              <div className="text-xs" style={{color:"var(--rla-text-faint)"}}>Source: {p.source?.type}:{p.source?.id} · {safeFormatDateTime(p.created_at)} · <StatusPill status={p.status} /></div>
               {p.status==="pending" && <div className="rla-inline-actions" style={{marginTop:8}}>
                 <button onClick={()=>decide(p.id,"approve")} className="rla-btn rla-btn-primary rla-btn-sm">Approve</button>
                 <button onClick={()=>decide(p.id,"reject")} className="rla-btn rla-btn-ghost rla-btn-sm">Reject</button>
@@ -120,7 +121,7 @@ export default function ProfileAgent() {
         <div className="rla-stack">
           {runs.map((r:any)=>(
             <div key={r.id} className="rla-list-card text-sm">
-              <div>{new Date(r.started_at).toLocaleString()} — {r.status} · Proposed {r.proposed} Applied {r.applied} · <span className="rla-code">{r.triggered_by}</span></div>
+              <div>{safeFormatDateTime(r.started_at)} — {r.status} · Proposed {r.proposed} Applied {r.applied} · <span className="rla-code">{r.triggered_by}</span></div>
               <div className="text-xs" style={{color:"var(--rla-text-faint)"}}>Sources: {(r.sources_inspected||[]).join(", ")} · Health warnings: {r.health?.warnings?.length||0}</div>
               {r.errors?.length>0 && <div className="text-xs text-red-600">{r.errors.join("; ")}</div>}
             </div>

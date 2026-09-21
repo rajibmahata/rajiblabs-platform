@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { validatePeriod } from "../../utils/date";
 
 const toCSV = (v: any): string => Array.isArray(v) ? v.join(", ") : (v || "");
 const fromCSV = (s: string): string[] =>
@@ -38,6 +39,17 @@ export default function ProfileManage() {
   const save = async () => {
     setBusy(true);
     try {
+      // Validate all career periods before saving
+      for (const c of career) {
+        if (c.period) {
+          const { valid } = validatePeriod(c.period);
+          if (!valid) {
+            toast("Invalid period", `"${c.period}" contains an invalid date. Use format like "Aug 2019 – Present".`);
+            setBusy(false);
+            return;
+          }
+        }
+      }
       const body = {
         ...form,
         skills: fromCSV(skillsText),
@@ -68,6 +80,10 @@ export default function ProfileManage() {
   const openEdit = (i: number) => { setDraft({ ...career[i] }); setEditing(i); };
   const applyDraft = () => {
     if (!draft.company.trim() && !draft.role.trim()) { toast("Validation", "Company or role required."); return; }
+    if (draft.period) {
+      const { valid } = validatePeriod(draft.period);
+      if (!valid) { toast("Invalid period", "Period contains an invalid date. Use format like 'Aug 2019 – Present' or '2016 — 2019'."); return; }
+    }
     setCareer(career.map((c, i) => (i === editing ? { ...draft } : c)));
     setEditing(null);
   };

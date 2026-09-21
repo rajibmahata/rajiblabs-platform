@@ -5,6 +5,7 @@ import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../component
 import { InlineLoader } from "../../components/admin/ui";
 import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 export default function GitHubManage() {
   const [repos, setRepos] = useState<any[]>([]); const [log, setLog] = useState<any>(null);
@@ -37,9 +38,9 @@ export default function GitHubManage() {
       <PageHead title="GitHub Projects" desc={<>Server-side sync via <span className="rla-code">GITHUB_TOKEN</span> (never exposed). AI summaries are heuristic — review before publish.</>}
         actions={<button onClick={sync} disabled={isLoading("sync")} className="rla-btn rla-btn-primary rla-btn-sm" aria-busy={isLoading("sync")}><i className={`fas fa-rotate${isLoading("sync") ? " fa-spin" : ""}`} /> {isLoading("sync") ? "Syncing…" : "Sync GitHub Now"}</button>} />
       {isLoading("sync") && <div style={{marginBottom:12}}><InlineLoader text="Syncing GitHub — pulling repositories and AI summaries..." /></div>}
-      {log && <Panel title="Last sync" sub={`${new Date(log.startedAt).toLocaleString()} · Found ${log.found} · Added ${log.added} · Updated ${log.updated}`}><span /></Panel>}
+      {log && <Panel title="Last sync" sub={`${safeFormatDateTime(log.startedAt)} · Found ${log.found} · Added ${log.added} · Updated ${log.updated}`}><span /></Panel>}
       <div style={{ height: 16 }} />
-      <Panel title="Connection" sub={cfg ? `Token ${cfg.masked || "—"} · source: ${cfg.source} · owner: ${cfg.owner}${cfg.updated_at ? ` · updated ${new Date(cfg.updated_at).toLocaleString()}` : ""}` : "Token status unknown"}>
+      <Panel title="Connection" sub={cfg ? `Token ${cfg.masked || "—"} · source: ${cfg.source} · owner: ${cfg.owner}${cfg.updated_at ? ` · updated ${safeFormatDateTime(cfg.updated_at)}` : ""}` : "Token status unknown"}>
         <div className="rla-form-grid">
           <Field label="Personal access token (write-only, never displayed)" span>
             <div className="rla-inline-actions">
@@ -63,7 +64,7 @@ export default function GitHubManage() {
                   <td><div><b><a href={r.html_url} target="_blank" rel="noreferrer" className="hover:underline">{r.full_name}</a></b></div>
                     <div className="text-xs" style={{ color: "var(--rla-text-faint)" }}>{r.language || "—"} · ★{r.stars ?? 0} · {r.rag_doc_count ?? 0} docs{r.rag_last_error ? ` · ⚠ ${String(r.rag_last_error).slice(0, 80)}` : ""}</div></td>
                   <td><StatusPill status={r.rag_enabled === false ? "disabled" : "enabled"} /></td>
-                  <td className="text-xs">{r.rag_last_synced_at ? new Date(r.rag_last_synced_at).toLocaleString() : "never"}</td>
+                  <td className="text-xs">{r.rag_last_synced_at ? safeFormatDateTime(r.rag_last_synced_at) : "never"}</td>
                   <td><div className="rla-row-actions" style={{ justifyContent: "flex-end" }}>
                     <button onClick={() => kbSync(r.id, r.full_name)} disabled={isLoading(`kbsync-${r.id}`) || r.rag_enabled === false} className="rla-btn rla-btn-primary rla-btn-sm" title={r.rag_enabled === false ? "Enable first" : "Sync now"}>{isLoading(`kbsync-${r.id}`) ? <InlineLoader text="Syncing..." /> : "Sync Now"}</button>
                     {r.rag_enabled === false

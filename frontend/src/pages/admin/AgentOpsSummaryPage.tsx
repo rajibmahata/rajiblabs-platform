@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../services/api";
+import { safeFormatDateTime } from "../../utils/date";
 
 const get = async <T,>(p: string): Promise<T | null> => {
   try { return await api.get<T>(p); } catch { return null; }
@@ -153,7 +154,7 @@ export default function AgentOpsSummaryPage() {
             <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--rla-border)", fontSize: 13 }}>
               <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, background: "var(--rla-red-soft)", color: "var(--rla-red)", fontWeight: 600, whiteSpace: "nowrap" }}>{e.source}</span>
               <span style={{ flex: 1, color: "var(--rla-text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.message}</span>
-              <span style={{ fontSize: 11, color: "var(--rla-text-faint)", whiteSpace: "nowrap" }}>{e.created_at ? new Date(e.created_at).toLocaleString() : ""}</span>
+              <span style={{ fontSize: 11, color: "var(--rla-text-faint)", whiteSpace: "nowrap" }}>{e.created_at ? safeFormatDateTime(e.created_at) : ""}</span>
             </div>
           ))}
         </div>

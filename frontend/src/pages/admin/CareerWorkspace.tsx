@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 const ANALYZE_STEPS = ["Reading job requirements…", "Matching Rajib's professional experience…", "Searching relevant projects…", "Checking GitHub evidence…", "Preparing application…"];
 const GENERATE_STEPS = ["Reading job requirements…", "Matching Rajib's professional experience…", "Searching relevant projects…", "Checking GitHub evidence…", "Preparing application…"];
@@ -329,7 +330,7 @@ export default function CareerWorkspace() {
 
   function showSendFallbackNote(a: any) {
     if (!a) return null;
-    if (a.status === "Sent") return <div className="text-xs mt-2" style={{ color: "var(--rla-green)" }}>✓ Sent{a.sent_at ? ` ${new Date(a.sent_at).toLocaleString()}` : ""}. Status changes live in Applications.</div>;
+    if (a.status === "Sent") return <div className="text-xs mt-2" style={{ color: "var(--rla-green)" }}>✓ Sent{a.sent_at ? ` ${safeFormatDateTime(a.sent_at)}` : ""}. Status changes live in Applications.</div>;
     return null;
   }
 }

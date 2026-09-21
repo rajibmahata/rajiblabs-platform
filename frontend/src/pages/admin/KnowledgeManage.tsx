@@ -5,6 +5,7 @@ import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../component
 import { InlineLoader } from "../../components/admin/ui";
 import { useAsyncActions } from "../../components/admin/async";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 const DEFAULT_EVAL = [  { question: "Who is Rajib Mahata?", expected_keywords: ["Rajib", "Mahata"] },
   { question: "What does RajibLabs offer?", expected_keywords: ["RajibLabs", "services"] },
@@ -156,7 +157,7 @@ export default function KnowledgeManage() {  const [dash, setDash] = useState<an
                       {g.doc_count} docs · {g.chunk_count} chunks · sync: {g.sync_status || "—"}{g.rag_enabled === false ? " · DISABLED from RAG" : ""}
                     </div></td>
                   <td><StatusPill status={g.rag_enabled === false ? "disabled" : (g.by_status?.failed ? "failed" : "synced")} /></td>
-                  <td className="text-xs">{g.last_indexed_at ? new Date(g.last_indexed_at).toLocaleString() : "never"}</td>
+                  <td className="text-xs">{g.last_indexed_at ? safeFormatDateTime(g.last_indexed_at) : "never"}</td>
                   <td><div className="rla-row-actions" style={{ justifyContent: "flex-end" }}>
                     <button onClick={() => ghView(g.repository)} className="rla-btn rla-btn-ghost rla-btn-sm">View</button>
                     <button onClick={() => ghAction(g.repository, "sync")} disabled={busy || g.rag_enabled === false} className="rla-btn rla-btn-ghost rla-btn-sm">Sync</button>

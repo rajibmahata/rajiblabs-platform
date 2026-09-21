@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDate } from "../../utils/date";
 
 export default function SkillsManage() {
   const [items, setItems] = useState<any[]>([]);
@@ -154,7 +155,7 @@ export default function SkillsManage() {
                   <td><StatusPill status={s.status} /></td>
                   <td className="text-xs">{s.confidence != null ? `${(s.confidence * 100).toFixed(0)}%` : "—"}</td>
                   <td className="text-xs">{s.evidence_count ?? s.evidence?.sources?.length ?? "—"}</td>
-                  <td className="text-xs">{s.updated_at ? new Date(s.updated_at).toLocaleDateString() : "—"}</td>
+                  <td className="text-xs">{s.updated_at ? safeFormatDate(s.updated_at) : "—"}</td>
                   <td>
                     <div className="rla-row-actions" style={{ justifyContent: "flex-end" }}>
                       <button onClick={() => openView(s.id)} className="rla-mini-btn" title="View"><i className="fas fa-eye" /></button>

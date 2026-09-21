@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 export default function AgentsManage() {
   const [agents, setAgents] = useState<any[]>([]);
@@ -146,7 +147,7 @@ export default function AgentsManage() {
                 <td><span className="rla-code">{String(c.session_token).slice(0, 12)}…</span>{c.lead_id && <span className="rla-code" style={{ marginLeft: 6 }}>lead ✓</span>}</td>
                 <td>{c.turns}</td>
                 <td className="text-xs">{(c.intents || []).join(", ")}</td>
-                <td className="text-xs">{c.last_at ? new Date(c.last_at).toLocaleString() : "—"}</td>
+                <td className="text-xs">{c.last_at ? safeFormatDateTime(c.last_at) : "—"}</td>
               </tr>
             ))}</tbody>
           </table>

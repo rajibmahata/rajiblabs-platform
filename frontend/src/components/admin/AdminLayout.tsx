@@ -4,6 +4,7 @@ import "../../styles/admin.css";
 import { logout, me } from "../../services/auth";
 import { api } from "../../services/api";
 import { useAsyncActions } from "./async";
+import { safeFormatDateTime } from "../../utils/date";
 
 interface NavEntry { to: string; label: string; icon: string; exact?: boolean; badge?: string | number; dot?: boolean }
 
@@ -196,7 +197,7 @@ export default function AdminLayout() {
                       <div className="row" key={i}>
                         <b>{n.title || "Notification"}</b>
                         <p style={{ margin: "2px 0" }}>{n.message || ""}</p>
-                        <span>{n.created_at ? new Date(n.created_at).toLocaleString() : ""}</span>
+                        <span>{n.created_at ? safeFormatDateTime(n.created_at) : ""}</span>
                       </div>
                     ))}
                   </div>

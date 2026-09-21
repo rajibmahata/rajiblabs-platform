@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../services/api";
+import { safeFormatDate } from "../../utils/date";
 
 interface Msg { id: string; conversation_id: string; session_token: string; sender: string; message: string; intent?: string; tools_called?: string[]; agent_slug?: string; ai_provider?: string; ai_model?: string; duration_ms?: number; created_at?: string }
 interface DetailMsg { id: string; sender: string; message: string; intent?: string; tools_called?: string[]; sources_used?: Record<string, unknown>[]; ai_provider?: string; ai_model?: string; duration_ms?: number; created_at?: string }
@@ -13,7 +14,7 @@ function relativeTime(iso?: string) {
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return d.toLocaleDateString();
+  return safeFormatDate(iso);
 }
 
 export default function AgentOpsConversationsPage() {

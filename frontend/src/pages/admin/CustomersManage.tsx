@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 const FILTERS = ["all", "new", "hot", "warm", "qualified", "customer", "unsubscribed"];
 
@@ -44,7 +45,7 @@ export default function CustomersManage() {
     } catch (e: any) { toast("Failed", String(e.message || e).slice(0, 160)); }
   };
 
-  const fmtDT = (v: any) => (v ? new Date(v).toLocaleString() : "—");
+  const fmtDT = (v: any) => safeFormatDateTime(v);
 
   return (
     <div>

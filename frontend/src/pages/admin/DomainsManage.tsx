@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDate, safeFormatDateTime } from "../../utils/date";
 
 export default function DomainsManage(){
   const [tab,setTab]=useState<"domains"|"sources"|"health">("domains");
@@ -71,7 +72,7 @@ export default function DomainsManage(){
                   <td className="text-xs">{(d.portfolio_items||[]).slice(0,2).join(", ") || "—"}</td>
                   <td className="text-xs">{(d.github_repositories||[]).slice(0,2).join(", ") || "—"}</td>
                   <td><StatusPill status={d.status} /></td>
-                  <td className="text-xs">{d.last_verified_at? new Date(d.last_verified_at).toLocaleDateString() : "—"}</td>
+                  <td className="text-xs">{d.last_verified_at? safeFormatDate(d.last_verified_at) : "—"}</td>
                   <td><button onClick={()=>toggleFeatured(d)} className="rla-mini-btn" title="Toggle featured">{d.featured?"★":"☆"}</button></td>
                 </tr>))}
               </tbody>
@@ -89,7 +90,7 @@ export default function DomainsManage(){
             <Field label="Public source"><label className="flex items-center gap-2"><input type="checkbox" checked={!!srcForm.public_source} onChange={e=>setSrcForm({...srcForm, public_source:e.target.checked})} /> Public</label></Field>
           </div>
           <div style={{marginTop:12}}><button onClick={saveSource} disabled={busy} className="rla-btn rla-btn-primary rla-btn-sm">Save Source</button></div>
-          <div style={{marginTop:16}}><h4>Existing sources</h4>{sources.map((s:any)=><div key={s.type} className="rla-list-card text-sm"><b>{s.type}</b> — {s.url || "—"} · {s.status} · {s.enabled?"enabled":"disabled"}<div className="text-xs" style={{color:"var(--rla-text-faint)"}}>Last checked: {s.last_checked_at? new Date(s.last_checked_at).toLocaleString():"never"}</div></div>)}{sources.length===0 && <Empty>No sources configured.</Empty>}</div>
+          <div style={{marginTop:16}}><h4>Existing sources</h4>{sources.map((s:any)=><div key={s.type} className="rla-list-card text-sm"><b>{s.type}</b> — {s.url || "—"} · {s.status} · {s.enabled?"enabled":"disabled"}<div className="text-xs" style={{color:"var(--rla-text-faint)"}}>Last checked: {s.last_checked_at? safeFormatDateTime(s.last_checked_at):"never"}</div></div>)}{sources.length===0 && <Empty>No sources configured.</Empty>}</div>
         </Panel>
       )}
       {tab==="health" && health && (

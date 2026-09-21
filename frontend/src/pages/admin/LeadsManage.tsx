@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 const STATUSES = ["all", "new", "contacted", "qualified", "proposal", "won", "lost", "archived", "spam"];
 const SETTABLE = ["new", "contacted", "qualified", "proposal", "won", "lost", "archived", "spam"];
@@ -59,7 +60,7 @@ export default function LeadsManage() {
                 <span className="font-medium">{l.name || "(no name)"} <span className="text-xs" style={{ color: "var(--rla-text-faint)" }}>{l.company_name || ""}</span></span>
                 <span className="rla-inline-actions"><StatusPill status={l.status} /><span className="rla-code">score {l.lead_score ?? 0}</span></span>
               </div>
-              <div className="text-xs mt-1" style={{ color: "var(--rla-text-faint)" }}>{l.email || "—"} · {l.phone || "—"} · {l.created_at ? new Date(l.created_at).toLocaleString() : ""}</div>
+              <div className="text-xs mt-1" style={{ color: "var(--rla-text-faint)" }}>{l.email || "—"} · {l.phone || "—"} · {l.created_at ? safeFormatDateTime(l.created_at) : ""}</div>
             </button>
           ))}
           {leads.length === 0 && <Empty>No leads yet. They appear here when visitors chat.</Empty>}

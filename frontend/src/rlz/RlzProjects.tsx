@@ -49,6 +49,7 @@ type UnifiedProject = {
   liveUrl: string | null;
   githubUrl: string | null;
   docsUrl: string | null;
+  videoUrl: string | null;
   status: string;
   featured: boolean;
   displayOrder: number;
@@ -62,6 +63,7 @@ function ProjectLinks({ p }: { p: UnifiedProject }) {
   const hasLive = !!p.liveUrl;
   const hasGh = !!p.githubUrl;
   const hasDocs = !!p.docsUrl;
+  const hasVideo = !!p.videoUrl;
   return (
     <div className="rlz-project-links" style={{ gap: 12 }}>
       {hasLive && (
@@ -74,12 +76,17 @@ function ProjectLinks({ p }: { p: UnifiedProject }) {
           <i className="material-symbols-outlined">code</i> GitHub
         </a>
       )}
+      {hasVideo && (
+        <a href={p.videoUrl!} target="_blank" rel="noopener noreferrer" className="rlz-plink" aria-label={`Watch ${p.name} demo`} onClick={(e) => e.stopPropagation()}>
+          <i className="material-symbols-outlined">play_circle</i> Demo
+        </a>
+      )}
       {hasDocs && (
         <a href={p.docsUrl!} target="_blank" rel="noopener noreferrer" className="rlz-plink" aria-label={`${p.name} documentation`} onClick={(e) => e.stopPropagation()}>
           <i className="material-symbols-outlined">description</i> Docs
         </a>
       )}
-      {!hasLive && !hasGh && !hasDocs && <span className="rlz-project-unavailable">Links unavailable</span>}
+      {!hasLive && !hasGh && !hasDocs && !hasVideo && <span className="rlz-project-unavailable">Links unavailable</span>}
     </div>
   );
 }
@@ -100,6 +107,7 @@ function mapFallback(p: Project, idx: number): UnifiedProject {
     icon: p.icon,
     liveUrl: p.liveUrl ?? null,
     githubUrl: p.githubUrl ?? null,
+    videoUrl: p.videoUrl ?? null,
     docsUrl: null,
     status: "published",
     featured: !!p.featured,
@@ -126,6 +134,7 @@ function mapCms(p: CmsPortfolio, kind: "portfolio" | "product"): UnifiedProject 
     icon: "deployed_code",
     liveUrl: p.liveUrl || null,
     githubUrl: p.gitHubUrl || null,
+    videoUrl: p.videoUrl || null,
     docsUrl: p.docsUrl || null,
     status: p.status || "published",
     featured: !!p.featured,
@@ -176,6 +185,7 @@ export default function RlzProjects() {
             techStack?: string[]; technologies?: string[]; tech_stack?: string[];
             featured_image?: string; featuredImage?: string; gallery?: string[]; screenshots?: string[];
             live_url?: string; liveUrl?: string; github_url?: string; gitHubUrl?: string;
+            video_url?: string; videoUrl?: string;
             display_order?: number; displayOrder?: number; featured?: boolean; status?: string
           };
           const cat = (d.category || "").toLowerCase();
@@ -195,6 +205,7 @@ export default function RlzProjects() {
             icon: "deployed_code",
             liveUrl: d.live_url || d.liveUrl || null,
             githubUrl: d.github_url || d.gitHubUrl || null,
+            videoUrl: d.video_url || d.videoUrl || null,
             docsUrl: (d as { docs_url?: string; docsUrl?: string }).docs_url || (d as { docsUrl?: string }).docsUrl || null,
             status: d.status || "published",
             featured: !!d.featured,

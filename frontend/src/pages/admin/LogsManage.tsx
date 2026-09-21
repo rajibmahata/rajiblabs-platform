@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime, getMaxDateString, getMinDateString } from "../../utils/date";
 
 type LogEntry = {
   id: string; level: string; source: string; logger?: string | null;
@@ -17,9 +18,7 @@ type Stats = { retention_days: number; total_in_window: number; by_level: Record
 
 const PAGE_SIZES = [25, 50, 100];
 
-const fmtTime = (iso: string) => {
-  try { return new Date(iso).toLocaleString(); } catch { return iso; }
-};
+const fmtTime = (iso: string) => safeFormatDateTime(iso);
 const trunc = (s: string, n = 120) => (s && s.length > n ? s.slice(0, n) + "…" : s || "—");
 
 export default function LogsManage() {
@@ -93,8 +92,8 @@ export default function LogsManage() {
             <option value="warning">warning</option>
             <option value="info">info</option>
           </select>
-          <input type="datetime-local" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPageNo(1); }} className="rla-input" aria-label="From date" />
-          <input type="datetime-local" value={dateTo} onChange={e => { setDateTo(e.target.value); setPageNo(1); }} className="rla-input" aria-label="To date" />
+          <input type="datetime-local" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPageNo(1); }} className="rla-input" aria-label="From date" min={`${getMinDateString()}T00:00`} max={`${getMaxDateString()}T23:59`} />
+          <input type="datetime-local" value={dateTo} onChange={e => { setDateTo(e.target.value); setPageNo(1); }} className="rla-input" aria-label="To date" min={`${getMinDateString()}T00:00`} max={`${getMaxDateString()}T23:59`} />
           <select value={sort} onChange={e => { setSort(e.target.value as "newest" | "oldest"); setPageNo(1); }} className="rla-select" aria-label="Sort order">
             <option value="newest">newest first</option>
             <option value="oldest">oldest first</option>

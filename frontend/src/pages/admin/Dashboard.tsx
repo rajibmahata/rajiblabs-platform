@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../services/api";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDateTime } from "../../utils/date";
 
 const get = async <T,>(p: string): Promise<T | null> => {
   try { return await api.get<T>(p); } catch { return null; }
 };
-const fmtDT = (v: string | undefined | null) =>
-  v ? new Date(v).toLocaleString() : "—";
+const fmtDT = (v: string | undefined | null) => safeFormatDateTime(v);
 
 function Trend({ kind, icon, text }: { kind: "up" | "down" | "neutral"; icon: string; text: string }) {
   return <span className={`rla-trend ${kind}`}><i className={`fas ${icon}`} /> {text}</span>;

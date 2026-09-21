@@ -4,6 +4,7 @@ import { api } from "../../services/api";
 import { Empty, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { useAsyncActions } from "../../components/admin/async";
 import { InlineLoader, StepProgress } from "../../components/admin/ui";
+import { safeFormatDateTime } from "../../utils/date";
 
 const STEPS = [
   "Uploading Resume...",
@@ -190,7 +191,7 @@ export default function ResumeManage() {
                     <div>
                       <b>{r.fileName}</b>
                       <span>
-                        v{r.version} · {new Date(r.uploadedAt).toLocaleString()} · {(r.sizeBytes / 1024).toFixed(1)} KB · {r.contentType}
+                        v{r.version} · {safeFormatDateTime(r.uploadedAt)} · {(r.sizeBytes / 1024).toFixed(1)} KB · {r.contentType}
                       </span>
                     </div>
                   </div>

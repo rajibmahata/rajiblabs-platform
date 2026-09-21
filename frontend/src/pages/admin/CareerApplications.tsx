@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDate, safeFormatDateTime, isValidISODate, getMaxDateString, getMinDateString } from "../../utils/date";
 
 const STATUSES = ["all", "Draft", "AI Generated", "Needs Review", "Approved", "Sent", "Follow-up", "Response Received", "Interview", "Rejected", "Offer", "Closed"];
 const SETTABLE = ["Draft", "AI Generated", "Needs Review", "Approved", "Sent", "Follow-up", "Response Received", "Interview", "Rejected", "Offer", "Closed"];
@@ -48,6 +49,7 @@ export default function CareerApplications() {
   };
   const saveMeta = async () => {
     if (!sel) return;
+    if (followup && !isValidISODate(followup)) { toast("Invalid date", "Follow-up date is not valid. Please check the date."); return; }
     try {
       const r = await api.put<any>(`/api/admin/career/applications/${sel.id}`,
         { notes, followup_date: followup || null });
@@ -93,8 +95,8 @@ export default function CareerApplications() {
           <option value="">all companies</option>
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rla-input" aria-label="From date" />
-        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rla-input" aria-label="To date" />
+        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rla-input" aria-label="From date" min={getMinDateString()} max={getMaxDateString()} />
+        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rla-input" aria-label="To date" min={getMinDateString()} max={getMaxDateString()} />
         <button onClick={() => setSortNewest((v) => !v)} className="rla-btn rla-btn-ghost rla-btn-sm">Sort: {sortNewest ? "newest" : "oldest"}</button>
         <button onClick={() => { setQ(""); setStatus("all"); setCompanyId(""); setDateFrom(""); setDateTo(""); }} className="rla-btn rla-btn-ghost rla-btn-sm">Clear</button>
       </div>
@@ -109,7 +111,7 @@ export default function CareerApplications() {
                 <span className="rla-inline-actions"><StatusPill status={a.status} /><span className="rla-code">score {a.match_score ?? 0}</span></span>
               </div>
               <div className="text-xs mt-1" style={{ color: "var(--rla-text-faint)" }}>
-                {(a.email_subject || "").slice(0, 90)}{a.created_at ? ` · ${new Date(a.created_at).toLocaleDateString()}` : ""}{a.sent_at ? ` · sent ${new Date(a.sent_at).toLocaleDateString()}` : ""}{a.followup_date ? ` · follow-up ${String(a.followup_date).slice(0, 10)}` : ""}
+                {(a.email_subject || "").slice(0, 90)}{a.created_at ? ` · ${safeFormatDate(a.created_at)}` : ""}{a.sent_at ? ` · sent ${safeFormatDate(a.sent_at)}` : ""}{a.followup_date ? ` · follow-up ${safeFormatDate(a.followup_date)}` : ""}
               </div>
             </button>
           ))}
@@ -127,9 +129,9 @@ export default function CareerApplications() {
               action={<StatusPill status={sel.status} />}>
               <div className="text-xs space-y-1" style={{ color: "var(--rla-text-faint)" }}>
                 <div>Contact: {sel.contact_snapshot ? `${sel.contact_snapshot.name} <${sel.contact_snapshot.email}>` : "—"}</div>
-                {sel.sent_at && <div>Sent: {new Date(sel.sent_at).toLocaleString()}</div>}
-                {sel.approved_by && <div>Approved by {sel.approved_by}{sel.approved_at ? ` · ${new Date(sel.approved_at).toLocaleString()}` : ""}</div>}
-                {sel.response_at && <div>Response: {new Date(sel.response_at).toLocaleString()}</div>}
+                {sel.sent_at && <div>Sent: {safeFormatDateTime(sel.sent_at)}</div>}
+                {sel.approved_by && <div>Approved by {sel.approved_by}{sel.approved_at ? ` · ${safeFormatDateTime(sel.approved_at)}` : ""}</div>}
+                {sel.response_at && <div>Response: {safeFormatDateTime(sel.response_at)}</div>}
               </div>
               <div className="rla-section-title" style={{ marginTop: 10 }}>Email</div>
               <div className="text-sm font-medium">{sel.email_subject}</div>
@@ -149,7 +151,11 @@ export default function CareerApplications() {
                 <Field label="Status"><select value={sel.status} onChange={(e) => setAppStatus(e.target.value)} className="rla-select">
                   {SETTABLE.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select></Field>
-                <Field label="Follow-up date"><input type="datetime-local" value={followup} onChange={(e) => setFollowup(e.target.value)} className="rla-input" /></Field>
+                <Field label="Follow-up date"><input type="datetime-local" value={followup} onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && !isValidISODate(val)) { toast("Invalid date", "Please enter a valid date."); return; }
+                  setFollowup(val);
+                }} className="rla-input" min={`${getMinDateString()}T00:00`} max={`${getMaxDateString()}T23:59`} /></Field>
                 <Field label="Notes" span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="rla-textarea" /></Field>
               </div>
               <div className="rla-inline-actions" style={{ marginTop: 10 }}>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../services/api";
 import { Chip, Empty, Field, PageHead, Panel, StatusPill } from "../../components/admin/ui";
 import { toast } from "../../components/admin/toast";
+import { isValidISODate } from "../../utils/date";
 
 const STATUSES = ["all", "Draft", "Open", "Analyzing", "Ready for Application", "Applied", "Closed"];
 const SETTABLE = ["Draft", "Open", "Analyzing", "Ready for Application", "Applied", "Closed"];
@@ -37,6 +38,7 @@ export default function CareerJobs() {
   const save = async () => {
     if (form.title.trim().length < 2) { toast("Validation", "Job title is required."); return; }
     if ((form.description || "").trim().length < 20) { toast("Validation", "Full job description is required (min 20 characters)."); return; }
+    if (form.deadline && !isValidISODate(form.deadline)) { toast("Validation", "Deadline must be a valid date (YYYY-MM-DD)."); return; }
     setBusy(true);
     try {
       const body = {
@@ -117,7 +119,7 @@ export default function CareerJobs() {
               <Field label="Technologies (comma separated)" span><input value={form.technologies} onChange={(e) => set("technologies", e.target.value)} className="rla-input" /></Field>
               <Field label="Keywords (comma separated)" span><input value={form.keywords} onChange={(e) => set("keywords", e.target.value)} className="rla-input" /></Field>
               <Field label="Experience requirements" span><input value={form.experience} onChange={(e) => set("experience", e.target.value)} className="rla-input" /></Field>
-              <Field label="Application deadline"><input value={form.deadline} onChange={(e) => set("deadline", e.target.value)} placeholder="2026-…, or Strategist note" className="rla-input" /></Field>
+              <Field label="Application deadline"><input value={form.deadline} onChange={(e) => set("deadline", e.target.value)} placeholder="YYYY-MM-DD or note" className="rla-input" maxLength={40} /></Field>
             </div>
             <div className="rla-inline-actions" style={{ marginTop: 10 }}>
               <button onClick={save} disabled={busy} className="rla-btn rla-btn-primary rla-btn-sm">{busy ? "Saving…" : editingId ? "Save" : "Add Job"}</button>

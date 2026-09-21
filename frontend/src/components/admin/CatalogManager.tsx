@@ -6,6 +6,7 @@ import { InlineLoader } from "./ui";
 import { useAsyncActions } from "./async";
 import { toast } from "./toast";
 import Markdown from "../Markdown";
+import { safeFormatDate } from "../../utils/date";
 
 export interface CatalogKind {
   kind: "portfolio" | "products";
@@ -257,7 +258,7 @@ export default function CatalogManager(cfg: CatalogKind) {
                   <td><button onClick={() => toggleFeatured(p)} title="Toggle featured" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem" }}>{p.featured ? "★" : "—"}</button></td>
                   <td>{p.videoEmbedUrl ? "▶" : "—"}</td>
                   <td>{p.liveUrl ? <a href={p.liveUrl} target="_blank" rel="noreferrer">↗</a> : "—"}</td>
-                  <td className="text-xs">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : "—"}</td>
+                  <td className="text-xs">{p.updatedAt ? safeFormatDate(p.updatedAt) : "—"}</td>
                   <td><div className="rla-row-actions" style={{ justifyContent: "flex-end" }}>
                     <button onClick={() => openView(p)} className="rla-mini-btn" title="View"><i className="fas fa-eye" /></button>
                     <button onClick={() => { openEdit(p); }} className="rla-mini-btn" title="Edit"><i className="fas fa-pen" /></button>

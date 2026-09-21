@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { EXPERIENCE, type Xp } from "./data";
+import { validatePeriod } from "../utils/date";
 
 const DELAYS = ["", " rlz-reveal-d1", " rlz-reveal-d2"];
 
@@ -9,13 +10,17 @@ type CareerEntry = {
 };
 
 function mapCareer(career: CareerEntry[]): Xp[] {
-  return career.map((c) => ({
-    date: c.period || "",
-    title: c.role || "",
-    org: [c.company, c.client].filter(Boolean).join(" · "),
-    desc: c.description || (c.achievements || [])[0] || "",
-    tags: (c.tech_stack || c.technologies || []).slice(0, 4),
-  }));
+  return career.map((c) => {
+    const periodStr = c.period || "";
+    const { valid, display } = validatePeriod(periodStr);
+    return {
+      date: valid ? display : "",
+      title: c.role || "",
+      org: [c.company, c.client].filter(Boolean).join(" · "),
+      desc: c.description || (c.achievements || [])[0] || "",
+      tags: (c.tech_stack || c.technologies || []).slice(0, 4),
+    };
+  });
 }
 
 export default function RlzExperience() {

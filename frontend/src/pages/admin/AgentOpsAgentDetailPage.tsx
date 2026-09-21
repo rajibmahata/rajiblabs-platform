@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../../services/api";
 import { toast } from "../../components/admin/toast";
+import { safeFormatDate } from "../../utils/date";
 
 function relTime(iso?: string) {
   if (!iso) return "—";
@@ -10,7 +11,7 @@ function relTime(iso?: string) {
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return new Date(iso).toLocaleDateString();
+  return safeFormatDate(iso);
 }
 
 function durMs(start?: string, end?: string) {
